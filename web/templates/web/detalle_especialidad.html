@@ -1,0 +1,43 @@
+{% extends 'web/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="bg-dark text-white py-5 text-center">
+    <div class="container mt-5">
+        <h1 class="display-4 fw-bold text-warning text-uppercase" data-aos="fade-down">{{ info.titulo }}</h1>
+        <div style="width: 100px; height: 4px; background-color: white; margin: 20px auto;"></div>
+        <p class="lead w-75 mx-auto" data-aos="fade-up">{{ info.desc_larga }}</p>
+        <a href="{% url 'contacto' %}" class="btn btn-outline-light mt-3 rounded-pill px-4">Cotizar este servicio</a>
+    </div>
+</div>
+
+<section class="py-5 bg-light">
+    <div class="container">
+        <h3 class="fw-bold mb-4 border-start border-5 border-warning ps-3">Galería de Proyectos Realizados</h3>
+        
+        <div class="row g-3">
+            {% for foto in info.galeria %}
+            <div class="col-md-6 col-lg-4" data-aos="zoom-in">
+                <div class="card border-0 shadow-sm overflow-hidden rounded-3">
+                    <div style="height: 300px; overflow: hidden;">
+                        <img src="{% static 'web/img/'|add:foto %}" 
+                             onerror="this.src='https://via.placeholder.com/400x300?text=Foto+Proyecto'"
+                             class="w-100 h-100 object-fit-cover transition-transform" 
+                             style="object-fit: cover; transition: transform 0.5s;"
+                             onmouseover="this.style.transform='scale(1.1)'" 
+                             onmouseout="this.style.transform='scale(1)'"
+                             alt="Proyecto {{ info.titulo }}">
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="mt-5 text-center">
+            <a href="{% url 'inicio' %}" class="btn btn-link text-dark fw-bold">← Volver al Inicio</a>
+        </div>
+    </div>
+</section>
+
+{% endblock %}

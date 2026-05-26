@@ -1,0 +1,49 @@
+{% extends 'web/base.html' %}
+
+{% block content %}
+<div class="container py-5" style="margin-top: 80px;">
+    
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="mb-4">
+                <a href="{% url 'dashboard_erp' %}" class="text-decoration-none text-secondary">
+                    &larr; Volver al Panel
+                </a>
+            </div>
+
+            <div class="card shadow-lg border-0 rounded-4">
+                <div class="card-header bg-dark text-white p-4 rounded-top-4">
+                    <h3 class="mb-0">Paso 1: Información del Ticket</h3>
+                    <p class="mb-0 text-light opacity-75 small">Selecciona el proyecto al que irán destinados los materiales.</p>
+                </div>
+                
+                <div class="card-body p-5">
+                    <form method="POST" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Proyecto Destino <span class="text-danger">*</span></label>
+                            {{ form.proyecto }}
+                            {% if form.proyecto.errors %}
+                                <div class="text-danger small mt-1">{{ form.proyecto.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Observaciones / Motivo <span class="text-muted fw-normal">(Opcional)</span></label>
+                            {{ form.observaciones }}
+                            <div class="form-text">Ej: Materiales urgentes para el montaje de la cubierta en el bloque B.</div>
+                        </div>
+
+                        <div class="d-grid mt-5">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                Generar Folio y Continuar &rarr;
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends 'web/base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-shield-alt text-danger"></i> Centro de Seguridad</h2>
+        <a href="{% url 'dashboard_erp' %}" class="btn btn-secondary">Volver al Dashboard</a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">Usuarios con Intentos Fallidos / Bloqueados</h5>
+        </div>
+        <div class="card-body p-0">
+            {% if intentos %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 text-center align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Usuario Involucrado</th>
+                            <th>IP de Origen</th>
+                            <th>Fallos Acumulados</th>
+                            <th>Último Intento</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for intento in intentos %}
+                        <tr>
+                            <td class="fw-bold text-danger">{{ intento.username }}</td>
+                            <td>{{ intento.ip_address }}</td>
+                            <td>
+                                <span class="badge bg-warning text-dark fs-6">
+                                    {{ intento.failures_since_start }} intentos
+                                </span>
+                            </td>
+                            <td>{{ intento.attempt_time|date:"d/m/Y H:i" }}</td>
+                            <td>
+                                <form action="{% url 'desbloquear_usuario' intento.id %}" method="POST" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('¿Estás seguro de que deseas desbloquear a {{ intento.username }}?');">
+                                        <i class="fas fa-unlock"></i> Desbloquear
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="p-5 text-center text-muted">
+                <h4><i class="fas fa-check-circle text-success fs-1 mb-3"></i></h4>
+                <h5>Todo está tranquilo</h5>
+                <p>No hay usuarios bloqueados ni intentos sospechosos en este momento.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

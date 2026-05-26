@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Orden de Compra - {{ oc.folio }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+            @frame footer {
+                -pdf-frame-content: footerContent;
+                bottom: 1cm;
+                margin-left: 2cm;
+                margin-right: 2cm;
+                height: 1cm;
+            }
+        }
+        body {
+            font-family: Helvetica, sans-serif;
+            font-size: 12px;
+            color: #333333;
+        }
+        .header-table {
+            width: 100%;
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .info-table {
+            width: 100%;
+            margin-bottom: 20px;
+            border-collapse: collapse;
+        }
+        .info-table td {
+            padding: 5px;
+            border: 1px solid #dddddd;
+        }
+        .info-table .bg-gray {
+            background-color: #f2f2f2;
+            font-weight: bold;
+            width: 25%;
+        }
+        .materials-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .materials-table th {
+            background-color: #2c3e50;
+            color: white;
+            padding: 8px;
+            text-align: left;
+        }
+        .materials-table td {
+            padding: 8px;
+            border-bottom: 1px solid #dddddd;
+        }
+        .signatures {
+            width: 100%;
+            margin-top: 50px;
+            text-align: center;
+        }
+        .signature-line {
+            border-top: 1px solid #000;
+            width: 80%;
+            margin: 0 auto;
+            padding-top: 5px;
+        }
+        h2, h4 { margin: 0; padding: 0; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+
+        /* Color diferente al ticket para distinguirla visualmente */
+        .estado-oc { color: #27ae60; font-weight: bold; font-size: 14px; }
+
+        .aviso-recibida {
+            background-color: #eafaf1;
+            border: 1px solid #27ae60;
+            padding: 8px 12px;
+            margin-bottom: 16px;
+            font-size: 11px;
+            color: #1e8449;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ENCABEZADO: logo + nombre empresa + folio OC -->
+    <table class="header-table">
+        <tr>
+            <td style="width: 30%;">
+                <img src="{{ logo_path }}" width="80" height="80" alt="ProduMetal Logo">
+            </td>
+            <td style="width: 40%; text-align: center;">
+                <h2 style="color: #2c3e50;">PRODUMETAL CM</h2>
+                <p>Gestión de Estructuras y Carpintería Metálica</p>
+                <p><strong>ORDEN DE COMPRA</strong></p>
+            </td>
+            <td style="width: 30%; text-align: right;">
+                <h4>FOLIO: <span style="color: #27ae60;">{{ oc.folio }}</span></h4>
+                <p>Fecha de Emisión: {{ oc.fecha_creacion|date:"d/M/Y" }}</p>
+                <p>Fecha de Impresión: {{ fecha_impresion|date:"d/M/Y H:i" }}</p>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Aviso visual si la OC ya fue recibida en bodega -->
+    {% if oc.estado == 'RECIBIDA' %}
+    <div class="aviso-recibida">
+        ✔ Esta orden ya fue recibida en bodega y el stock fue actualizado correctamente.
+    </div>
+    {% endif %}
+
+    <!-- DATOS GENERALES DE LA OC -->
+    <table class="info-table">
+        <tr>
+            <td class="bg-gray">Proveedor:</td>
+            <td>{{ oc.proveedor }}</td>
+            <td class="bg-gray">Estado:</td>
+            <td class="estado-oc">{{ oc.get_estado_display|upper }}</td>
+        </tr>
+        <tr>
+            <td class="bg-gray">Emitida por (Bodeguero):</td>
+            <td>{{ oc.creado_por.get_full_name|default:oc.creado_por.username }}</td>
+            <td class="bg-gray">N° de Factura:</td>
+            <td>{{ oc.numero_factura|default:"Pendiente" }}</td>
+        </tr>
+        <tr>
+            <td class="bg-gray">Observaciones:</td>
+            <td colspan="3">{{ oc.observaciones|default:"Ninguna" }}</td>
+        </tr>
+    </table>
+
+    <!-- TABLA DE MATERIALES PEDIDOS -->
+    <h4 style="margin-bottom: 5px;">Detalle de Materiales Solicitados al Proveedor</h4>
+    <table class="materials-table">
+        <thead>
+            <tr>
+                <th style="width: 15%;">Código SKU</th>
+                <th style="width: 15%;">Tipo</th>
+                <th style="width: 40%;">Descripción del Material</th>
+                <th style="width: 15%; text-align: center;">Cant. Pedida</th>
+                <th style="width: 15%; text-align: center;">Cant. Recibida</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in detalles %}
+            <tr>
+                <td>{{ item.material.sku }}</td>
+                <td>{{ item.material.get_tipo_display }}</td>
+                <td>{{ item.material.nombre }}</td>
+                <td class="text-center">{{ item.cantidad_pedida }}</td>
+                <td class="text-center"><strong>{{ item.cantidad_recibida }}</strong></td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="text-center">No se encontraron materiales en esta orden de compra.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- FIRMAS -->
+    <table class="signatures">
+        <tr>
+            <td style="width: 33%;">
+                <br><br><br><br>
+                <div class="signature-line">
+                    <strong>Emitido Por</strong><br>
+                    Bodeguero Responsable
+                </div>
+            </td>
+            <td style="width: 33%;">
+                <br><br><br><br>
+                <div class="signature-line">
+                    <strong>Autorizado Por</strong><br>
+                    Gerencia / Administración
+                </div>
+            </td>
+            <td style="width: 33%;">
+                <br><br><br><br>
+                <div class="signature-line">
+                    <strong>Recibido Por</strong><br>
+                    Representante del Proveedor
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- PIE DE PÁGINA con número de página -->
+    <div id="footerContent" style="text-align: right; font-size: 10px; color: #7f8c8d;">
+        Documento generado automáticamente por el Sistema ERP ProduMetal CM - Página <pdf:pagenumber> de <pdf:pagecount>
+    </div>
+
+</body>
+</html>

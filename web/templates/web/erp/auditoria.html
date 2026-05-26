@@ -1,0 +1,260 @@
+{% extends 'web/base.html' %}
+{% load static %}
+
+{% block extra_head %}
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --pm-bg: #0d1117;
+        --pm-surface: #161b22;
+        --pm-border: #30363d;
+        --pm-text: #ffffff;
+        --pm-text-muted: #aab6c4;
+        --pm-amber: #e6a817; 
+        --pm-blue: #58a6ff;
+        --pm-green: #3fb950;
+        --pm-red: #f85149;
+        --font-display: 'Barlow Condensed', sans-serif;
+        --font-body: 'Barlow', sans-serif;
+    }
+
+    body { background-color: var(--pm-bg) !important; color: var(--pm-text) !important; font-family: var(--font-body); }
+    .text-muted { color: var(--pm-text-muted) !important; }
+    .erp-container { margin-top: 30px; max-width: 1400px; }
+    
+    .card-minimal { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+    
+    .table-modern { width: 100%; margin-bottom: 0; white-space: nowrap; color: var(--pm-text); }
+    .table-modern th { background: var(--pm-bg); text-transform: uppercase; font-family: var(--font-display); font-size: 0.85rem; letter-spacing: 1px; color: var(--pm-text-muted); border-bottom: 1px solid var(--pm-border); padding: 12px 16px; border-top: none;}
+    .table-modern td { vertical-align: middle; border-bottom: 1px solid var(--pm-border); padding: 14px 16px; background: transparent; color: var(--pm-text); }
+    .table-modern tr:hover td { background: rgba(255,255,255,0.03); }
+    
+    .badge-soft { padding: 5px 10px; font-weight: 600; font-size: 0.75rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-display); letter-spacing: 0.5px; text-transform: uppercase; }
+    .badge-soft-warning { background: rgba(230,168,23,0.1); color: var(--pm-amber); border: 1px solid rgba(230,168,23,0.3); }
+    .badge-soft-success { background: rgba(63,185,80,0.1); color: var(--pm-green); border: 1px solid rgba(63,185,80,0.3); }
+    .badge-soft-danger  { background: rgba(248,81,73,0.1); color: var(--pm-red); border: 1px solid rgba(248,81,73,0.3); }
+    
+    .filtros-bar { padding: 1rem 1.5rem; display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; background: var(--pm-surface); border-bottom: 1px solid var(--pm-border); border-radius: 12px 12px 0 0; }
+    .filtro-chip { font-family: var(--font-display); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding: 0.4rem 1rem; border-radius: 4px; border: 1px solid var(--pm-border); color: var(--pm-text-muted); text-decoration: none; transition: all 0.2s; }
+    .filtro-chip:hover, .filtro-chip.active { background: var(--pm-amber); border-color: var(--pm-amber); color: #000; }
+    
+    /* Controles de Paginación */
+    .page-link { background: var(--pm-bg); border: 1px solid var(--pm-border); color: var(--pm-text-muted); transition: 0.2s; }
+    .page-link:hover { background: var(--pm-surface-hover); color: var(--pm-text); }
+    .page-item.active .page-link { background: var(--pm-amber); border-color: var(--pm-amber); color: #000; font-weight: bold; }
+    
+    /* MODIFICACIONES PARA FORMULARIOS OSCUROS */
+    .form-control-pm, .form-select-pm {
+        background-color: var(--pm-bg) !important;
+        border: 1px solid var(--pm-border) !important;
+        color: var(--pm-text) !important;
+        border-radius: 4px;
+        transition: border-color 0.2s;
+    }
+    .form-control-pm:focus, .form-select-pm:focus {
+        border-color: var(--pm-amber) !important;
+        box-shadow: none !important;
+    }
+    
+    .form-select-pm {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23aab6c4' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+    }
+    optgroup { font-family: var(--font-display); font-weight: bold; color: var(--pm-amber); background: var(--pm-surface); }
+    option { font-family: var(--font-body); color: var(--pm-text); background: var(--pm-bg); }
+    input[type="month"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+</style>
+
+<div class="container-fluid px-3 px-xl-5 erp-container mb-5">
+
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="{% url 'dashboard_erp' %}" class="btn btn-outline-secondary text-white border-secondary px-3">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <div>
+            <h3 class="mb-0" style="font-family: var(--font-display); font-weight: 800; text-transform: uppercase;">Bitácora de <span style="color: var(--pm-amber);">Auditoría</span></h3>
+            <p class="mb-0 text-muted small">Registro inalterable de todos los movimientos de inventario.</p>
+        </div>
+    </div>
+
+    <div class="card card-minimal overflow-hidden">
+        
+        <div class="filtros-bar">
+            <span class="text-muted small text-uppercase fw-bold"><i class="bi bi-funnel me-1"></i> Filtrar:</span>
+            
+            <a href="?tipo=&mes={{ mes_filtro|default:'' }}&proyecto={{ proyecto_id|default:'' }}" class="filtro-chip {% if not tipo_filtro %}active{% endif %}">Todos</a>
+            <a href="?tipo=INGRESO&mes={{ mes_filtro|default:'' }}&proyecto={{ proyecto_id|default:'' }}" class="filtro-chip {% if tipo_filtro == 'INGRESO' %}active{% endif %} text-success border-success border-opacity-50">Ingresos</a>
+            <a href="?tipo=SALIDA&mes={{ mes_filtro|default:'' }}&proyecto={{ proyecto_id|default:'' }}" class="filtro-chip {% if tipo_filtro == 'SALIDA' %}active{% endif %} text-warning border-warning border-opacity-50">Salidas</a>
+            <a href="?tipo=AJUSTE&mes={{ mes_filtro|default:'' }}&proyecto={{ proyecto_id|default:'' }}" class="filtro-chip {% if tipo_filtro == 'AJUSTE' %}active{% endif %} text-danger border-danger border-opacity-50">Ajustes</a>
+            
+            <form method="GET" class="d-flex align-items-center ms-0 ms-md-2 mt-2 mt-md-0 gap-2">
+                <input type="hidden" name="tipo" value="{{ tipo_filtro|default:'' }}">
+                
+                <input type="month" name="mes" value="{{ mes_filtro|default:'' }}" class="form-control form-control-sm form-control-pm" onchange="this.form.submit()" title="Filtrar por Mes">
+                
+                <select name="proyecto" class="form-select form-select-sm form-select-pm" onchange="this.form.submit()" style="min-width: 160px; max-width: 200px;">
+                    <option value="">Todos los Proyectos</option>
+                    <optgroup label="🏗️ Proyectos Activos">
+                        {% for p in proyectos_activos %}
+                            <option value="{{ p.id }}" {% if proyecto_id == p.id|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
+                        {% endfor %}
+                    </optgroup>
+                    <optgroup label="📁 Archivados (Terminados)">
+                        {% for p in proyectos_inactivos %}
+                            <option value="{{ p.id }}" {% if proyecto_id == p.id|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
+                        {% endfor %}
+                    </optgroup>
+                </select>
+
+                {% if mes_filtro or proyecto_id %}
+                    <a href="?tipo={{ tipo_filtro|default:'' }}&mes=&proyecto=" class="text-danger ms-1" title="Limpiar filtros"><i class="bi bi-x-circle-fill"></i></a>
+                {% endif %}
+            </form>
+            
+            <div class="ms-auto d-flex align-items-center gap-2 mt-2 mt-md-0">
+                <a href="{% url 'imprimir_pdf_auditoria' %}?tipo={{ tipo_filtro|default:'' }}&mes={{ mes_filtro|default:'' }}&proyecto={{ proyecto_id|default:'' }}" target="_blank" class="btn btn-outline-danger btn-sm px-3" style="font-family: var(--font-display); font-weight: bold; text-transform: uppercase;">
+                    <i class="bi bi-file-pdf-fill"></i> Exportar PDF
+                </a>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-modern" id="auditTable">
+                <thead>
+                    <tr>
+                        <th>Fecha / Hora</th>
+                        <th>Material</th>
+                        <th>Tipo</th>
+                        <th>Cantidad</th>
+                        <th>Origen / Destino (Proyecto)</th>
+                        <th>Responsable</th>
+                        <th>Notas / Justificación</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for mov in page_obj %}
+                    <tr data-search="{{ mov.material.nombre|lower }} {{ mov.requerimiento_asociado.proyecto.nombre|lower|default:'' }} {{ mov.orden_compra_asociada.proveedor|lower|default:'' }}">
+                        
+                        <td class="text-muted small">
+                            <div class="fw-bold text-white">{{ mov.fecha_hora|date:"d M, Y" }}</div>
+                            {{ mov.fecha_hora|time:"H:i" }}
+                        </td>
+                        
+                        <td>
+                            <div class="fw-bold" style="color: var(--pm-amber);">{{ mov.material.sku }}</div>
+                            <div class="small text-truncate" style="max-width: 200px;">{{ mov.material.nombre }}</div>
+                        </td>
+                        
+                        <td>
+                            {% if mov.tipo == 'INGRESO' %}
+                                <span class="badge-soft badge-soft-success"><i class="bi bi-box-arrow-in-down me-1"></i> Ingreso</span>
+                            {% elif mov.tipo == 'SALIDA' %}
+                                <span class="badge-soft badge-soft-warning"><i class="bi bi-box-arrow-up me-1"></i> Salida</span>
+                            {% else %}
+                                <span class="badge-soft badge-soft-danger"><i class="bi bi-sliders me-1"></i> Ajuste</span>
+                            {% endif %}
+                        </td>
+                        
+                        <td class="fw-bold fs-5 {% if mov.tipo == 'INGRESO' %}text-success{% elif mov.tipo == 'SALIDA' %}text-warning{% else %}text-danger{% endif %}" style="font-family: var(--font-display);">
+                            {% if mov.tipo == 'INGRESO' %}+{% elif mov.tipo == 'SALIDA' %}-{% endif %}{{ mov.cantidad }}
+                        </td>
+                        
+                        <td>
+                            {% if mov.tipo == 'SALIDA' and mov.requerimiento_asociado %}
+                                <div class="small text-muted text-uppercase fw-bold">Despacho a Proyecto:</div>
+                                <div><i class="bi bi-building me-1 text-warning"></i> {{ mov.requerimiento_asociado.proyecto.nombre }}</div>
+                                <div class="small text-muted">Ticket: {{ mov.requerimiento_asociado.folio }}</div>
+                            
+                            {% elif mov.tipo == 'INGRESO' and mov.orden_compra_asociada %}
+                                <div class="small text-muted text-uppercase fw-bold">Compra a Proveedor:</div>
+                                <div><i class="bi bi-truck me-1 text-success"></i> {{ mov.orden_compra_asociada.proveedor }}</div>
+                                <div class="small text-muted">OC: {{ mov.orden_compra_asociada.folio }}</div>
+                            
+                            {% else %}
+                                <span class="text-muted small">N/A (Movimiento Manual)</span>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="rounded-circle d-flex justify-content-center align-items-center me-2 text-white" style="width: 28px; height: 28px; font-size: 0.7rem; font-weight: bold; background: var(--pm-border);">
+                                    {{ mov.responsable.username|make_list|first|upper }}
+                                </div>
+                                <span class="small fw-semibold">{{ mov.responsable.username }}</span>
+                            </div>
+                        </td>
+
+                        <td>
+                            {% if mov.observaciones %}
+                                <div class="small text-muted text-wrap" style="max-width: 250px; font-style: italic;">
+                                    "{{ mov.observaciones }}"
+                                </div>
+                            {% else %}
+                                <span class="text-muted small">-</span>
+                            {% endif %}
+                        </td>
+
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <i class="bi bi-clipboard-x text-muted" style="font-size: 3rem;"></i>
+                            <h5 class="mt-3 text-white" style="font-family: var(--font-display);">Bitácora Vacía</h5>
+                            <p class="text-muted small">No hay registros de movimientos para este periodo/filtro.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if page_obj.has_other_pages %}
+        <div class="card-footer bg-transparent border-top py-3 d-flex justify-content-center" style="border-color: var(--pm-border) !important;">
+            <nav aria-label="Navegación de auditoría">
+                <ul class="pagination pagination-sm m-0" style="gap: 6px;">
+                    
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link rounded shadow-sm" href="?page={{ page_obj.previous_page_number }}&tipo={{ tipo_filtro|default:'' }}&mes={{ mes_filtro|default:'' }}&proyecto={{ proyecto_id|default:'' }}">
+                            <i class="bi bi-chevron-left"></i> Anterior
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    <li class="page-item active">
+                        <span class="page-link rounded shadow-sm px-3">
+                            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                        </span>
+                    </li>
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link rounded shadow-sm" href="?page={{ page_obj.next_page_number }}&tipo={{ tipo_filtro|default:'' }}&mes={{ mes_filtro|default:'' }}&proyecto={{ proyecto_id|default:'' }}">
+                            Siguiente <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+
+<script>
+    // Búsqueda en vivo (Filtra solo lo visible en la página actual)
+    document.getElementById('searchInput').addEventListener('input', function() {
+        const query = this.value.toLowerCase().trim();
+        const rows = document.querySelectorAll('#auditTable tbody tr[data-search]');
+        
+        rows.forEach(row => {
+            const content = row.dataset.search || '';
+            row.style.display = content.includes(query) ? '' : 'none';
+        });
+    });
+</script>
+{% endblock %}

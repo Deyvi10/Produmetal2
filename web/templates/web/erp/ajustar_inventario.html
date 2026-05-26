@@ -1,0 +1,93 @@
+{% extends 'web/base.html' %}
+{% load static %}
+
+{% block extra_head %}
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --pm-bg: #0d1117;
+        --pm-surface: #161b22;
+        --pm-border: #30363d;
+        --pm-text: #ffffff;
+        --pm-text-muted: #aab6c4;
+        --pm-amber: #e6a817; 
+        --pm-red: #f85149;
+        --font-display: 'Barlow Condensed', sans-serif;
+        --font-body: 'Barlow', sans-serif;
+    }
+    body { background-color: var(--pm-bg) !important; color: var(--pm-text) !important; font-family: var(--font-body); }
+    .erp-container { margin-top: 30px; max-width: 800px; }
+    
+    .card-ajuste {
+        background: var(--pm-surface);
+        border: 1px solid var(--pm-red); /* Borde rojo de advertencia */
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(248,81,73,0.1);
+        overflow: hidden;
+    }
+    .card-header-ajuste { background: rgba(248,81,73,0.1); border-bottom: 2px solid var(--pm-red); padding: 1.5rem; }
+    
+    .form-control { background-color: var(--pm-bg) !important; border: 1px solid var(--pm-border) !important; color: var(--pm-text) !important; font-family: var(--font-body); border-radius: 8px; }
+    .form-control:focus { border-color: var(--pm-red) !important; box-shadow: 0 0 0 3px rgba(248,81,73,0.2) !important; }
+    .form-label { font-family: var(--font-display); font-weight: 700; color: var(--pm-text-muted); font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; }
+    
+    .info-material { background: var(--pm-bg); border: 1px dashed var(--pm-border); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+</style>
+
+<div class="container-fluid px-3 px-xl-5 erp-container mb-5">
+
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="{% url 'inventario_actual' %}" class="btn btn-outline-secondary btn-minimal text-white px-3" style="font-family: var(--font-display); font-weight: 700; text-transform: uppercase;">
+            <i class="bi bi-arrow-left"></i> Volver al Inventario
+        </a>
+    </div>
+
+    <div class="card card-ajuste">
+        <div class="card-header-ajuste">
+            <h4 class="mb-0 text-danger" style="font-family: var(--font-display); font-weight: 800; text-transform: uppercase;">
+                <i class="bi bi-shield-exclamation me-2"></i> Ajuste Manual de Auditoría
+            </h4>
+        </div>
+        <div class="card-body p-4 p-md-5">
+            
+            <div class="info-material">
+                <div>
+                    <span class="badge bg-secondary mb-2">{{ material.sku }}</span>
+                    <h5 class="fw-bold mb-0 text-white">{{ material.nombre }}</h5>
+                </div>
+                <div class="text-end">
+                    <div class="text-muted small text-uppercase fw-bold">Stock Actual en Sistema</div>
+                    <div class="fs-3 fw-bold" style="font-family: var(--font-display); color: var(--pm-amber);">{{ material.stock_actual }}</div>
+                </div>
+            </div>
+
+            <form method="POST">
+                {% csrf_token %}
+
+                <div class="mb-4">
+                    <label class="form-label text-white"><i class="bi bi-calculator"></i> {{ form.cantidad_ajuste.label }}</label>
+                    {{ form.cantidad_ajuste }}
+                    <div class="form-text mt-2 text-warning"><i class="bi bi-info-circle"></i> {{ form.cantidad_ajuste.help_text }}</div>
+                    {% if form.cantidad_ajuste.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.cantidad_ajuste.errors|join:", " }}</div>{% endif %}
+                </div>
+
+                <div class="mb-5">
+                    <label class="form-label text-white"><i class="bi bi-journal-text"></i> {{ form.observaciones.label }} <span class="text-danger">*</span></label>
+                    {{ form.observaciones }}
+                    <div class="form-text mt-2" style="color: var(--pm-text-muted);">{{ form.observaciones.help_text }}</div>
+                    {% if form.observaciones.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.observaciones.errors|join:", " }}</div>{% endif %}
+                </div>
+
+                <div class="d-flex flex-column flex-md-row gap-3 pt-3 border-top" style="border-color: var(--pm-border) !important;">
+                    <button type="submit" class="btn btn-danger w-100 w-md-auto py-2 px-4" style="font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">
+                        <i class="bi bi-check-circle-fill"></i> Ejecutar Ajuste y Firmar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

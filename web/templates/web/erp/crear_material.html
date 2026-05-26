@@ -1,0 +1,234 @@
+{% extends 'web/base.html' %}
+{% load static %}
+
+{% block extra_head %}
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<style>
+    /* =========================================
+       CREAR MATERIAL - ESTILO PREMIUM INDUSTRIAL
+       ========================================= */
+    :root {
+        --pm-bg: #0d1117;
+        --pm-surface: #161b22;
+        --pm-border: #30363d;
+        --pm-text: #ffffff;
+        --pm-text-muted: #aab6c4;
+        --pm-amber: #e6a817; 
+        --font-display: 'Barlow Condensed', sans-serif;
+        --font-body: 'Barlow', sans-serif;
+    }
+
+    body {
+        background-color: var(--pm-bg) !important;
+        color: var(--pm-text) !important;
+        font-family: var(--font-body);
+    }
+
+    /* Adaptamos el ancho si estamos editando para que quepan las dos columnas */
+    .erp-container { margin-top: 30px; max-width: {% if editando %}1200px{% else %}850px{% endif %}; transition: all 0.3s ease; }
+    
+    .title-erp { font-family: var(--font-display); font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; }
+    .title-erp span { color: var(--pm-amber); }
+    
+    .card-minimal {
+        background: var(--pm-surface);
+        border: 1px solid var(--pm-border);
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        overflow: hidden;
+    }
+
+    .card-header-custom {
+        background: rgba(230,168,23,0.05);
+        border-bottom: 2px solid var(--pm-amber);
+        padding: 1.5rem;
+    }
+
+    /* ESTILOS DE LOS INPUTS DE DJANGO */
+    .form-control, .form-select {
+        background-color: var(--pm-bg) !important;
+        border: 1px solid var(--pm-border) !important;
+        color: var(--pm-text) !important;
+        font-family: var(--font-body);
+        padding: 0.8rem 1rem;
+        border-radius: 8px;
+        transition: all 0.3s;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: var(--pm-amber) !important;
+        box-shadow: 0 0 0 3px rgba(230, 168, 23, 0.15) !important;
+        outline: none;
+    }
+    
+    .form-label {
+        font-family: var(--font-display);
+        font-weight: 600;
+        color: var(--pm-text-muted);
+        font-size: 0.95rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 0.4rem;
+    }
+    
+    .form-text { color: #6e7681; font-size: 0.8rem; margin-top: 0.3rem; }
+    
+    .form-select {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23aab6c4' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+    }
+
+    .btn-minimal {
+        font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;
+        border-radius: 6px; padding: 0.8rem 1.8rem; transition: 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; border: none;
+    }
+    .btn-amber { background: var(--pm-amber); color: #000; }
+    .btn-amber:hover { background: #ffd166; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(230,168,23,0.2); color: #000; }
+    .btn-outline-secondary-custom { border: 1px solid var(--pm-border); color: var(--pm-text-muted); background: transparent; }
+    .btn-outline-secondary-custom:hover { background: var(--pm-border); color: #fff; }
+</style>
+
+<div class="container-fluid px-3 px-xl-5 erp-container mb-5">
+
+    <div class="d-flex align-items-center gap-3 mb-4 border-bottom pb-3" style="border-color: var(--pm-border) !important;">
+        <a href="{% url 'inventario_actual' %}" class="btn btn-outline-secondary-custom btn-minimal px-3">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+        <div>
+            <h3 class="title-erp mb-0">Catálogo <span>Maestro</span></h3>
+            <p class="mb-0 text-muted small">
+                <i class="bi bi-shield-lock-fill text-warning me-1"></i> 
+                {% if editando %}Actualización de Ficha Técnica y Trazabilidad{% else %}Creación de Identidad Técnica{% endif %} 
+                <strong class="text-white">(Solo Administrador)</strong>
+            </p>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-12 {% if editando %}col-lg-7{% endif %}">
+            <div class="card card-minimal h-100">
+                <div class="card-header-custom">
+                    <h5 class="title-erp mb-0 text-white">
+                        <i class="bi bi-box-seam me-2" style="color: var(--pm-amber);"></i> 
+                        {% if editando %}Editar Datos: {{ material.sku }}{% else %}Datos del Nuevo Ítem{% endif %}
+                    </h5>
+                </div>
+                <div class="card-body p-4 p-md-5">
+                    <form method="POST">
+                        {% csrf_token %}
+
+                        <div class="row g-4 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.sku.label }}</label>
+                                {{ form.sku }}
+                                {% if form.sku.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.sku.errors|join:", " }}</div>{% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.tipo.label }}</label>
+                                {{ form.tipo }}
+                                {% if form.tipo.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.tipo.errors|join:", " }}</div>{% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">{{ form.nombre.label }}</label>
+                            {{ form.nombre }}
+                            <div class="form-text"><i class="bi bi-info-circle me-1"></i>Norma Técnica y Nombre Comercial.</div>
+                            {% if form.nombre.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.nombre.errors|join:", " }}</div>{% endif %}
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">{{ form.descripcion.label }}</label>
+                            {{ form.descripcion }}
+                        </div>
+
+                        <div class="row g-4 mb-5">
+                            <div class="col-md-4">
+                                <label class="form-label text-warning"><i class="bi bi-exclamation-triangle"></i> {{ form.stock_minimo.label }}</label>
+                                {{ form.stock_minimo }}
+                                {% if form.stock_minimo.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.stock_minimo.errors|join:", " }}</div>{% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">{{ form.stock_actual.label }}</label>
+                                {{ form.stock_actual }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">{{ form.ubicacion.label }}</label>
+                                {{ form.ubicacion }}
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-column flex-md-row gap-3 pt-3 border-top" style="border-color: var(--pm-border) !important;">
+                            <button type="submit" class="btn-amber btn-minimal w-100 w-md-auto justify-content-center">
+                                <i class="bi bi-save2"></i> {% if editando %}Actualizar Ficha{% else %}Guardar en Catálogo{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {% if editando %}
+        <div class="col-12 col-lg-5">
+            <div class="card card-minimal h-100" style="border-left: 3px solid #58a6ff;">
+                <div class="card-header-custom" style="background: rgba(88,166,255,0.05); border-bottom: 1px solid var(--pm-border);">
+                    <h5 class="title-erp mb-0 text-white" style="font-size: 1.1rem;">
+                        <i class="bi bi-file-earmark-medical me-2" style="color: #58a6ff;"></i> Trazabilidad de Certificados
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                        <table class="table table-dark table-hover mb-0 align-middle">
+                            <thead style="background: var(--pm-bg); font-family: var(--font-display); font-size: 0.85rem; letter-spacing: 1px; color: var(--pm-text-muted); text-transform: uppercase; position: sticky; top: 0; z-index: 1;">
+                                <tr>
+                                    <th class="ps-4 py-3">Ingreso</th>
+                                    <th class="py-3">Origen (O.C.)</th>
+                                    <th class="text-end pe-4 py-3">Documento</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for mov in material.movimientos.all %}
+                                    {% if mov.tipo == 'INGRESO' %}
+                                    <tr>
+                                        <td class="ps-4">
+                                            <div class="fw-bold text-white">{{ mov.fecha_hora|date:"d M Y" }}</div>
+                                            <div class="text-muted" style="font-size: 0.7rem;">+{{ mov.cantidad }} uds</div>
+                                        </td>
+                                        <td>
+                                            {% if mov.orden_compra_asociada %}
+                                                <span class="badge bg-secondary">{{ mov.orden_compra_asociada.folio }}</span>
+                                            {% else %}
+                                                <span class="badge bg-dark border border-secondary text-muted">Carga Inicial</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end pe-4">
+                                            {% if mov.certificado_calidad %}
+                                                <a href="{{ mov.certificado_calidad.url }}" target="_blank" class="btn btn-sm btn-outline-info px-2 py-1" style="border-radius: 4px; font-size: 0.75rem;">
+                                                    <i class="bi bi-file-pdf-fill me-1"></i> Descargar
+                                                </a>
+                                            {% else %}
+                                                <span class="badge bg-dark text-muted border border-secondary" style="font-size: 0.7rem;"><i class="bi bi-exclamation-circle me-1"></i>Sin Archivo</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        
+                        {% if not material.movimientos.exists %}
+                        <div class="text-center py-5 text-muted px-3">
+                            <i class="bi bi-folder-x" style="font-size: 3rem; color: #30363d;"></i>
+                            <p class="mt-3 mb-0" style="font-family: var(--font-display); letter-spacing: 0.5px;">Aún no se registran ingresos a bodega para este material.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

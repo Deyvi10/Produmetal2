@@ -1,0 +1,147 @@
+{% extends 'web/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="position-relative bg-dark" style="height: 300px; overflow: hidden;">
+    <iframe src="https://maps.app.goo.gl/eoHa6ACWiYe6zqdf8" 
+            width="100%" height="100%" style="border:0; filter: grayscale(100%) opacity(0.4);" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+    
+    <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-50">
+        <h1 class="display-3 fw-bold text-white text-uppercase" data-aos="zoom-in">Contáctanos</h1>
+    </div>
+</div>
+
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="row g-5">
+            
+            <div class="col-lg-5" data-aos="fade-right">
+                <h3 class="fw-bold text-dark mb-4 border-start border-5 border-warning ps-3">Información Directa</h3>
+                <p class="text-muted mb-4">Estamos listos para atender tus requerimientos de estructuras y carpintería metálica.</p>
+
+                <div class="d-flex align-items-start mb-4 p-3 bg-white rounded shadow-sm hover-top">
+                    <div class="bg-warning text-dark rounded-circle p-3 me-3">
+                        <i class="bi bi-geo-alt-fill fs-4"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-1">Ubicación / Taller</h6>
+                        <p class="text-muted small mb-0">Panamericana E35 y pasaje E2, La Concepción.<br>Quito - Alangasí</p>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-start mb-4 p-3 bg-white rounded shadow-sm hover-top">
+                    <div class="bg-warning text-dark rounded-circle p-3 me-3">
+                        <i class="bi bi-whatsapp fs-4"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-1">Teléfono / WhatsApp</h6>
+                        <p class="text-muted small mb-0">098 266 1701</p>
+                        <a href="https://wa.me/593982661701" target="_blank" class="small text-warning fw-bold text-decoration-none">Enviar mensaje ahora →</a>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-start mb-4 p-3 bg-white rounded shadow-sm hover-top">
+                    <div class="bg-warning text-dark rounded-circle p-3 me-3">
+                        <i class="bi bi-envelope-fill fs-4"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-1">Correo Electrónico</h6>
+                        <p class="text-muted small mb-0">produmetal.cm@gmail.com</p>
+                    </div>
+                </div>
+
+                <h5 class="fw-bold mt-5 mb-3">Síguenos en Redes</h5>
+                <div class="d-flex gap-3">
+                    <a href="https://www.facebook.com/CMPRODUMETAL" target="_blank" 
+                       class="btn btn-outline-dark rounded-circle transition-all hover-scale" 
+                       style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-facebook fs-4"></i>
+                    </a>
+                    <a href="https://www.tiktok.com/@produ.metal23" target="_blank" 
+                       class="btn btn-outline-dark rounded-circle transition-all hover-scale" 
+                       style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-tiktok fs-4"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="col-lg-7" data-aos="fade-left">
+                <div class="bg-white p-4 p-md-5 rounded shadow">
+                    <h3 class="fw-bold mb-4">Cotiza por WhatsApp</h3>
+                    <p class="text-muted small mb-4">Llena tus datos y se abrirá un mensaje listo para enviarnos.</p>
+                    
+                    <form id="formWhatsApp" onsubmit="enviarWhatsApp(event)">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="nombre" placeholder="Tu Nombre" minlength="3" required>
+                                    <label for="nombre">Nombre Completo</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="tel" class="form-control" id="telefono" placeholder="Ej: 0982661701" pattern="[0-9\+]{9,15}" title="Ingresa un número válido (ej. 0982661701)" required>
+                                    <label for="telefono">Teléfono</label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-floating">
+                                    <input type="email" class="form-control" id="email" placeholder="name@example.com" required>
+                                    <label for="email">Correo Electrónico</label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-floating">
+                                    <textarea class="form-control" placeholder="Describe tu proyecto" id="mensaje" style="height: 150px" minlength="10" required></textarea>
+                                    <label for="mensaje">¿En qué podemos ayudarte?</label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <button class="btn btn-success w-100 py-3 fw-bold shadow-sm" type="submit">
+                                    <i class="bi bi-whatsapp me-2 fs-5"></i> ENVIAR POR WHATSAPP
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="mt-4 rounded overflow-hidden shadow" style="height: 300px;">
+                    <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d997.4385350846595!2d-78.41942473049731!3d-0.3249836588958592!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x91d58f07f3222263%3A0x51d33eb2de0fdcf4!2sProduMetal%20CM!5e0!3m2!1ses!2sec!4v1772216810961!5m2!1ses!2sec" 
+                            width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<script>
+    function enviarWhatsApp(event) {
+        event.preventDefault(); // Evita que la página se recargue
+        
+        // Capturar los datos limpiando espacios al inicio y final
+        const nombre = document.getElementById('nombre').value.trim();
+        const telefono = document.getElementById('telefono').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const mensaje = document.getElementById('mensaje').value.trim();
+        
+        // Validación de seguridad adicional
+        if(nombre === "" || telefono === "" || email === "" || mensaje === "") {
+            alert("Por favor, completa todos los campos correctamente.");
+            return;
+        }
+
+        // Armar el mensaje con formato para WhatsApp (salto de línea: %0A, negritas: *)
+        const texto = `Hola ProduMetal CM.%0A%0A*Mi nombre es:* ${nombre}%0A*Mi teléfono:* ${telefono}%0A*Mi correo:* ${email}%0A%0A*Deseo cotizar lo siguiente:*%0A${mensaje}`;
+        
+        // Tu número
+        const numero = "593982661701";
+        
+        // Crear enlace y abrir pestaña
+        const url = `https://wa.me/${numero}?text=${texto}`;
+        window.open(url, '_blank');
+    }
+</script>
+
+{% endblock %}

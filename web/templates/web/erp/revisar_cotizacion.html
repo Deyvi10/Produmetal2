@@ -1,0 +1,252 @@
+{% extends 'web/base.html' %}
+
+{% block content %}
+<style>
+    :root {
+        --pm-bg: #0d1117;
+        --pm-surface: #161b22;
+        --pm-border: #30363d;
+        --pm-text: #f0f6fc;
+        --pm-text-muted: #8b949e;
+        --pm-amber: #e6a817;
+        --pm-amber-hover: #f3b92f;
+        --pm-success: #238636;
+        --pm-danger: #da3633;
+        --pm-info: #388bfd;
+        --font-display: 'Barlow Condensed', sans-serif;
+    }
+
+    body {
+        background-color: var(--pm-bg);
+        color: var(--pm-text);
+    }
+
+    .erp-container { 
+        margin-top: 100px; 
+        max-width: 1400px; 
+    }
+
+    .card-minimal { 
+        background: var(--pm-surface); 
+        border: 1px solid var(--pm-border); 
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .table-custom {
+        color: var(--pm-text);
+        margin-bottom: 0;
+        vertical-align: middle;
+    }
+
+    .table-custom thead {
+        background-color: #090d13;
+        font-family: var(--font-display);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .table-custom th {
+        color: var(--pm-text-muted);
+        border-bottom: 2px solid var(--pm-border);
+        font-size: 0.95rem;
+        padding: 16px;
+    }
+
+    .table-custom td {
+        border-bottom: 1px solid var(--pm-border);
+        padding: 16px;
+        background-color: var(--pm-surface);
+    }
+
+    .table-custom tr:hover td {
+        background-color: #1f242c !important;
+    }
+
+    /* Estilos para Formularios dentro de la Tabla */
+    .form-select-custom {
+        background-color: var(--pm-bg);
+        border: 1px solid var(--pm-border);
+        color: var(--pm-text);
+        font-weight: 600;
+        border-radius: 6px;
+        padding: 8px 12px;
+        transition: border-color 0.2s;
+    }
+
+    .form-select-custom:focus {
+        border-color: var(--pm-amber);
+        box-shadow: 0 0 0 2px rgba(230, 168, 23, 0.15);
+        background-color: var(--pm-bg);
+        color: white;
+    }
+
+    .form-control-custom {
+        background-color: var(--pm-bg);
+        border: 1px solid var(--pm-border);
+        color: var(--pm-text);
+        border-radius: 6px;
+        padding: 8px 12px;
+    }
+
+    .form-control-custom:focus {
+        border-color: var(--pm-amber);
+        background-color: #1c2128;
+        color: white;
+        box-shadow: none;
+    }
+
+    /* Badges y estados */
+    .badge-pm {
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.75rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-action {
+        font-family: var(--font-display);
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        border-radius: 6px;
+        padding: 10px 24px;
+        transition: all 0.2s ease;
+    }
+
+    .btn-pm-success {
+        background-color: var(--pm-success);
+        color: white;
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .btn-pm-success:hover {
+        background-color: #2ea043;
+        transform: translateY(-1px);
+    }
+
+    .text-amber {
+        color: var(--pm-amber) !important;
+    }
+</style>
+
+<div class="container erp-container mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom border-secondary">
+        <div>
+            <a href="{% url 'dashboard_erp' %}" class="text-decoration-none text-muted small d-inline-flex align-items-center gap-1">
+                <i class="bi bi-arrow-left"></i> Volver al Panel de Control
+            </a>
+            <h2 class="fw-bold mb-0 mt-2" style="font-family: var(--font-display); color: var(--pm-amber); font-size: 2.2rem;">
+                Revisión Gerencial: <span class="text-white">{{ solicitud.folio }}</span>
+            </h2>
+            <p class="text-muted mb-0">Autoriza o rechaza los costos gestionados por el área de compras ítem por ítem.</p>
+        </div>
+    </div>
+
+    <form method="POST">
+        {% csrf_token %}
+        <div class="card card-minimal shadow-lg mb-4">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-custom table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th style="width: 25%;">Material y Volumen</th>
+                                <th style="width: 30%;">Análisis de Compras (Adjuntos)</th>
+                                <th class="text-center" style="width: 15%;">Total Estimado</th>
+                                <th style="width: 15%;">Decisión Gerencial</th>
+                                <th style="width: 15%;">Observaciones / Motivo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in items %}
+                            <tr>
+                                <td>
+                                    <div class="fw-bold text-white fs-6">{{ item.material.nombre }}</div>
+                                    <div class="text-muted small mt-1">
+                                        <i class="bi bi-box-seam me-1"></i> Cantidad Solicitada: 
+                                        <span class="text-white fw-semibold">{{ item.cantidad_requerida }}</span>
+                                    </div>
+                                </td>
+
+                                <td>
+                                    <div class="fw-bold text-amber d-flex align-items-center gap-1">
+                                        <i class="bi bi-building"></i> {{ item.proveedor_cotizado|default:"Sin Proveedor Asignado" }}
+                                    </div>
+                                    <div class="small text-muted mt-1 text-truncate" style="max-width: 320px;">
+                                        {{ item.especificaciones_tecnicas|default:"Sin especificaciones adicionales" }}
+                                    </div>
+                                    
+                                    <div class="d-flex flex-wrap gap-2 mt-2">
+                                        {% if item.certificado_calidad_incluido %}
+                                            <span class="badge-pm bg-success bg-opacity-10 text-success border border-success border-opacity-20">
+                                                <i class="bi bi-shield-check"></i> Certificado Incluido
+                                            </span>
+                                        {% endif %}
+                                        
+                                        {% if item.archivo_cotizacion %}
+                                            <a href="{{ item.archivo_cotizacion.url }}" target="_blank" class="badge-pm bg-info bg-opacity-10 text-info border border-info border-opacity-20 text-decoration-none transition-all">
+                                                <i class="bi bi-file-earmark-pdf-fill"></i> Ver Cotización Adjunta
+                                            </a>
+                                        {% else %}
+                                            <span class="badge-pm bg-secondary bg-opacity-10 text-muted border border-secondary border-opacity-10">
+                                                <i class="bi bi-file-earmark-lock-fill"></i> Sin archivo cargado
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+
+                                <td class="text-center">
+                                    <div class="small text-muted">Precio U: ${{ item.precio_unitario|default:"0.00" }}</div>
+                                    <div class="fw-bold fs-5 text-white mt-1">
+                                        ${{ item.total_estimado }}
+                                    </div>
+                                </td>
+
+                                <td>
+                                    {% if item.estado_aprobacion == 'COMPRADO' %}
+                                        <span class="badge-pm d-block text-center p-2 bg-success bg-opacity-20 text-success border border-success border-opacity-30">
+                                            <i class="bi bi-check-circle-fill"></i> O.C. CREADA
+                                        </span>
+                                    {% else %}
+                                        <select name="estado_{{ item.id }}" class="form-select form-select-sm form-select-custom w-100">
+                                            <option value="PENDIENTE" {% if item.estado_aprobacion == 'PENDIENTE' %}selected{% endif %} class="text-warning">⏳ MANTENER PENDIENTE</option>
+                                            <option value="APROBADO" {% if item.estado_aprobacion == 'APROBADO' %}selected{% endif %} class="text-success">✅ AUTORIZAR COMPRA</option>
+                                            <option value="RECHAZADO" {% if item.estado_aprobacion == 'RECHAZADO' %}selected{% endif %} class="text-danger">❌ RECHAZAR ÍTEM</option>
+                                        </select>
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    {% if item.estado_aprobacion == 'COMPRADO' %}
+                                        <div class="small text-muted text-center italic">Elemento archivado</div>
+                                    {% else %}
+                                        <input type="text" name="motivo_{{ item.id }}" class="form-control form-control-sm form-control-custom w-100" placeholder="Motivo (obligatorio si rechaza)" value="{{ item.motivo_rechazo }}">
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="alert shadow-sm border-0 d-flex align-items-start gap-3" style="background: rgba(56, 139, 253, 0.1); border-left: 4px solid var(--pm-info) !important; color: #c9d1d9;">
+            <i class="bi bi-info-circle-fill fs-5 text-info mt-0"></i>
+            <div>
+                <strong class="text-white">Lógica de Control de Flujo:</strong> Los ítems autorizados se consolidarán y generarán sus Órdenes de Compra por proveedor de inmediato. Aquellos ítems que configures como <span class="text-warning fw-semibold">"Mantener Pendiente"</span> continuarán en la bandeja de revisión gerencial para decisiones futuras sin bloquear el resto de la operación de ProduMetal CM.
+            </div>
+        </div>
+
+        <div class="text-end mt-4">
+            <button type="submit" class="btn btn-action btn-pm-success px-5 fs-5">
+                <i class="bi bi-save2-fill me-2"></i> Procesar Cambios y Notificar Bodega
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

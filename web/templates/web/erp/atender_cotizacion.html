@@ -1,0 +1,79 @@
+{% extends 'web/base.html' %}
+
+{% block content %}
+<style>
+    :root {
+        --pm-bg: #0d1117; --pm-surface: #161b22; --pm-border: #30363d;
+        --pm-text: #ffffff; --pm-text-muted: #aab6c4; --pm-amber: #e6a817; 
+        --font-display: 'Barlow Condensed', sans-serif;
+    }
+    .erp-container { margin-top: 80px; max-width: 1200px; color: var(--pm-text); }
+    .card-minimal { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; }
+    .form-control, .form-select { background-color: var(--pm-bg); border: 1px solid var(--pm-border); color: var(--pm-text); }
+    .form-control:focus, .form-select:focus { background-color: #1c2128; border-color: var(--pm-amber); box-shadow: none; color: white;}
+</style>
+
+<div class="container erp-container mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom border-secondary">
+        <div>
+            <a href="{% url 'dashboard_erp' %}" class="text-decoration-none text-muted small">&larr; Volver al Panel</a>
+            <h2 class="fw-bold mb-0 mt-2" style="font-family: var(--font-display); color: var(--pm-amber);">Atender Cotización: {{ solicitud.folio }}</h2>
+            <p class="text-muted mb-0">Ticket Origen: <span class="badge bg-secondary">{{ solicitud.requerimiento_origen.folio }}</span></p>
+        </div>
+    </div>
+
+    <form method="POST">
+        {% csrf_token %}
+        <div class="card card-minimal shadow-lg mb-4">
+            <div class="card-header bg-dark text-white border-bottom border-secondary p-3">
+                <h6 class="mb-0"><i class="bi bi-list-check me-2 text-warning"></i> Materiales Solicitados</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover mb-0 align-middle">
+                        <thead style="background: var(--pm-bg); font-family: var(--font-display); letter-spacing: 1px; color: var(--pm-text-muted);">
+                            <tr>
+                                <th class="p-3">Material y Cantidad</th>
+                                <th>Proveedor</th>
+                                <th>Precio Unit. ($)</th>
+                                <th>Especificaciones Técnicas</th>
+                                <th class="text-center">¿Trae Certificado?</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in items %}
+                            <tr>
+                                <td class="p-3">
+                                    <div class="fw-bold text-warning">{{ item.material.nombre }}</div>
+                                    <div class="small">Requerido: <strong>{{ item.cantidad_requerida }}</strong> unidades</div>
+                                </td>
+                                <td>
+                                    <input type="text" name="proveedor_{{ item.id }}" class="form-control form-control-sm" placeholder="Ej. Novacero" required>
+                                </td>
+                                <td>
+                                    <input type="number" step="0.01" name="precio_{{ item.id }}" class="form-control form-control-sm" placeholder="0.00" required>
+                                </td>
+                                <td>
+                                    <input type="text" name="especificaciones_{{ item.id }}" class="form-control form-control-sm" placeholder="Ej. ASTM A36, 6m">
+                                </td>
+                                <td class="text-center">
+                                    <div class="form-check form-switch d-flex justify-content-center">
+                                        <input class="form-check-input" type="checkbox" name="certificado_{{ item.id }}" style="cursor: pointer;">
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-end">
+            <button type="submit" class="btn btn-warning px-5 fw-bold" style="border-radius: 8px;">
+                <i class="bi bi-send me-2"></i> Enviar a Aprobación Gerencial
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

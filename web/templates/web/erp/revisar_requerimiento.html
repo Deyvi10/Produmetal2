@@ -1,0 +1,201 @@
+{% extends 'web/base.html' %}
+
+{% block content %}
+<style>
+    /* =========================================
+       REVISIÓN DIRECTA - UI PREMIUM ALTO CONTRASTE
+       ========================================= */
+    :root {
+        --pm-bg: #0d1117;
+        --pm-surface: #161b22;
+        --pm-surface-hover: #1c2128;
+        --pm-border: #30363d;
+        --pm-text: #f0f6fc;
+        --pm-text-muted: #1378ec;
+        
+        --pm-amber: #e6a817;
+        --pm-amber-hover: #f3b92f;
+        --pm-success: #2ea043;
+        --pm-danger: #f85149;
+        --pm-info: #388bfd;
+        
+        --font-display: 'Barlow Condensed', sans-serif;
+    }
+
+    body { background-color: var(--pm-bg); color: var(--pm-text); }
+    .erp-container { margin-top: 100px; max-width: 1400px; }
+    
+    .card-master {
+        background: var(--pm-surface);
+        border: 1px solid var(--pm-border);
+        border-radius: 12px;
+        box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+        overflow: hidden;
+    }
+
+    .table-req { margin-bottom: 0; color: var(--pm-text); vertical-align: middle; }
+    .table-req thead { background-color: #090d13; border-bottom: 2px solid var(--pm-border); }
+    .table-req th { 
+        font-family: var(--font-display); color: var(--pm-text-muted); 
+        font-size: 0.95rem; text-transform: uppercase; letter-spacing: 1px; 
+        padding: 18px 16px; border: none;
+    }
+    .table-req td { 
+        padding: 20px 16px; border-bottom: 1px solid var(--pm-border); 
+        background-color: var(--pm-surface); transition: background-color 0.2s;
+    }
+    .table-req tr:hover td { background-color: var(--pm-surface-hover); }
+
+    /* Indicadores Físicos de Stock */
+    .stock-pill {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 8px 16px; border-radius: 8px;
+        font-family: var(--font-display); font-weight: 700; font-size: 1.15rem;
+        letter-spacing: 0.5px;
+    }
+    .stock-pill.pill-success { background-color: rgba(46, 160, 67, 0.15); color: #3fb950; border: 1px solid rgba(46, 160, 67, 0.4); }
+    .stock-pill.pill-danger { background-color: rgba(248, 81, 73, 0.1); color: #ff7b72; border: 1px solid rgba(248, 81, 73, 0.4); }
+
+    /* Controles de Formulario */
+    .form-select-solid {
+        background-color: #090d13 !important; border: 1px solid var(--pm-border) !important;
+        color: #ffffff !important; font-weight: 600; border-radius: 6px;
+        padding: 10px 14px; transition: all 0.2s; cursor: pointer;
+    }
+    .form-select-solid:focus { border-color: var(--pm-amber) !important; outline: none; }
+    
+    .form-control-solid {
+        background-color: #090d13 !important; border: 1px solid var(--pm-border) !important;
+        color: #ffffff !important; /* <--- AQUÍ FORZAMOS LA LETRA BLANCA */
+        border-radius: 6px; padding: 10px 14px;
+    }
+    .form-control-solid::placeholder {
+        color: #8b949e !important; /* <--- AQUÍ LE DAMOS COLOR GRIS AL TEXTO DE GUÍA */
+    }
+    .form-control-solid:focus { 
+        border-color: var(--pm-info) !important; 
+        background-color: #0d1117 !important; 
+        color: #ffffff !important; /* <--- LETRA BLANCA INCLUSO AL HACER CLIC */
+        outline: none;
+    }
+    /* Botón Final Alto Contraste */
+    .btn-master-amber {
+        background-color: var(--pm-amber); color: #000000 !important; /* TEXTO NEGRO SOBRE AMBAR */
+        font-family: var(--font-display); font-weight: 800; text-transform: uppercase;
+        letter-spacing: 1px; border-radius: 8px; padding: 14px 32px;
+        font-size: 1.2rem; border: none; transition: all 0.2s;
+    }
+    .btn-master-amber:hover { background-color: var(--pm-amber-hover); transform: translateY(-2px); box-shadow: 0 8px 25px rgba(230, 168, 23, 0.3); }
+
+    /* Sugerencias Inteligentes Visuales */
+    .sug-badge { font-size: 0.75rem; font-weight: bold; text-transform: uppercase; padding: 4px 8px; border-radius: 4px; margin-bottom: 8px; display: inline-block;}
+</style>
+
+<div class="container erp-container mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom border-secondary">
+        <div>
+            <a href="{% url 'dashboard_erp' %}" class="text-decoration-none text-muted small fw-semibold">
+                <i class="bi bi-arrow-left me-1"></i> Volver al Panel de Control
+            </a>
+            <h2 class="fw-bold mb-0 mt-2" style="font-family: var(--font-display); font-size: 2.5rem; color: #ffffff;">
+                Validación de Requerimiento: <span style="color: var(--pm-amber);">{{ requerimiento.folio }}</span>
+            </h2>
+            <p class="text-muted mb-0 fs-6 mt-1">Aprueba, cotiza o rechaza los ítems solicitados de forma directa para <strong>{{ requerimiento.proyecto.nombre }}</strong>.</p>
+        </div>
+    </div>
+
+    <form method="POST">
+        {% csrf_token %}
+        <div class="card-master mb-4">
+            <div class="table-responsive">
+                <table class="table table-req">
+                    <thead>
+                        <tr>
+                            <th style="width: 25%;">Material Solicitado</th>
+                            <th style="width: 20%; text-align: center;">Inventario Físico Actual</th>
+                            <th style="width: 25%;">Decisión Logística</th>
+                            <th style="width: 30%;">Observaciones (Para el Técnico)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="bg-dark rounded px-3 py-2 border border-secondary text-center">
+                                        <span class="d-block" style="color: var(--pm-text-muted); font-size: 0.7rem; text-transform: uppercase;">Cant.</span>
+                                        <span class="fw-bold fs-4" style="color: var(--pm-info); font-family: var(--font-display);">{{ item.cantidad_solicitada|floatformat:"0" }}</span>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-white fs-5">{{ item.material.nombre }}</div>
+                                        <div class="text-muted small mt-1">SKU: <strong class="text-white">{{ item.material.sku }}</strong></div>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td class="text-center">
+                                {% if item.material.stock_actual >= item.cantidad_solicitada %}
+                                    <div class="stock-pill pill-success" title="Hay suficiente para cubrir el pedido">
+                                        <i class="bi bi-box-seam"></i> Stock: {{ item.material.stock_actual|floatformat:"0" }}
+                                    </div>
+                                {% else %}
+                                    <div class="stock-pill pill-danger" title="No alcanza el stock">
+                                        <i class="bi bi-exclamation-octagon-fill"></i> Stock: {{ item.material.stock_actual|floatformat:"0" }}
+                                    </div>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                {% if item.estado_item != 'PENDIENTE' %}
+                                    <div class="bg-dark border border-secondary rounded p-2 text-center">
+                                        <span class="fw-bold text-white small"><i class="bi bi-lock-fill text-warning me-1"></i> YA PROCESADO</span>
+                                        <div class="text-muted mt-1" style="font-size: 0.75rem;">{{ item.get_estado_item_display }}</div>
+                                    </div>
+                                {% else %}
+                                    {% if item.material.stock_actual >= item.cantidad_solicitada %}
+                                        <span class="sug-badge bg-success text-white"><i class="bi bi-robot"></i> Sugerencia: Aprobar (Bodega)</span>
+                                    {% else %}
+                                        <span class="sug-badge bg-primary text-white"><i class="bi bi-robot"></i> Sugerencia: Comprar Faltante</span>
+                                    {% endif %}
+                                    
+                                    <select name="decision_{{ item.id }}" class="form-select form-select-solid w-100">
+                                        <option value="PENDIENTE" style="color: #e6a817; font-weight: bold;">⏳ DEJAR EN ESPERA</option>
+                                        <option value="APROBADO_BODEGA" style="color: #3fb950; font-weight: bold;">📦 DESPACHAR DE BODEGA</option>
+                                        <option value="EN_COMPRAS" style="color: #388bfd; font-weight: bold;">🛒 MANDAR A COMPRAS</option>
+                                        <option value="RECHAZADO" style="color: #f85149; font-weight: bold;">❌ RECHAZAR ÍTEM</option>
+                                    </select>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                {% if item.estado_item == 'PENDIENTE' %}
+                                    <input type="text" name="motivo_{{ item.id }}" class="form-control form-control-solid w-100" 
+                                           placeholder="Ej: Solo comprar tubos marca X..." value="{{ item.motivo_rechazo|default:'' }}">
+                                    <div class="text-muted mt-1" style="font-size: 0.7rem;">Obligatorio si rechazas. Útil para dar indicaciones extra.</div>
+                                {% else %}
+                                    <div class="text-muted small italic">{{ item.motivo_rechazo|default:"Sin observaciones registradas." }}</div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="alert shadow-sm border-0 d-flex align-items-start gap-3 p-4" style="background: #1f242c; border-left: 5px solid var(--pm-amber) !important;">
+            <i class="bi bi-info-circle-fill fs-2 text-warning mt-0"></i>
+            <div style="color: #c9d1d9; font-size: 1rem;">
+                <strong class="text-white d-block mb-1 fs-5" style="font-family: var(--font-display); letter-spacing: 0.5px;">Flujo Directo:</strong>
+                Revisa el indicador de stock. Si está en <strong class="text-success">verde</strong>, selecciona la opción para enviarlo a bodega. Si está en <strong class="text-danger">rojo</strong>, selecciona enviarlo a Compras para que coticen de inmediato. No olvides dejar una nota si rechazas algún material.
+            </div>
+        </div>
+
+        <div class="text-end mt-4">
+            <button type="submit" class="btn-master-amber">
+                <i class="bi bi-save2-fill me-2"></i> Guardar y Procesar Ticket
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

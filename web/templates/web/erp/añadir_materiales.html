@@ -1,0 +1,140 @@
+{% extends 'web/base.html' %}
+
+{% block content %}
+<div class="container py-5" style="margin-top: 80px;">
+
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <div>
+            <a href="{% url 'dashboard_erp' %}" class="text-decoration-none text-secondary small d-block mb-2">&larr; Volver al Panel</a>
+            <h2 class="fw-bold text-dark mb-0">Ticket: {{ requerimiento.folio }}</h2>
+            <span class="badge bg-secondary mt-1">Proyecto: {{ requerimiento.proyecto.nombre }}</span>
+        </div>
+        <div class="text-end">
+            <p class="mb-0 text-muted small">Estado actual</p>
+            <h5 class="mb-0 fw-bold text-warning">{{ requerimiento.get_estado_display }}</h5>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if requerimiento.solicitudcompra_set.first %}
+        <div class="mb-4">
+            <h6 class="text-muted fw-bold mb-3"><i class="bi bi-cart3"></i> Actualizaciones de Compras</h6>
+            {% for cotizacion in requerimiento.solicitudcompra_set.first.items_cotizados.all %}
+                
+                {% if cotizacion.estado_aprobacion == 'RECHAZADO' %}
+                    <div class="alert alert-danger shadow-sm border-0 border-start border-4 border-danger d-flex align-items-center mb-2">
+                        <div class="me-3 fs-3 text-danger">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-x-circle-fill" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293z"/></svg>
+                        </div>
+                        <div>
+                            <strong class="text-danger d-block">Material Rechazado: {{ cotizacion.material.nombre }}</strong>
+                            <span class="text-dark small"><strong>Motivo del Administrador/Compras:</strong> {{ cotizacion.motivo_rechazo }}</span>
+                        </div>
+                    </div>
+                
+                {% elif cotizacion.estado_aprobacion == 'APROBADO' %}
+                    <div class="alert alert-success shadow-sm border-0 border-start border-4 border-success d-flex align-items-center mb-2">
+                        <div class="me-3 fs-3 text-success">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-check-circle-fill" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/></svg>
+                        </div>
+                        <div>
+                            <strong class="text-success d-block">Material en proceso de Compra: {{ cotizacion.material.nombre }}</strong>
+                            <span class="text-dark small">A la espera de que el proveedor entregue a bodega para despacharte.</span>
+                        </div>
+                    </div>
+                {% endif %}
+                
+            {% endfor %}
+        </div>
+    {% endif %}
+    <div class="row g-4">
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 bg-light rounded-3">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-3 border-bottom pb-2">Añadir Material</h5>
+                    
+                    {% if requerimiento.estado == 'PENDIENTE' %}
+                        <form method="POST">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold text-secondary small">Buscar Material en Catálogo</label>
+                                {{ form.material }}
+                            </div>
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold text-secondary small">Cantidad Solicitada</label>
+                                {{ form.cantidad_solicitada }}
+                            </div>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-dark">+ Agregar al Ticket</button>
+                            </div>
+                        </form>
+                    {% else %}
+                        <div class="alert alert-info border-0 text-center">
+                            <small>Este ticket ya fue procesado o aprobado. No se pueden añadir más materiales.</small>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0 rounded-3">
+                <div class="card-header bg-white py-3">
+                    <h5 class="fw-bold mb-0">Materiales en esta solicitud</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light text-muted small">
+                                <tr>
+                                    <th class="px-4 py-2">Código</th>
+                                    <th class="py-2">Material</th>
+                                    <th class="py-2 text-center">Cant. Solicitada</th>
+                                    <th class="px-4 py-2 text-center">Cant. Despachada</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in detalles %}
+                                <tr>
+                                    <td class="px-4"><span class="badge bg-light text-dark border">{{ item.material.sku }}</span></td>
+                                    <td class="fw-bold">{{ item.material.nombre }}</td>
+                                    <td class="text-center fs-5">{{ item.cantidad_solicitada }}</td>
+                                    <td class="px-4 text-center">
+                                        {% if item.cantidad_despachada > 0 %}
+                                            <span class="text-success fw-bold">{{ item.cantidad_despachada }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-5 text-muted">
+                                        <p class="mb-0">Aún no has agregado materiales a este ticket.</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% if detalles and requerimiento.estado == 'PENDIENTE' %}
+                <div class="card-footer bg-white p-3 text-end">
+                    <a href="{% url 'dashboard_erp' %}" class="btn btn-success px-4">
+                        Finalizar y Enviar a Revisión
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

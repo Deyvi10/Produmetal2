@@ -1,0 +1,49 @@
+{% extends 'web/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="bg-dark py-5 text-center text-white mb-5">
+    <div class="container" data-aos="fade-down">
+        <h2 class="display-4 fw-bold text-uppercase text-warning">Nuestros Proyectos</h2>
+        <p class="lead text-white-50">Ingeniería y precisión en cada estructura</p>
+        <div style="width: 80px; height: 4px; background-color: #ffc107; margin: 20px auto;"></div>
+    </div>
+</div>
+
+<div class="container py-4 mb-5">
+    <div class="row g-4">
+        {% for p in proyectos %}
+        <div class="col-md-6 col-lg-6" data-aos="fade-up" data-aos-delay="100">
+            <div class="card h-100 shadow border-0 overflow-hidden hover-top">
+                
+                <a href="{% url 'detalle_proyecto' p.id %}">
+                    <div style="overflow: hidden;">
+                        <img src="{% static 'web/img/'|add:p.img %}" 
+                             onerror="this.src='https://via.placeholder.com/600x400?text={{ p.titulo }}'"
+                             class="card-img-top w-100" alt="{{ p.titulo }}" 
+                             style="height: 350px; object-fit: cover; transition: transform 0.5s ease;"
+                             onmouseover="this.style.transform='scale(1.05)'" 
+                             onmouseout="this.style.transform='scale(1)'">
+                    </div>
+                </a>
+                
+                <div class="card-body text-center p-4">
+                    <div class="badge bg-warning text-dark mb-3 px-3 py-2 rounded-pill">{{ p.categoria }}</div>
+                    <h4 class="card-title fw-bold text-dark">{{ p.titulo }}</h4>
+                </div>
+                
+                <div class="card-footer bg-white border-0 pb-4 px-4 text-center">
+                    <a href="{% url 'detalle_proyecto' p.id %}" class="btn btn-dark w-100 fw-bold rounded-pill">Ver Proyecto Completo</a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <h4 class="text-muted">No hay proyectos cargados aún.</h4>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% endblock %}

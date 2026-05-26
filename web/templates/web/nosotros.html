@@ -1,0 +1,51 @@
+{% extends 'web/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="bg-dark text-white py-5 text-center">
+    <h1 class="display-4 fw-bold text-warning" data-aos="fade-down">SOBRE NOSOTROS</h1>
+    <div style="width: 80px; height: 4px; background-color: #ffc107; margin: 15px auto;"></div>
+    <p class="lead mt-3">Experiencia y Compromiso en Acero</p>
+</div>
+
+<div class="container py-5">
+    <div class="row align-items-center g-5">
+        <div class="col-md-6" data-aos="fade-right">
+            <h2 class="fw-bold text-dark border-start border-5 border-warning ps-3 mb-4">Nuestra Trayectoria</h2>
+            <p class="lead text-muted" style="text-align: justify;">{{ historia }}</p>
+            <p class="text-muted mt-3" style="text-align: justify;">Nuestro equipo de profesionales está comprometido en brindar soluciones personalizadas y eficientes, garantizando la seguridad en cada soldadura y montaje.</p>
+        </div>
+        
+        <div class="col-md-6" data-aos="fade-left">
+            <div class="overflow-hidden rounded shadow-lg">
+                <img src="{% static 'web/img/EquipoProduMetal1.jpg' %}" 
+                     onerror="this.src='https://via.placeholder.com/600x400?text=Equipo+ProduMetal'" 
+                     class="img-fluid w-100 transition-transform" 
+                     style="object-fit: cover; transition: transform 0.5s;"
+                     onmouseover="this.style.transform='scale(1.03)'" 
+                     onmouseout="this.style.transform='scale(1)'"
+                     alt="Equipo ProduMetal CM">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="bg-light py-5">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-md-6" data-aos="flip-left">
+                <div class="p-5 bg-white shadow-sm rounded h-100 border-start border-5 border-warning hover-top">
+                    <h3 class="fw-bold text-dark"><i class="bi bi-flag-fill text-warning me-2"></i>Misión</h3>
+                    <p class="mt-3 text-muted" style="text-align: justify;">{{ mision }}</p>
+                </div>
+            </div>
+            <div class="col-md-6" data-aos="flip-right">
+                <div class="p-5 bg-dark text-white shadow-sm rounded h-100 border-start border-5 border-warning hover-top">
+                    <h3 class="fw-bold text-warning"><i class="bi bi-eye-fill text-warning me-2"></i>Visión</h3>
+                    <p class="mt-3 text-white-50" style="text-align: justify;">{{ vision }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

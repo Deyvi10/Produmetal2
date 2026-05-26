@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page { size: A4 portrait; margin: 1.5cm 1.5cm 2cm 1.5cm; }
+        body { font-family: Helvetica, Arial, sans-serif; font-size: 10px; color: #333; }
+        
+        .header { width: 100%; border-bottom: 2px solid #e6a817; padding-bottom: 10px; margin-bottom: 15px; }
+        .logo { width: 70px; height: 70px; }
+        .empresa-info { text-align: right; }
+        .empresa-info h1 { margin: 0; color: #0d1117; font-size: 22px; text-transform: uppercase; }
+        .empresa-info p { margin: 2px 0; color: #555; }
+        
+        .filtros-info { background-color: #f4f6f8; padding: 12px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 20px; font-size: 11px; }
+        .reporte-titulo { font-size: 13px; font-weight: bold; color: #0d1117; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        /* Estilos de Secciones */
+        .section-title { font-size: 14px; font-weight: bold; text-transform: uppercase; margin-top: 25px; margin-bottom: 10px; padding-bottom: 4px; border-bottom: 2px solid #ccc; }
+        .title-ingresos { color: #155724; border-bottom-color: #28a745; }
+        .title-salidas { color: #856404; border-bottom-color: #ffc107; }
+        .title-ajustes { color: #721c24; border-bottom-color: #dc3545; }
+
+        /* Estilos de Tabla Especializados */
+        table.data-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+        table.data-table th { color: white; padding: 7px; text-align: left; text-transform: uppercase; font-size: 9px; letter-spacing: 0.5px; }
+        table.data-table td { border-bottom: 1px solid #eee; padding: 7px; vertical-align: top; font-size: 9px; }
+        table.data-table tr:nth-child(even) { background-color: #fbfbfb; }
+        
+        /* Cabeceras por color */
+        .th-ingresos { background-color: #216f34; }
+        .th-salidas { background-color: #a8810f; }
+        .th-ajustes { background-color: #8c2630; }
+        
+        .badge { font-weight: bold; font-size: 9px; padding: 2px 0; }
+        .text-success { color: #155724; }
+        .text-warning { color: #856404; }
+        .text-danger { color: #721c24; }
+        .text-muted { color: #777; font-size: 8px; }
+        
+        .footer { position: fixed; bottom: -1.5cm; left: 0cm; right: 0cm; height: 1cm; text-align: center; font-size: 8px; color: #888; border-top: 1px solid #ddd; padding-top: 5px;}
+    </style>
+</head>
+<body>
+
+    <table class="header">
+        <tr>
+            <td style="width: 15%;"><img src="{{ logo_path }}" class="logo"></td>
+            <td class="empresa-info" style="width: 85%;">
+                <h1>ProduMetal CM</h1>
+                <p style="font-weight: bold;">BITÁCORA OFICIAL DE INVENTARIO</p>
+                <p>Impreso el: {{ fecha_impresion|date:"d M Y, H:i" }}</p>
+            </td>
+        </tr>
+    </table>
+
+    <div class="filtros-info">
+        <div class="reporte-titulo">Parámetros Aplicados en este Reporte:</div>
+        <table style="width: 100%; font-size: 10px;">
+            <tr>
+                <td style="width: 33%;"><strong>Proyecto:</strong> {% if proyecto %}{{ proyecto.nombre }} ({{ proyecto.centro_costos }}){% else %}Todos{% endif %}</td>
+                <td style="width: 33%;"><strong>Periodo (Mes):</strong> {% if mes_filtro %}{{ mes_filtro }}{% else %}Histórico Total{% endif %}</td>
+                <td style="width: 33%;"><strong>Filtro de Tipo:</strong> {% if tipo_filtro %}{{ tipo_filtro }}{% else %}Ninguno{% endif %}</td>
+            </tr>
+        </table>
+    </div>
+
+    {% if salidas %}
+    <div class="section-title title-salidas">📤 Salidas (Despachos a Proyectos)</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th class="th-salidas" style="width: 10%;">Fecha</th>
+                <th class="th-salidas" style="width: 12%;">SKU</th>
+                <th class="th-salidas" style="width: 28%;">Material</th>
+                <th class="th-salidas" style="width: 8%;">Cant.</th>
+                <th class="th-salidas" style="width: 20%;">Proyecto Destino</th>
+                <th class="th-salidas" style="width: 12%;">Nº Ticket</th>
+                <th class="th-salidas" style="width: 10%;">Despachó</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for mov in salidas %}
+            <tr>
+                <td>{{ mov.fecha_hora|date:"d/m/Y" }}<br><span class="text-muted">{{ mov.fecha_hora|time:"H:i" }}</span></td>
+                <td><strong>{{ mov.material.sku }}</strong></td>
+                <td>{{ mov.material.nombre|truncatechars:40 }}</td>
+                <td class="badge text-warning">-{{ mov.cantidad }}</td>
+                <td>{{ mov.requerimiento_asociado.proyecto.nombre|default:"N/A" }}</td>
+                <td>{{ mov.requerimiento_asociado.folio|default:"-" }}</td>
+                <td>{{ mov.responsable.username }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+
+    {% if ingresos %}
+    <div class="section-title title-ingresos">📥 Ingresos (Abastecimiento de Bodega)</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th class="th-ingresos" style="width: 10%;">Fecha</th>
+                <th class="th-ingresos" style="width: 12%;">SKU</th>
+                <th class="th-ingresos" style="width: 28%;">Material</th>
+                <th class="th-ingresos" style="width: 8%;">Cant.</th>
+                <th class="th-ingresos" style="width: 20%;">Proveedor</th>
+                <th class="th-ingresos" style="width: 12%;">Nº O.C.</th>
+                <th class="th-ingresos" style="width: 10%;">Recibió</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for mov in ingresos %}
+            <tr>
+                <td>{{ mov.fecha_hora|date:"d/m/Y" }}<br><span class="text-muted">{{ mov.fecha_hora|time:"H:i" }}</span></td>
+                <td><strong>{{ mov.material.sku }}</strong></td>
+                <td>{{ mov.material.nombre|truncatechars:40 }}</td>
+                <td class="badge text-success">+{{ mov.cantidad }}</td>
+                <td>{{ mov.orden_compra_asociada.proveedor|default:"Stock Inicial" }}</td>
+                <td>{{ mov.orden_compra_asociada.folio|default:"-" }}</td>
+                <td>{{ mov.responsable.username }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+
+    {% if ajustes %}
+    <div class="section-title title-ajustes">⚙️ Ajustes Manuales (Correcciones de Auditoría)</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th class="th-ajustes" style="width: 10%;">Fecha</th>
+                <th class="th-ajustes" style="width: 12%;">SKU</th>
+                <th class="th-ajustes" style="width: 22%;">Material</th>
+                <th class="th-ajustes" style="width: 8%;">Cant.</th>
+                <th class="th-ajustes" style="width: 38%;">Justificación Oficial (Notas)</th>
+                <th class="th-ajustes" style="width: 10%;">Ajustó</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for mov in ajustes %}
+            <tr>
+                <td>{{ mov.fecha_hora|date:"d/m/Y" }}<br><span class="text-muted">{{ mov.fecha_hora|time:"H:i" }}</span></td>
+                <td><strong>{{ mov.material.sku }}</strong></td>
+                <td>{{ mov.material.nombre|truncatechars:35 }}</td>
+                <td class="badge text-danger">{% if mov.cantidad > 0 %}+{% endif %}{{ mov.cantidad }}</td>
+                <td style="font-style: italic; color: #555;">"{{ mov.observaciones|default:'Sin justificación' }}"</td>
+                <td>{{ mov.responsable.username }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+
+    {% if not ingresos and not salidas and not ajustes %}
+    <div style="text-align: center; margin-top: 50px; font-size: 14px; color: #888;">
+        <p>No se encontraron movimientos registrados en la base de datos que coincidan con estos filtros.</p>
+    </div>
+    {% endif %}
+
+    <div class="footer">
+        Documento confidencial generado automáticamente por el sistema ERP ProduMetal CM. Página <pdf:pagenumber> de <pdf:pagecount>
+    </div>
+
+</body>
+</html>

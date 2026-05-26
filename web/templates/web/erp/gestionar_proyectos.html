@@ -1,0 +1,288 @@
+{% extends 'web/base.html' %}
+{% load static %}
+
+{% block extra_head %}
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<style>
+    /* =========================================
+       PROYECTOS - ESTILO PREMIUM MINIMALISTA 
+       ========================================= */
+    :root {
+        --pm-bg: #0d1117;
+        --pm-surface: #161b22;
+        --pm-border: #30363d;
+        --pm-text: #ffffff;
+        --pm-text-muted: #aab6c4;
+        --pm-amber: #e6a817; 
+        --pm-blue: #58a6ff;
+        --pm-green: #3fb950;
+        --pm-red: #f85149;
+        --font-display: 'Barlow Condensed', sans-serif;
+        --font-body: 'Barlow', sans-serif;
+    }
+
+    body { background-color: var(--pm-bg) !important; color: var(--pm-text) !important; font-family: var(--font-body); }
+    .text-muted { color: var(--pm-text-muted) !important; }
+    .erp-container { margin-top: 30px; max-width: 1200px; }
+    
+    .title-erp { font-family: var(--font-display); font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; }
+    .title-erp span { color: var(--pm-amber); }
+
+    /* Componentes Core */
+    .card-minimal { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+    
+    /* Botones Estandarizados */
+    .btn-minimal { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; border-radius: 6px; padding: 0.5rem 1rem; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;}
+    .btn-amber { background: var(--pm-amber); color: #000; border: none; }
+    .btn-amber:hover { background: #ffd166; color: #000; }
+    
+    /* Barra de Filtros y Búsqueda */
+    .filtros-bar { padding: 1.2rem 1.5rem; background: var(--pm-surface); border-bottom: 1px solid var(--pm-border); border-radius: 12px 12px 0 0; }
+    .filtro-chip { font-family: var(--font-display); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding: 0.4rem 1rem; border-radius: 6px; border: 1px solid var(--pm-border); color: var(--pm-text-muted); background: transparent; transition: all 0.2s; }
+    .filtro-chip:hover, .filtro-chip.active { background: var(--pm-amber); border-color: var(--pm-amber); color: #000 !important; }
+    
+    .form-control-pm { background-color: var(--pm-bg) !important; border: 1px solid var(--pm-border) !important; color: var(--pm-text) !important; border-radius: 6px; transition: all 0.3s; font-family: var(--font-body); font-size: 0.9rem; padding: 0.5rem 1rem; }
+    .form-control-pm:focus { border-color: var(--pm-amber) !important; box-shadow: 0 0 0 2px rgba(230, 168, 23, 0.15) !important; outline: none; }
+
+    /* Tablas Modernas Oscuras */
+    .table-modern { width: 100%; margin-bottom: 0; white-space: nowrap; color: var(--pm-text); }
+    .table-modern th { background: var(--pm-bg); text-transform: uppercase; font-family: var(--font-display); font-size: 0.85rem; letter-spacing: 1px; color: var(--pm-text-muted); border-bottom: 1px solid var(--pm-border); padding: 14px 16px; border-top: none;}
+    .table-modern td { vertical-align: middle; border-bottom: 1px solid var(--pm-border); padding: 14px 16px; background: transparent; color: var(--pm-text); }
+    .table-modern tr:hover td { background: rgba(230,168,23,0.03); }
+    
+    /* Badges Suaves */
+    .badge-soft { padding: 5px 12px; font-weight: 600; font-size: 0.75rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-display); letter-spacing: 0.5px; text-transform: uppercase; }
+    .badge-soft-success { background: rgba(63,185,80,0.1); color: var(--pm-green); border: 1px solid rgba(63,185,80,0.3); }
+    .badge-soft-danger  { background: rgba(248,81,73,0.1); color: var(--pm-red); border: 1px solid rgba(248,81,73,0.3); }
+    .badge-soft-secondary { background: rgba(139,148,158,0.1); color: var(--pm-text-muted); border: 1px solid rgba(139,148,158,0.3); }
+    
+    /* Estilos para Modales (Oscuros) */
+    .modal-content { background-color: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); }
+    .modal-header { border-bottom: 1px solid var(--pm-border); padding: 1.5rem; }
+    .modal-body { padding: 1.5rem; }
+    .modal-footer { border-top: 1px solid var(--pm-border); padding: 1.2rem 1.5rem; }
+    .modal-title { font-family: var(--font-display); color: var(--pm-text); text-transform: uppercase; font-weight: 800; letter-spacing: 1px; }
+    .btn-close { filter: invert(1) grayscale(100%) brightness(200%); opacity: 0.8; }
+    .form-label { font-family: var(--font-display); font-weight: 600; color: var(--pm-text-muted); font-size: 0.95rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem; }
+</style>
+
+<div class="container-fluid px-3 px-xl-5 erp-container mb-5">
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <a href="{% url 'dashboard_erp' %}" class="btn btn-outline-secondary text-white border-secondary px-3 transition-2s hover-amber">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <div>
+                <h3 class="title-erp mb-0">Centros de <span>Costos</span></h3>
+                <p class="mb-0 text-muted small">Gestión de Proyectos de la Empresa.</p>
+            </div>
+        </div>
+        
+        <button class="btn-amber btn-minimal shadow-sm px-4 py-2" data-bs-toggle="modal" data-bs-target="#modalCrearProyecto">
+            <i class="bi bi-plus-lg fs-5"></i> <span class="d-none d-sm-inline">Nuevo Proyecto</span>
+        </button>
+    </div>
+
+    {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show border-0 shadow-sm rounded-3 d-flex align-items-center" role="alert" style="background: var(--pm-surface); border-left: 4px solid var(--pm-amber) !important; color: var(--pm-text);">
+                    {% if message.tags == 'success' %}<i class="bi bi-check-circle-fill text-success fs-5 me-3"></i>{% endif %}
+                    {% if message.tags == 'warning' %}<i class="bi bi-exclamation-triangle-fill text-warning fs-5 me-3"></i>{% endif %}
+                    {% if message.tags == 'danger' %}<i class="bi bi-shield-fill-x text-danger fs-5 me-3"></i>{% endif %}
+                    <div class="flex-grow-1 fw-medium" style="font-size: 0.95rem;">{{ message }}</div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="card card-minimal overflow-hidden">
+        
+        <div class="filtros-bar">
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3 w-100">
+                
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <span class="text-muted small text-uppercase fw-bold d-none d-md-inline"><i class="bi bi-funnel me-1"></i> Ver:</span>
+                    <button class="filtro-chip active" onclick="filtrarProyectos('todos', this)">Todos</button>
+                    <button class="filtro-chip text-success border-success border-opacity-50" onclick="filtrarProyectos('activo', this)">En Curso</button>
+                    <button class="filtro-chip text-danger border-danger border-opacity-50" onclick="filtrarProyectos('inactivo', this)">Archivados</button>
+                </div>
+
+                <div class="position-relative w-100" style="max-width: 320px;">
+                    <i class="bi bi-search position-absolute" style="left: 12px; top: 50%; transform: translateY(-50%); color: var(--pm-text-muted);"></i>
+                    <input type="text" class="form-control-pm w-100 ps-5" id="searchInput" placeholder="Buscar por nombre o código..." />
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-modern mb-0" id="proyectosTable">
+                <thead>
+                    <tr>
+                        <th class="ps-4">Nombre del Proyecto</th>
+                        <th>Centro de Costos (Código)</th>
+                        <th>Estado Actual</th>
+                        <th class="text-end pe-4">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in proyectos %}
+                    <tr class="proyecto-row" data-estado="{% if p.is_active %}activo{% else %}inactivo{% endif %}" data-busqueda="{{ p.nombre|lower }} {{ p.centro_costos|lower }}">
+                        
+                        <td class="ps-4">
+                            <div class="fw-bold" style="color: var(--pm-text); font-size: 1.05rem;">{{ p.nombre }}</div>
+                        </td>
+                        
+                        <td>
+                            <span class="badge-soft badge-soft-secondary text-white">{{ p.centro_costos }}</span>
+                        </td>
+                        
+                        <td>
+                            {% if p.is_active %}
+                                <span class="badge-soft badge-soft-success"><i class="bi bi-play-circle-fill"></i> Activo (En Curso)</span>
+                            {% else %}
+                                <span class="badge-soft badge-soft-danger"><i class="bi bi-stop-circle-fill"></i> Archivado (Cerrado)</span>
+                            {% endif %}
+                        </td>
+                        
+                        <td class="text-end pe-4">
+                            <div class="d-flex justify-content-end gap-2">
+                                
+                                <button class="btn btn-sm btn-outline-secondary btn-minimal px-2 py-1 text-white border-secondary" data-bs-toggle="modal" data-bs-target="#modalEditar{{ p.id }}" title="Editar Nombre/Código">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+
+                                {% if rol == 'Administrador' %}
+                                
+                                <a href="{% url 'alternar_estado_proyecto' p.id %}" class="btn btn-sm {% if p.is_active %}btn-outline-warning border-warning{% else %}btn-outline-success border-success{% endif %} btn-minimal px-2 py-1" title="{% if p.is_active %}Archivar Proyecto{% else %}Reactivar Proyecto{% endif %}">
+                                    <i class="bi bi-power fs-6"></i>
+                                </a>
+
+                                <a href="{% url 'eliminar_proyecto_erp' p.id %}" class="btn btn-sm btn-outline-danger btn-minimal px-2 py-1 border-danger" title="Eliminar Definitivamente" onclick="return confirm('ATENCIÓN ADMINISTRADOR:\n\n¿Estás seguro de eliminar el proyecto «{{ p.nombre }}»?\n\nSi ya tiene tickets o despachos de bodega, el sistema bloqueará la eliminación y solo lo archivará para proteger la auditoría contable.');">
+                                    <i class="bi bi-trash fs-6"></i>
+                                </a>
+                                
+                                {% endif %}
+
+                            </div>
+                        </td>
+                    </tr>
+
+                    <div class="modal fade" id="modalEditar{{ p.id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title"><span style="color: var(--pm-amber);">Editar</span> Proyecto</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <form action="{% url 'editar_proyecto' p.id %}" method="POST">
+                                    {% csrf_token %}
+                                    <div class="modal-body">
+                                        <div class="mb-4">
+                                            <label class="form-label">Nombre de la Obra/Proyecto</label>
+                                            <input type="text" name="nombre" value="{{ p.nombre }}" class="form-control form-control-pm" required placeholder="Ej: Edificio Corporativo Zona 4">
+                                        </div>
+                                        <div class="mb-2">
+                                            <label class="form-label">Código Centro de Costos</label>
+                                            <input type="text" name="centro_costos" value="{{ p.centro_costos }}" class="form-control form-control-pm" required placeholder="Ej: PRJ-001">
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-outline-secondary btn-minimal border-secondary text-white" data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn btn-amber btn-minimal"><i class="bi bi-save"></i> Guardar Cambios</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center py-5">
+                            <i class="bi bi-building text-muted" style="font-size: 3rem;"></i>
+                            <h5 class="mt-3 text-white" style="font-family: var(--font-display);">Sin Proyectos</h5>
+                            <p class="text-muted small mb-4">Aún no hay centros de costo registrados en la empresa.</p>
+                            <button class="btn-amber btn-minimal px-4 py-2" data-bs-toggle="modal" data-bs-target="#modalCrearProyecto">
+                                <i class="bi bi-plus-lg"></i> Crear Primer Proyecto
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div class="modal fade" id="modalCrearProyecto" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><span style="color: var(--pm-amber);">Nuevo</span> Proyecto</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="{% url 'gestionar_proyectos' %}" method="POST">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                        <div class="mb-4">
+                            <label class="form-label">Nombre de la Obra/Proyecto <span class="text-danger">*</span></label>
+                            <input type="text" name="nombre" class="form-control form-control-pm" required placeholder="Ej: Galpón Industrial Sur">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Código Centro de Costos <span class="text-danger">*</span></label>
+                            <input type="text" name="centro_costos" class="form-control form-control-pm" required placeholder="Ej: PRJ-002">
+                            <div class="form-text mt-2" style="color: var(--pm-text-muted); font-size: 0.8rem;">
+                                <i class="bi bi-info-circle text-info"></i> Este código es vital para la contabilidad.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary btn-minimal border-secondary text-white" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" name="crear_proyecto" class="btn btn-amber btn-minimal"><i class="bi bi-check-lg"></i> Crear Proyecto</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // 1. Buscador de Texto
+    document.getElementById('searchInput').addEventListener('input', function() {
+        const query = this.value.toLowerCase().trim();
+        const rows = document.querySelectorAll('.proyecto-row');
+        
+        rows.forEach(row => {
+            const content = row.dataset.busqueda;
+            // Solo busca si la fila no está oculta por los botones de filtro
+            if(row.style.display !== 'none' || content.includes(query)) {
+                row.style.display = content.includes(query) ? '' : 'none';
+            }
+        });
+    });
+
+    // 2. Botones de Filtrado (Todos / Activos / Archivados)
+    function filtrarProyectos(estado, btnClicked) {
+        // Cambiar la clase activa del botón
+        document.querySelectorAll('.filtro-chip').forEach(btn => btn.classList.remove('active'));
+        btnClicked.classList.add('active');
+
+        // Filtrar las filas
+        const rows = document.querySelectorAll('.proyecto-row');
+        rows.forEach(row => {
+            if (estado === 'todos') {
+                row.style.display = '';
+            } else {
+                row.style.display = row.dataset.estado === estado ? '' : 'none';
+            }
+        });
+        
+        // Limpiar buscador al cambiar de pestaña
+        document.getElementById('searchInput').value = '';
+    }
+</script>
+{% endblock %}

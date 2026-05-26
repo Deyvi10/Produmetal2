@@ -1,0 +1,143 @@
+{% extends 'web/base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    /* Fondo con una textura muy sutil tipo corporativa */
+    .login-page-bg {
+        background-color: #f8f9fa;
+        background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
+        background-size: 20px 20px;
+    }
+    
+    /* Tarjeta flotante principal */
+    .login-card {
+        border: none;
+        border-radius: 1.5rem;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        background: white;
+    }
+    
+    /* Encabezado industrial oscuro */
+    .login-header {
+        background: linear-gradient(135deg, #1e293b 0%, #2c3e50 100%);
+        padding: 3rem 2rem 2rem;
+        text-align: center;
+        color: white;
+        border-bottom: 5px solid #3498db;
+    }
+    
+    /* Efecto premium para el logo */
+    .login-logo {
+        width: 85px;
+        height: 85px;
+        object-fit: cover;
+        border: 3px solid rgba(255, 255, 255, 0.9);
+        border-radius: 50%;
+        margin-bottom: 1rem;
+        box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+        background-color: white;
+    }
+    
+    /* Entradas de texto modernas */
+    .form-control-custom {
+        border-radius: 0 0.75rem 0.75rem 0;
+        padding: 0.8rem 1.2rem;
+        border: 1px solid #dee2e6;
+        background-color: #f8f9fa;
+        font-weight: 500;
+    }
+    .form-control-custom:focus {
+        background-color: #fff;
+        border-color: #3498db;
+        box-shadow: none;
+    }
+    .input-group-text-custom {
+        border-radius: 0.75rem 0 0 0.75rem;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-right: none;
+        color: #6c757d;
+    }
+    
+    /* Botón de acción principal */
+    .btn-login {
+        background: linear-gradient(to right, #2c3e50, #3498db);
+        border: none;
+        border-radius: 0.75rem;
+        padding: 0.85rem;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        transition: all 0.3s ease;
+    }
+    .btn-login:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(52, 152, 219, 0.4);
+    }
+</style>
+
+<div class="login-page-bg py-5" style="margin-top: 70px; min-height: calc(100vh - 70px); display: flex; align-items: center;">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-sm-10 col-md-8 col-lg-5">
+                
+                <div class="login-card">
+                    <div class="login-header">
+                        <img src="{% static 'web/img/logo.jpg' %}" alt="Logo ProduMetal" class="login-logo">
+                        <h3 class="fw-bold mb-0" style="letter-spacing: -0.5px;">PRODUMETAL <span class="text-info">ERP</span></h3>
+                        <p class="text-light opacity-75 small mb-0 mt-1">Portal de Acceso Restringido</p>
+                    </div>
+
+                    <div class="card-body p-4 p-md-5">
+                        
+                        {% if form.errors %}
+                            <div class="alert alert-danger d-flex align-items-center rounded-3 mb-4 shadow-sm border-0 bg-danger bg-opacity-10" role="alert">
+                                <i class="bi bi-shield-x text-danger fs-3 me-3"></i>
+                                <div>
+                                    <strong class="text-danger d-block">Acceso Denegado</strong>
+                                    <span class="small text-danger">Credenciales inválidas. Intente nuevamente.</span>
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        <form method="POST">
+                            {% csrf_token %}
+                            
+                            <div class="mb-4">
+                                <label class="form-label fw-bold text-secondary small text-uppercase">Usuario Asignado</label>
+                                <div class="input-group shadow-sm rounded-3">
+                                    <span class="input-group-text input-group-text-custom px-3"><i class="bi bi-person-fill"></i></span>
+                                    <input type="text" name="username" class="form-control form-control-custom border-start-0 ps-0" placeholder="Ej. tu_usuario" required autofocus>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label fw-bold text-secondary small text-uppercase">Clave de Seguridad</label>
+                                <div class="input-group shadow-sm rounded-3">
+                                    <span class="input-group-text input-group-text-custom px-3"><i class="bi bi-lock-fill"></i></span>
+                                    <input type="password" name="password" class="form-control form-control-custom border-start-0 ps-0" placeholder="••••••••" required>
+                                </div>
+                            </div>
+
+                            <div class="d-grid mt-5">
+                                <button type="submit" class="btn btn-primary btn-login btn-lg text-white">
+                                    Ingresar al Sistema <i class="bi bi-arrow-right-circle-fill ms-2"></i>
+                                </button>
+                            </div>
+                            
+                            <input type="hidden" name="next" value="{{ next|default:'/erp/dashboard/' }}">
+                        </form>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4 text-muted small">
+                    <i class="bi bi-shield-lock-fill text-success"></i> Conexión Privada y Encriptada<br>
+                    <span class="fw-medium">&copy; {% now "Y" %} ProduMetal CM. Todos los derechos reservados.</span>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
