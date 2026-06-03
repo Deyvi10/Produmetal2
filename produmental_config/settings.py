@@ -3,22 +3,19 @@ Django settings for produmental_config project.
 """
 
 from pathlib import Path
-import os # Importante para leer variables de entorno
+import os 
 import dj_database_url
-from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ==============================================================================
-# 1. CONFIGURACIÓN DE SEGURIDAD Y DESPLIEGUE (Variables de Entorno)
+# 1. CONFIGURACIÓN DE SEGURIDAD Y DESPLIEGUE
 # ==============================================================================
-# En producción (Render), debes crear estas variables en su panel de control.
-# Si no existen (como en tu PC local), usa valores por defecto.
-
+# Se utilizan variables de entorno nativas (os.environ) para máxima compatibilidad con Render
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-=acf2&x9ijyhcy-(gaoi%d1nkx#a_9r3z&$ta#t!kfm1@)8l1c')
 
-# DEBUG será True en tu PC, pero se apagará automáticamente en producción si configuras la variable en Render.
+# DEBUG será True en local, pero se apagará automáticamente en producción si se configura la variable
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = [
@@ -32,7 +29,6 @@ ALLOWED_HOSTS = [
 # ==============================================================================
 # 2. DEFINICIÓN DE APLICACIONES Y MIDDLEWARE
 # ==============================================================================
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -41,7 +37,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'web',
-    'axes', # <-- NUEVO: Escudo protector contra fuerza bruta
+    'axes', 
+    'simple_history', # <-- AGREGADO: Motor de trazabilidad absoluta
 ]
 
 MIDDLEWARE = [
@@ -53,7 +50,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'axes.middleware.AxesMiddleware', # <-- NUEVO: Interceptor de logins de Axes
+    'axes.middleware.AxesMiddleware', 
+    'simple_history.middleware.HistoryRequestMiddleware', # <-- AGREGADO: Captura el usuario e IP en cada cambio
 ]
 
 ROOT_URLCONF = 'produmental_config.urls'
@@ -78,31 +76,29 @@ WSGI_APPLICATION = 'produmental_config.wsgi.application'
 # ==============================================================================
 # 3. BASE DE DATOS
 # ==============================================================================
-
+# dj_database_url detectará automáticamente si existe una URL de PostgreSQL en producción.
+# Si no la hay (desarrollo local), utilizará SQLite3 por defecto.
 DATABASES = {
     'default': dj_database_url.config(
         default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
-        conn_max_age=600
+        conn_max_age=600,
+        conn_health_checks=True, # <-- AGREGADO: Previene caídas por pérdida de conexión
     )
 }
-# NOTA: Para subir a Render, más adelante cambiaremos esto a PostgreSQL para no perder datos.
 
 # ==============================================================================
 # 4. AUTENTICACIÓN Y PROTECCIÓN DE LOGIN (AXES)
 # ==============================================================================
-
 AUTHENTICATION_BACKENDS = [
     'axes.backends.AxesStandaloneBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
 
-# Reglas de bloqueo
-AXES_FAILURE_LIMIT = 3               # Máximo 3 intentos fallidos
-AXES_LOCK_OUT_AT_FAILURE = True      # Bloquear cuenta al llegar al límite
-AXES_COOLOFF_TIME = 1                # Tiempo de castigo en horas (1 hora)
-AXES_RESET_ON_SUCCESS = True         # Si entra bien a la 2da vez, la cuenta vuelve a 0
-AXES_LOCKOUT_PARAMETERS = ["username"] # Bloquea al usuario, no a la IP (evita bloquear a toda la empresa)
-#AXES_ONLY_USER_FAILURES = True
+AXES_FAILURE_LIMIT = 3               
+AXES_LOCK_OUT_AT_FAILURE = True      
+AXES_COOLOFF_TIME = 1                
+AXES_RESET_ON_SUCCESS = True         
+AXES_LOCKOUT_PARAMETERS = ["username"] 
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',},
@@ -114,16 +110,14 @@ AUTH_PASSWORD_VALIDATORS = [
 # ==============================================================================
 # 5. REGIONALIZACIÓN (Idioma y Hora ERP)
 # ==============================================================================
-
-LANGUAGE_CODE = 'es-ec' # Español de Ecuador
-TIME_ZONE = 'America/Guayaquil' # Zona horaria local exacta para el registro del ERP
+LANGUAGE_CODE = 'es-ec' 
+TIME_ZONE = 'America/Guayaquil' 
 USE_I18N = True
 USE_TZ = True
 
 # ==============================================================================
 # 6. ARCHIVOS ESTÁTICOS Y MULTIMEDIA
 # ==============================================================================
-
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'web/static'),
@@ -134,11 +128,8 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # ==============================================================================
-# 7. REGLAS DE SEGURIDAD ESTRICTA (Se activan solas en Producción)
+# 7. REGLAS DE SEGURIDAD ESTRICTA (Producción)
 # ==============================================================================
-# Las encerramos en un "if not DEBUG" para que no rompan tu entorno local.
-# Cuando subas a Render y apagues el DEBUG, tu página se volverá un búnker.
-
 if not DEBUG:
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -146,16 +137,14 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = True    
     SECURE_SSL_REDIRECT = True
     
-    # Previene que otras páginas clonen la tuya en un recuadro falso (Clickjacking)
     X_FRAME_OPTIONS = 'DENY'
     
-    # HSTS: Obliga a los navegadores de los clientes a comunicarse SOLO por HTTPS cifrado
     SECURE_HSTS_SECONDS = 31536000 
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
 
-    SECRET_KEY = config('DJANGO_SECRET_KEY')
-    DEBUG = config('DJANGO_DEBUG', cast=bool)
+    # <-- AGREGADO: Motor de compresión de estáticos obligatorio para despliegues modernos (Render/Heroku)
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 
 # Cloudinary — solo activar cuando vayas a producción en Render

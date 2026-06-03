@@ -1,11 +1,12 @@
-from django.db import models
+from django.db import models, transaction
 from django.contrib.auth.models import User
 from django.core.validators import FileExtensionValidator
 from django.utils import timezone
+from simple_history.models import HistoricalRecords
 import datetime
 
 # =====================================================================
-# NUEVO: SOPORTE MULTIBODEGA Y SUBCATEGORÍAS
+# CONFIGURACIONES BASE Y CATEGORÍAS
 # =====================================================================
 class Bodega(models.Model):
     nombre = models.CharField(max_length=100, unique=True)
@@ -15,24 +16,30 @@ class Bodega(models.Model):
     def __str__(self):
         return self.nombre
 
-class SubCategoria(models.Model):
-    # Relacionado al TIPO_CATEGORIA de Material
-    categoria_padre = models.CharField(max_length=20, choices=[('MATERIAL', 'Material Estructural / Acero'), ('CONSUMIBLE', 'Consumible / Herramienta Menor')])
+class Categoria(models.Model):
     nombre = models.CharField(max_length=100)
+    prefijo = models.CharField(max_length=10, unique=True, help_text="Ej: FER, ELE, PVC")
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
-        return f"{self.get_categoria_padre_display()} -> {self.nombre}"
+        return f"{self.prefijo} - {self.nombre}"
 
-# 1. Modelo de Proyectos (ACTUALIZADO: Descripción y Bodega asociada)
+class SecuenciaCodigo(models.Model):
+    prefijo = models.CharField(max_length=10, unique=True)
+    ultimo_valor = models.IntegerField(default=0)
+
+# =====================================================================
+# 1. MODELO DE PROYECTOS (Con Trazabilidad Histórica)
+# =====================================================================
 class Proyecto(models.Model):
     nombre = models.CharField(max_length=200)
-    centro_costos = models.CharField(max_length=100, unique=True)
-    descripcion = models.TextField(blank=True, null=True, verbose_name="Descripción del Proyecto") # NUEVO
+    centro_costos = models.CharField(max_length=100, unique=True, blank=True)
+    descripcion = models.TextField(blank=True, null=True, verbose_name="Descripción del Proyecto")
     is_active = models.BooleanField(default=True, help_text="Desmarcar para borrado lógico")
     fecha_creacion = models.DateTimeField(auto_now_add=True)
-    
-    # NUEVO: Cada proyecto puede tener su propia bodega física temporal
     bodega_proyecto = models.OneToOneField(Bodega, on_delete=models.SET_NULL, null=True, blank=True, related_name='proyecto_asociado')
+    
+    history = HistoricalRecords() # AUDITORÍA TOTAL
 
     def save(self, *args, **kwargs):
         # Generar código automático para centro de costos si está vacío
@@ -53,44 +60,39 @@ class Proyecto(models.Model):
     def __str__(self):
         return f"{self.centro_costos} - {self.nombre}"
 
-# 2. Catálogo de Inventario (ACTUALIZADO: Auto-Código y Subcategoría)
+# =====================================================================
+# 2. CATÁLOGO DE INVENTARIO (Anti-Duplicados y Concurrencia)
+# =====================================================================
 class Material(models.Model):
-    TIPO_CATEGORIA = [
-        ('MATERIAL', 'Material Estructural / Acero'),
-        ('CONSUMIBLE', 'Consumible / Herramienta Menor'),
-    ]
-
-    sku = models.CharField(max_length=50, unique=True, blank=True, editable=False, verbose_name="Código/SKU") # AUTO
+    categoria = models.ForeignKey(Categoria, on_delete=models.PROTECT) 
+    sku = models.CharField(max_length=50, unique=True, blank=True, editable=False) # AUTO
     nombre = models.CharField(max_length=200)
-    tipo = models.CharField(max_length=20, choices=TIPO_CATEGORIA, default='MATERIAL')
-    subcategoria = models.ForeignKey(SubCategoria, on_delete=models.SET_NULL, null=True, blank=True) # NUEVO
     descripcion = models.TextField(blank=True, null=True)
     stock_actual = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Stock Total (Suma de bodegas)")
     stock_minimo = models.DecimalField(max_digits=10, decimal_places=2, default=5.00, help_text="Umbral para alertas")
     is_active = models.BooleanField(default=True)
 
+    history = HistoricalRecords() # AUDITORÍA TOTAL
+
     class Meta:
         verbose_name_plural = "Inventario (Materiales y Consumibles)"
 
     def save(self, *args, **kwargs):
-        # GENERACIÓN AUTOMÁTICA DE CÓDIGO
+        # GENERACIÓN AUTOMÁTICA DE CÓDIGO ESTRICTA (Sin Race Conditions)
         if not self.sku:
-            prefijo = 'MAT' if self.tipo == 'MATERIAL' else 'CON'
-            ultimo = Material.objects.filter(sku__startswith=prefijo).order_by('id').last()
-            if ultimo and '-' in ultimo.sku:
-                try:
-                    secuencia = int(ultimo.sku.split('-')[-1]) + 1
-                except ValueError:
-                    secuencia = 1
-            else:
-                secuencia = 1
-            self.sku = f'{prefijo}-{secuencia:04d}'
+            with transaction.atomic():
+                secuencia, created = SecuenciaCodigo.objects.select_for_update().get_or_create(
+                    prefijo=self.categoria.prefijo,
+                    defaults={'ultimo_valor': 0}
+                )
+                secuencia.ultimo_valor += 1
+                secuencia.save()
+                self.sku = f'{self.categoria.prefijo}-{secuencia.ultimo_valor:04d}'
         super().save(*args, **kwargs)
 
     def __str__(self):
         return f"[{self.sku}] {self.nombre} (Total: {self.stock_actual})"
 
-# NUEVO: Control exacto por bodega
 class StockBodega(models.Model):
     material = models.ForeignKey(Material, on_delete=models.CASCADE, related_name='stocks_bodegas')
     bodega = models.ForeignKey(Bodega, on_delete=models.CASCADE, related_name='inventario')
@@ -103,64 +105,15 @@ class StockBodega(models.Model):
         return f"{self.material.sku} en {self.bodega.nombre}: {self.cantidad}"
 
 # =====================================================================
-# MÓDULO DE ABASTECIMIENTO Y COMPRAS (ACTUALIZADO: Alertas Parciales)
-# =====================================================================
-class OrdenCompra(models.Model):
-    ESTADOS = [
-        ('BORRADOR', 'Borrador (Cotizando)'),
-        ('EMITIDA', 'Emitida al Proveedor'),
-        ('RECIBIDA_PARCIAL', 'Recibida Parcialmente (Alerta Compras)'), # NUEVO
-        ('RECIBIDA', 'Recibida Total (Stock Actualizado)'),
-        ('CANCELADA', 'Cancelada'),
-    ]
-
-    folio = models.CharField(max_length=20, unique=True, blank=True, editable=False)
-    proveedor = models.CharField(max_length=200, help_text="Nombre de la ferretería o distribuidor")
-    fecha_creacion = models.DateTimeField(auto_now_add=True)
-    creado_por = models.ForeignKey(User, on_delete=models.PROTECT, related_name='ordenes_compra')
-    estado = models.CharField(max_length=20, choices=ESTADOS, default='BORRADOR')
-    numero_factura = models.CharField(max_length=100, blank=True, null=True, verbose_name="N° de Factura")
-    observaciones = models.TextField(blank=True, null=True, verbose_name="Observaciones")   
-    
-    # Soporte Documental Compras (Facturas/Certificados origen)
-    documento_respaldo = models.FileField(
-        upload_to='compras_facturas/%Y/%m/', blank=True, null=True,
-        validators=[FileExtensionValidator(allowed_extensions=['pdf', 'jpg', 'png'])],
-        help_text="Factura o Certificado provisto por el proveedor"
-    )
-
-    def save(self, *args, **kwargs):
-        if not self.folio:
-            year = datetime.date.today().year
-            ultima_oc = OrdenCompra.objects.filter(folio__startswith=f'OC-{year}').order_by('id').last()
-            secuencia = int(ultima_oc.folio.split('-')[-1]) + 1 if ultima_oc else 1
-            self.folio = f'OC-{year}-{secuencia:03d}'
-        super().save(*args, **kwargs)
-
-    class Meta:
-        verbose_name_plural = "Órdenes de Compra"
-
-    def __str__(self):
-        return f"{self.folio} - {self.proveedor} ({self.estado})"
-
-class DetalleOrdenCompra(models.Model):
-    orden = models.ForeignKey(OrdenCompra, related_name='detalles', on_delete=models.CASCADE)
-    material = models.ForeignKey(Material, on_delete=models.PROTECT)
-    cantidad_pedida = models.DecimalField(max_digits=10, decimal_places=2)
-    cantidad_recibida = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-
-    def __str__(self):
-        return f"{self.cantidad_pedida} de {self.material.nombre} (OC: {self.orden.folio})"
-
-# =====================================================================
-# MÓDULO DE REQUERIMIENTOS INTERNOS 
+# 3. MÓDULO DE REQUERIMIENTOS INTERNOS (División Automática)
 # =====================================================================
 class Requerimiento(models.Model):
     ESTADOS = [
-        ('PENDIENTE', 'Pendiente de Aprobación'),
+        ('PENDIENTE', 'Pendiente de Aprobación Admin'),
         ('APROBADO', 'Aprobado'),
         ('RECHAZADO', 'Rechazado'),
-        ('DESPACHADO', 'Despachado'),
+        ('PARCIALMENTE_DESPACHADO', 'Parcialmente Despachado'),
+        ('DESPACHADO', 'Despachado Totalmente'),
         ('EN_COMPRAS', 'Enviado a Compras'),
     ]
 
@@ -168,8 +121,10 @@ class Requerimiento(models.Model):
     solicitante = models.ForeignKey(User, on_delete=models.PROTECT, related_name='requerimientos')
     proyecto = models.ForeignKey(Proyecto, on_delete=models.PROTECT)
     fecha_solicitud = models.DateTimeField(auto_now_add=True)
-    estado = models.CharField(max_length=20, choices=ESTADOS, default='PENDIENTE')
+    estado = models.CharField(max_length=30, choices=ESTADOS, default='PENDIENTE')
     observaciones = models.TextField(blank=True)
+
+    history = HistoricalRecords()
 
     def save(self, *args, **kwargs):
         if not self.folio:
@@ -179,13 +134,49 @@ class Requerimiento(models.Model):
             self.folio = f'REQ-{year}-{secuencia:03d}'
         super().save(*args, **kwargs)
 
+    @transaction.atomic
+    def procesar_y_dividir_stock(self):
+        """ LÓGICA CORE: Ejecutar cuando el Admin aprueba el requerimiento """
+        for detalle in self.detalles.all():
+            if detalle.estado_item == 'RECHAZADO':
+                continue
+
+            # select_for_update() asegura que nadie mueva el stock mientras calculamos
+            material = Material.objects.select_for_update().get(id=detalle.material.id)
+            
+            if material.stock_actual >= detalle.cantidad_solicitada:
+                # Stock suficiente: Todo a bodega
+                detalle.estado_item = 'APROBADO_BODEGA'
+                detalle.save()
+            elif material.stock_actual > 0:
+                # Stock parcial: DIVIDIR EL REQUERIMIENTO
+                cantidad_en_bodega = material.stock_actual
+                cantidad_faltante = detalle.cantidad_solicitada - cantidad_en_bodega
+                
+                detalle.cantidad_solicitada = cantidad_en_bodega
+                detalle.estado_item = 'APROBADO_BODEGA'
+                detalle.save()
+                
+                # Crear el excedente directamente para Compras
+                DetalleRequerimiento.objects.create(
+                    requerimiento=self,
+                    material=material,
+                    cantidad_solicitada=cantidad_faltante,
+                    estado_item='EN_COMPRAS',
+                    motivo_rechazo='División automática por sistema (Falta de stock)'
+                )
+            else:
+                # Sin stock: Todo a compras
+                detalle.estado_item = 'EN_COMPRAS'
+                detalle.save()
+
     def __str__(self):
         return f"{self.folio} - {self.proyecto.nombre}"
 
 class DetalleRequerimiento(models.Model):
     ESTADOS_ITEM = [
         ('PENDIENTE', 'Pendiente de Revisión'),
-        ('APROBADO_BODEGA', 'Aprobado para Despacho en Bodega'),
+        ('APROBADO_BODEGA', 'Aprobado para Despacho (Bodega)'),
         ('EN_COMPRAS', 'Mandar a Compras (Falta Stock)'),
         ('RECHAZADO', 'Rechazado'),
     ]
@@ -194,52 +185,14 @@ class DetalleRequerimiento(models.Model):
     material = models.ForeignKey(Material, on_delete=models.PROTECT)
     cantidad_solicitada = models.DecimalField(max_digits=10, decimal_places=2)
     cantidad_despachada = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    
-    # NUEVOS CAMPOS PARA EL CONTROL DE FLUJO GRANULAR
-    estado_item = models.CharField(max_length=20, choices=ESTADOS_ITEM, default='PENDIENTE')
+    estado_item = models.CharField(max_length=30, choices=ESTADOS_ITEM, default='PENDIENTE')
     motivo_rechazo = models.TextField(blank=True, null=True, verbose_name="Notas u Observaciones")
 
     def __str__(self):
         return f"{self.cantidad_solicitada} x {self.material.nombre} [{self.estado_item}]"
 
-        
 # =====================================================================
-# AUDITORÍA Y TRAZABILIDAD (ACTUALIZADO: Bodegas, Ventas, Transferencias)
-# =====================================================================
-class MovimientoInventario(models.Model):
-    TIPO_MOVIMIENTO = [
-        ('INGRESO', 'Ingreso por Compra (Abastecimiento)'),
-        ('SALIDA', 'Salida por Requerimiento (Despacho)'),
-        ('AJUSTE', 'Ajuste Manual de Inventario'),
-        ('VENTA', 'Venta a Terceros'), # NUEVO REQUERIMIENTO
-        ('TRANSFERENCIA', 'Transferencia entre Bodegas'), # NUEVO REQUERIMIENTO
-    ]
-
-    material = models.ForeignKey(Material, on_delete=models.PROTECT, related_name='movimientos')
-    tipo = models.CharField(max_length=15, choices=TIPO_MOVIMIENTO)
-    cantidad = models.DecimalField(max_digits=10, decimal_places=2)
-    bodega_origen = models.ForeignKey(Bodega, on_delete=models.SET_NULL, null=True, blank=True, related_name='movimientos_salida')
-    bodega_destino = models.ForeignKey(Bodega, on_delete=models.SET_NULL, null=True, blank=True, related_name='movimientos_ingreso')
-    fecha_hora = models.DateTimeField(default=timezone.now)
-    responsable = models.ForeignKey(User, on_delete=models.PROTECT)
-    
-    requerimiento_asociado = models.ForeignKey('Requerimiento', on_delete=models.SET_NULL, null=True, blank=True)
-    orden_compra_asociada = models.ForeignKey('OrdenCompra', on_delete=models.SET_NULL, null=True, blank=True)
-    
-    observaciones = models.TextField(blank=True, null=True)
-    
-    # Certificado subido por Bodega al momento de la recepción física
-    certificado_calidad = models.FileField(
-        upload_to='certificados/%Y/%m/', blank=True, null=True,
-        validators=[FileExtensionValidator(allowed_extensions=['pdf'])],
-        help_text="Certificado de calidad subido por bodega"
-    )
-
-    def __str__(self):
-        return f"{self.tipo} - {self.cantidad} de {self.material.sku}"
-
-# =====================================================================
-# MÓDULO DE COTIZACIONES Y COMPRAS (Flujo de desglose)
+# 4. MÓDULO DE COTIZACIONES Y COMPRAS
 # =====================================================================
 class SolicitudCompra(models.Model):
     ESTADOS = [
@@ -266,7 +219,7 @@ class CotizacionItem(models.Model):
     ESTADOS_APROBACION = [
         ('PENDIENTE', 'Pendiente de Revisión'),
         ('APROBADO', 'Aprobado para Compra'),
-        ('COMPRADO', 'Órden de Compra Generada'), # <-- NUEVO: Evita duplicados en revisiones parciales
+        ('COMPRADO', 'Órden de Compra Generada'), 
         ('RECHAZADO', 'Rechazado'),
     ]
 
@@ -276,16 +229,100 @@ class CotizacionItem(models.Model):
     
     proveedor_cotizado = models.CharField(max_length=200, blank=True, null=True)
     precio_unitario = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    tiempo_entrega_dias = models.PositiveIntegerField(default=0, help_text="Días hábiles para entrega") # NUEVO: Crucial para gerencia
     especificaciones_tecnicas = models.TextField(blank=True)
     certificado_calidad_incluido = models.BooleanField(default=False)
-    archivo_cotizacion = models.FileField(upload_to='cotizaciones/%Y/%m/', blank=True, null=True)
+    archivo_cotizacion = models.FileField(upload_to='cotizaciones/%Y/%m/%d/', blank=True, null=True) # ORGANIZACIÓN DIARIA
     
     estado_aprobacion = models.CharField(max_length=15, choices=ESTADOS_APROBACION, default='PENDIENTE')
     motivo_rechazo = models.TextField(blank=True)
 
-    # <-- NUEVO: Cálculo automático para la vista del Administrador
     @property
     def total_estimado(self):
         if self.cantidad_requerida and self.precio_unitario:
             return self.cantidad_requerida * self.precio_unitario
         return 0
+
+class OrdenCompra(models.Model):
+    ESTADOS = [
+        ('BORRADOR', 'Borrador (Cotizando)'),
+        ('EMITIDA', 'Emitida al Proveedor'),
+        ('EN_TRANSITO', 'En tránsito (Logística)'),
+        ('RECIBIDA_PARCIAL', 'Recibida Parcialmente (Alerta Compras)'),
+        ('RECIBIDA', 'Recibida Total (Stock Actualizado)'),
+        ('CANCELADA', 'Cancelada'),
+    ]
+
+    folio = models.CharField(max_length=20, unique=True, blank=True, editable=False)
+    proveedor = models.CharField(max_length=200, help_text="Nombre de la ferretería o distribuidor")
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    creado_por = models.ForeignKey(User, on_delete=models.PROTECT, related_name='ordenes_compra')
+    estado = models.CharField(max_length=25, choices=ESTADOS, default='BORRADOR')
+    numero_factura = models.CharField(max_length=100, blank=True, null=True, verbose_name="N° de Factura")
+    observaciones = models.TextField(blank=True, null=True, verbose_name="Observaciones")   
+    
+    documento_respaldo = models.FileField(
+        upload_to='compras_facturas/%Y/%m/%d/', blank=True, null=True,
+        validators=[FileExtensionValidator(allowed_extensions=['pdf', 'jpg', 'png'])],
+        help_text="Factura o Certificado provisto por el proveedor"
+    )
+
+    history = HistoricalRecords()
+
+    def save(self, *args, **kwargs):
+        if not self.folio:
+            year = datetime.date.today().year
+            ultima_oc = OrdenCompra.objects.filter(folio__startswith=f'OC-{year}').order_by('id').last()
+            secuencia = int(ultima_oc.folio.split('-')[-1]) + 1 if ultima_oc else 1
+            self.folio = f'OC-{year}-{secuencia:03d}'
+        super().save(*args, **kwargs)
+
+    class Meta:
+        verbose_name_plural = "Órdenes de Compra"
+
+    def __str__(self):
+        return f"{self.folio} - {self.proveedor} ({self.estado})"
+
+class DetalleOrdenCompra(models.Model):
+    orden = models.ForeignKey(OrdenCompra, related_name='detalles', on_delete=models.CASCADE)
+    material = models.ForeignKey(Material, on_delete=models.PROTECT)
+    cantidad_pedida = models.DecimalField(max_digits=10, decimal_places=2)
+    cantidad_recibida = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+
+    def __str__(self):
+        return f"{self.cantidad_pedida} de {self.material.nombre} (OC: {self.orden.folio})"
+
+# =====================================================================
+# 5. AUDITORÍA Y TRAZABILIDAD DE INVENTARIO LOGÍSTICO
+# =====================================================================
+class MovimientoInventario(models.Model):
+    TIPO_MOVIMIENTO = [
+        ('INGRESO', 'Ingreso por Compra (Abastecimiento)'),
+        ('SALIDA', 'Salida por Requerimiento (Despacho)'),
+        ('AJUSTE', 'Ajuste Manual de Inventario'),
+        ('VENTA', 'Venta a Terceros'), 
+        ('TRANSFERENCIA', 'Transferencia entre Bodegas'), 
+    ]
+
+    material = models.ForeignKey(Material, on_delete=models.PROTECT, related_name='movimientos')
+    tipo = models.CharField(max_length=15, choices=TIPO_MOVIMIENTO)
+    cantidad = models.DecimalField(max_digits=10, decimal_places=2)
+    bodega_origen = models.ForeignKey(Bodega, on_delete=models.SET_NULL, null=True, blank=True, related_name='movimientos_salida')
+    bodega_destino = models.ForeignKey(Bodega, on_delete=models.SET_NULL, null=True, blank=True, related_name='movimientos_ingreso')
+    fecha_hora = models.DateTimeField(default=timezone.now)
+    responsable = models.ForeignKey(User, on_delete=models.PROTECT)
+    
+    requerimiento_asociado = models.ForeignKey('Requerimiento', on_delete=models.SET_NULL, null=True, blank=True)
+    orden_compra_asociada = models.ForeignKey('OrdenCompra', on_delete=models.SET_NULL, null=True, blank=True)
+    observaciones = models.TextField(blank=True, null=True)
+    
+    certificado_calidad = models.FileField(
+        upload_to='certificados/%Y/%m/%d/', blank=True, null=True,
+        validators=[FileExtensionValidator(allowed_extensions=['pdf'])],
+        help_text="Certificado de calidad subido por bodega"
+    )
+
+    history = HistoricalRecords()
+
+    def __str__(self):
+        return f"{self.tipo} - {self.cantidad} de {self.material.sku}"

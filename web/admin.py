@@ -18,10 +18,10 @@ class ProyectoAdmin(admin.ModelAdmin):
 # =====================================================================
 @admin.register(Material)
 class MaterialAdmin(admin.ModelAdmin):
-
-    list_display = ('sku', 'nombre', 'tipo', 'stock_actual', 'stock_minimo', 'is_active')
-    list_filter = ('tipo', 'is_active')
-    search_fields = ('sku', 'nombre')
+    # 'tipo' ya no existe, usamos 'categoria'
+    list_display = ('sku', 'nombre', 'categoria', 'stock_actual') 
+    list_filter = ('categoria',) # Filtramos por la relación de Categoria
+    search_fields = ('nombre', 'sku')
 
 # =====================================================================
 # 3. REQUERIMIENTOS (Tickets Internos)

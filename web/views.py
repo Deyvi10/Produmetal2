@@ -28,7 +28,6 @@ import os
 from django.conf import settings
 from django.utils import timezone
 
-
 # =======================================================
 # VISTAS DE LA PÁGINA WEB PÚBLICA
 # =======================================================
@@ -162,10 +161,8 @@ def dashboard_erp(request):
     usuario = request.user
     context = {}
 
-    # Generar la Bodega Central automáticamente si no existe (Necesario para Multibodegas)
     Bodega.objects.get_or_create(nombre='Bodega Central', defaults={'is_principal': True})
 
-    # 1. VISTA DEL DUEÑO / ADMINISTRADOR
     if es_admin(usuario):
         context['rol'] = 'Administrador'
         context['tickets_pendientes'] = Requerimiento.objects.filter(estado='PENDIENTE').order_by('fecha_solicitud')
@@ -173,20 +170,17 @@ def dashboard_erp(request):
         context['cotizaciones_pendientes'] = SolicitudCompra.objects.filter(estado='COTIZADO').order_by('fecha_creacion')
         context['alertas_oc'] = OrdenCompra.objects.filter(estado='RECIBIDA_PARCIAL')
         
-    # 2. VISTA DEL BODEGUERO
     elif es_bodeguero(usuario):
         context['rol'] = 'Bodeguero'
         context['tickets_por_despachar'] = Requerimiento.objects.filter(estado='APROBADO')
         context['mis_compras_pendientes'] = OrdenCompra.objects.filter(estado__in=['EMITIDA', 'RECIBIDA_PARCIAL'])
         context['alertas_stock'] = Material.objects.filter(stock_actual__lte=F('stock_minimo'))
 
-    # 3. VISTA DEL DEPARTAMENTO DE COMPRAS
     elif es_comprador(usuario):
         context['rol'] = 'Compras'
         context['solicitudes_compras'] = SolicitudCompra.objects.filter(estado='ENVIADO_A_COMPRAS').order_by('-fecha_creacion')
         context['alertas_oc'] = OrdenCompra.objects.filter(estado='RECIBIDA_PARCIAL')
 
-    # 4. VISTA DEL SOLICITANTE / TÉCNICO
     else:
         context['rol'] = 'Solicitante'
         context['mis_requerimientos'] = Requerimiento.objects.filter(solicitante=usuario).order_by('-fecha_solicitud')
@@ -236,35 +230,47 @@ def añadir_materiales(request, req_id):
     return render(request, 'web/erp/añadir_materiales.html', context)
 
 
-# --- VISTA DE APROBACIÓN DE TICKETS (Solo Administrador) ---
+# --- VISTA DE APROBACIÓN DE TICKETS AUTOMÁTICA (Admin) ---
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
 def procesar_ticket(request, req_id, accion):
     ticket = get_object_or_404(Requerimiento, id=req_id)
     
     if accion == 'aprobar':
-        ticket.estado = 'APROBADO'
-        messages.success(request, f"Ticket {ticket.folio} aprobado para despacho en bodega.")
+        # AQUÍ OCURRE LA MAGIA AUTOMÁTICA DE DIVISIÓN DE STOCK
+        ticket.procesar_y_dividir_stock()
+        
+        # Validar cómo quedó el ticket tras la división
+        estados = ticket.detalles.values_list('estado_item', flat=True)
+        
+        if all(e == 'APROBADO_BODEGA' for e in estados):
+            ticket.estado = 'APROBADO'
+            messages.success(request, f"Ticket {ticket.folio} aprobado al 100% para despacho en bodega.")
+        elif 'EN_COMPRAS' in estados and 'APROBADO_BODEGA' in estados:
+            ticket.estado = 'PARCIALMENTE_DESPACHADO'
+            messages.info(request, f"Stock insuficiente para {ticket.folio}. Se dividió automáticamente: una parte a bodega y los faltantes a compras.")
+        elif all(e == 'EN_COMPRAS' for e in estados):
+            ticket.estado = 'EN_COMPRAS'
+            messages.warning(request, f"Sin stock. El ticket {ticket.folio} ha sido enviado completamente a compras.")
+            
+        # Generar las solicitudes de compra si hubo faltantes
+        if 'EN_COMPRAS' in estados:
+            solicitud, _ = SolicitudCompra.objects.get_or_create(
+                requerimiento_origen=ticket, defaults={'estado': 'ENVIADO_A_COMPRAS'}
+            )
+            for detalle in ticket.detalles.filter(estado_item='EN_COMPRAS'):
+                CotizacionItem.objects.get_or_create(
+                    solicitud=solicitud, material=detalle.material,
+                    defaults={'cantidad_requerida': detalle.cantidad_solicitada}
+                )
         
     elif accion == 'rechazar':
         ticket.estado = 'RECHAZADO'
+        for detalle in ticket.detalles.all():
+            detalle.estado_item = 'RECHAZADO'
+            detalle.save()
         messages.warning(request, f"Ticket {ticket.folio} ha sido rechazado.")
-        
-    elif accion == 'compras':
-        ticket.estado = 'EN_COMPRAS'
-        solicitud, created = SolicitudCompra.objects.get_or_create(
-            requerimiento_origen=ticket,
-            defaults={'estado': 'ENVIADO_A_COMPRAS'}
-        )
-        if created:
-            for detalle in ticket.detalles.all():
-                CotizacionItem.objects.create(
-                    solicitud=solicitud,
-                    material=detalle.material,
-                    cantidad_requerida=detalle.cantidad_solicitada
-                )
-        messages.info(request, f"Ticket {ticket.folio} enviado al departamento de Compras para cotización.")
-    
+
     ticket.save()
     return redirect('dashboard_erp')
 
@@ -283,19 +289,19 @@ def atender_cotizacion(request, solicitud_id):
         for item in items:
             proveedor = request.POST.get(f'proveedor_{item.id}')
             precio = request.POST.get(f'precio_{item.id}')
+            tiempo = request.POST.get(f'tiempo_{item.id}', 0) # CAPTURA DE TIEMPO DE ENTREGA
             especificaciones = request.POST.get(f'especificaciones_{item.id}')
             certificado = request.POST.get(f'certificado_{item.id}') == 'on'
-            
-            # NUEVO: Capturar el PDF subido por compras
             archivo_pdf = request.FILES.get(f'archivo_cotizacion_{item.id}')
 
             if proveedor and precio:
                 item.proveedor_cotizado = proveedor
                 item.precio_unitario = precio
+                item.tiempo_entrega_dias = tiempo
                 item.especificaciones_tecnicas = especificaciones
                 item.certificado_calidad_incluido = certificado
                 if archivo_pdf:
-                    item.archivo_cotizacion = archivo_pdf # Guardamos el documento
+                    item.archivo_cotizacion = archivo_pdf
                 item.save()
 
         solicitud.estado = 'COTIZADO'
@@ -350,7 +356,7 @@ def finalizar_revision_cotizacion(request, solicitud_id):
     solicitud = get_object_or_404(SolicitudCompra, id=solicitud_id)
     
     items_aprobados = solicitud.items_cotizados.filter(estado_aprobacion='APROBADO')
-    items_pendientes = solicitud.items_cotizados.filter(estado_aprobacion='PENDIENTE') # NUEVO
+    items_pendientes = solicitud.items_cotizados.filter(estado_aprobacion='PENDIENTE')
     
     proveedores = items_aprobados.values_list('proveedor_cotizado', flat=True).distinct()
     
@@ -367,12 +373,10 @@ def finalizar_revision_cotizacion(request, solicitud_id):
                 DetalleOrdenCompra.objects.create(
                     orden=nueva_oc, material=item.material, cantidad_pedida=item.cantidad_requerida
                 )
-            # NUEVO: Cambiar estado a COMPRADO para que si el gerente entra de nuevo, no genere dobles O.C.
             items_prov.update(estado_aprobacion='COMPRADO')
             
-    # NUEVO: Lógica de aprobación parcial
     if items_pendientes.exists():
-        solicitud.estado = 'COTIZADO' # Se mantiene abierto para el gerente
+        solicitud.estado = 'COTIZADO'
         messages.warning(request, f"Se generaron O.C. parciales. Aún te quedan {items_pendientes.count()} ítems pendientes por decidir.")
     else:
         solicitud.estado = 'PROCESADO'
@@ -485,17 +489,15 @@ def recibir_orden_compra(request, oc_id):
                 if item.cantidad_recibida < item.cantidad_pedida:
                     entrega_incompleta = True
 
-                # Actualizamos stock global del material
-                material = item.material
+                # BLOQUEO DE CONCURRENCIA PARA RECEPCIÓN SEGURO
+                material = Material.objects.select_for_update().get(id=item.material.id)
                 material.stock_actual += ingresado
                 material.save()
 
-                # Actualizamos stock por bodega
-                stock_b, _ = StockBodega.objects.get_or_create(bodega=bodega, material=material)
+                stock_b, _ = StockBodega.objects.select_for_update().get_or_create(bodega=bodega, material=material)
                 stock_b.cantidad += ingresado
                 stock_b.save()
 
-                # Creamos el registro de auditoría con certificado
                 MovimientoInventario.objects.create(
                     material=material, tipo='INGRESO', cantidad=ingresado, bodega_destino=bodega,
                     responsable=request.user, orden_compra_asociada=oc, certificado_calidad=archivo_certificado
@@ -515,7 +517,6 @@ def recibir_orden_compra(request, oc_id):
         'oc': oc, 'detalles': detalles, 'bodegas': Bodega.objects.filter(is_active=True)
     })
 
-# RESTRICCIÓN TOTAL: Solo el Admin puede modificar registros de auditoría
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
 def editar_movimiento_auditoria(request, movimiento_id):
@@ -531,13 +532,16 @@ def venta_material(request):
     if request.method == 'POST':
         form = VentaMaterialForm(request.POST)
         if form.is_valid():
-            mat = form.cleaned_data['material']
-            bod = form.cleaned_data['bodega_origen']
             cant = form.cleaned_data['cantidad']
             comprador = form.cleaned_data['comprador']
             factura = form.cleaned_data['factura']
             
-            stock_bodega = StockBodega.objects.filter(material=mat, bodega=bod).first()
+            # BLOQUEO DE CONCURRENCIA EN VENTA
+            mat = Material.objects.select_for_update().get(id=form.cleaned_data['material'].id)
+            bod = form.cleaned_data['bodega_origen']
+            
+            stock_bodega = StockBodega.objects.select_for_update().filter(material=mat, bodega=bod).first()
+            
             if not stock_bodega or stock_bodega.cantidad < cant:
                 messages.error(request, f"Stock insuficiente en la {bod.nombre}.")
             else:
@@ -561,13 +565,9 @@ def venta_material(request):
 @login_required(login_url='login')
 @user_passes_test(lambda u: es_bodeguero(u) or es_admin(u), login_url='dashboard_erp')
 def inventario_actual(request):
-    materiales = Material.objects.filter(is_active=True).order_by('tipo', 'nombre')
+    materiales = Material.objects.filter(is_active=True).order_by('categoria', 'nombre')
     alertas = Material.objects.filter(is_active=True, stock_actual__lte=F('stock_minimo'))
 
-    tipo_filtro = request.GET.get('tipo')
-    if tipo_filtro in ['MATERIAL', 'CONSUMIBLE']:
-        materiales = materiales.filter(tipo=tipo_filtro)
-        
     alerta_filtro = request.GET.get('alerta')
     if alerta_filtro == '1':
         materiales = materiales.filter(stock_actual__lte=F('stock_minimo'))
@@ -626,18 +626,20 @@ def realizar_ajuste(request, material_id):
             observaciones = form.cleaned_data['observaciones']
             
             with transaction.atomic():
-                material.stock_actual += cantidad_ajuste
-                material.save()
+                # BLOQUEO DE CONCURRENCIA PARA AJUSTES
+                mat_locked = Material.objects.select_for_update().get(id=material.id)
+                mat_locked.stock_actual += cantidad_ajuste
+                mat_locked.save()
                 
-                stock_b, _ = StockBodega.objects.get_or_create(bodega=bodega, material=material)
+                stock_b, _ = StockBodega.objects.select_for_update().get_or_create(bodega=bodega, material=mat_locked)
                 stock_b.cantidad += cantidad_ajuste
                 stock_b.save()
                 
                 MovimientoInventario.objects.create(
-                    material=material, tipo='AJUSTE', cantidad=cantidad_ajuste, bodega_origen=bodega,
+                    material=mat_locked, tipo='AJUSTE', cantidad=cantidad_ajuste, bodega_origen=bodega,
                     responsable=request.user, observaciones=observaciones
                 )
-            messages.success(request, f'¡Ajuste de {cantidad_ajuste} aplicado a {material.sku} en {bodega.nombre}!')
+            messages.success(request, f'¡Ajuste de {cantidad_ajuste} aplicado a {mat_locked.sku} en {bodega.nombre}!')
             return redirect('inventario_actual')
     else:
         form = AjusteInventarioForm()
@@ -939,50 +941,60 @@ def alternar_estado_empleado(request, empleado_id):
 @user_passes_test(es_admin, login_url='dashboard_erp')
 @transaction.atomic
 def revisar_requerimiento_items(request, req_id):
+    # NOTA: En la nueva arquitectura, usamos procesar_ticket('aprobar') para que sea 100% automático.
+    # Esta vista se mantiene por si en el futuro necesitas anular/rechazar individualmente antes de la división automática.
     requerimiento = get_object_or_404(Requerimiento, id=req_id)
     items = requerimiento.detalles.all()
     
     if request.method == 'POST':
-        solicitud_compra = None
-
         for item in items:
             if item.estado_item != 'PENDIENTE':
-                continue # Evita sobreescribir los que ya fueron gestionados
+                continue
 
             decision = request.POST.get(f'decision_{item.id}')
             motivo = request.POST.get(f'motivo_{item.id}', '')
 
-            if decision in ['APROBADO_BODEGA', 'EN_COMPRAS', 'RECHAZADO']:
+            if decision == 'RECHAZADO':
                 item.estado_item = decision
                 item.motivo_rechazo = motivo
                 item.save()
 
-                # Si va a compras, se genera la cotización automáticamente
-                if decision == 'EN_COMPRAS':
-                    if not solicitud_compra:
-                        solicitud_compra, _ = SolicitudCompra.objects.get_or_create(
-                            requerimiento_origen=requerimiento, defaults={'estado': 'ENVIADO_A_COMPRAS'}
-                        )
-                    CotizacionItem.objects.create(
-                        solicitud=solicitud_compra, 
-                        material=item.material, 
-                        cantidad_requerida=item.cantidad_solicitada # Se va todo el ítem
-                    )
-
         # Actualizamos el estado maestro del ticket
         estados = requerimiento.detalles.values_list('estado_item', flat=True)
-        if 'PENDIENTE' in estados:
-            requerimiento.estado = 'PENDIENTE'
-        elif 'EN_COMPRAS' in estados and not 'APROBADO_BODEGA' in estados:
-            requerimiento.estado = 'EN_COMPRAS' # Solo se despachará cuando Compras actúe
-        else:
-            requerimiento.estado = 'APROBADO' # Ya hay cosas listas para que el bodeguero entregue
-
+        if all(e == 'RECHAZADO' for e in estados):
+            requerimiento.estado = 'RECHAZADO'
         requerimiento.save()
-        messages.success(request, f"Revisión de materiales para el ticket {requerimiento.folio} procesada correctamente.")
+        
+        messages.success(request, "Rechazos parciales guardados. Para procesar el inventario, utiliza el botón 'Aprobar'.")
         return redirect('dashboard_erp')
 
     return render(request, 'web/erp/revisar_requerimiento.html', {
         'requerimiento': requerimiento,
         'items': items
+    })
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def configuracion_erp(request):
+    # Formulario para Bodegas
+    if 'form_bodega' in request.POST:
+        form = BodegaForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Bodega creada exitosamente.")
+            return redirect('configuracion_erp')
+    
+    # Formulario para Categorías
+    if 'form_categoria' in request.POST:
+        form_c = CategoriaForm(request.POST)
+        if form_c.is_valid():
+            form_c.save()
+            messages.success(request, "Categoría creada exitosamente.")
+            return redirect('configuracion_erp')
+
+    return render(request, 'web/erp/configuracion.html', {
+        'form_bodega': BodegaForm(),
+        'form_categoria': CategoriaForm(),
+        'bodegas': Bodega.objects.all(),
+        'categorias': Categoria.objects.all()
     })

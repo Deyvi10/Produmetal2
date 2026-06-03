@@ -22,108 +22,137 @@
         --pm-blue: #388bfd;
         --pm-green: #238636;
         --pm-red: #da3633;
+        --pm-purple: #bc8cff;
         
         --font-display: 'Barlow Condensed', sans-serif;
         --font-body: 'Barlow', sans-serif;
     }
 
-    body { background-color: var(--pm-bg) !important; color: var(--pm-text) !important; font-family: var(--font-body); }
+    body { background-color: var(--pm-bg) !important; color: var(--pm-text) !important; font-family: var(--font-body); overflow-x: hidden; }
     .text-muted, .text-secondary { color: var(--pm-text-muted) !important; }
-    .erp-container { margin-top: 100px; max-width: 1400px; }
+    .erp-container { margin-top: 100px; max-width: 1440px; padding-bottom: 40px; }
     
+    /* ANIMACIONES DE ENTRADA */
+    .fade-up {
+        animation: fadeUpAnim 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    .delay-1 { animation-delay: 0.1s; }
+    .delay-2 { animation-delay: 0.2s; }
+    .delay-3 { animation-delay: 0.3s; }
+    .delay-4 { animation-delay: 0.4s; }
+
+    @keyframes fadeUpAnim {
+        to { opacity: 1; transform: translateY(0); }
+    }
+
     @media (max-width: 768px) {
         .erp-container { margin-top: 80px; padding-left: 15px !important; padding-right: 15px !important; }
-        .dashboard-banner .d-flex { flex-direction: column; gap: 10px; text-align: center; }
-        .action-card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .dashboard-banner .d-flex { flex-direction: column; gap: 15px; text-align: center; }
+        .action-card-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+        .table-responsive { border-radius: 8px; border: 1px solid var(--pm-border); }
     }
 
     @media (min-width: 769px) {
-        .action-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; }
+        .action-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; }
     }
 
     /* Banner Principal */
     .dashboard-banner {
-        background: linear-gradient(135deg, var(--pm-surface) 0%, rgba(22,27,34,0.6) 100%);
+        background: linear-gradient(135deg, var(--pm-surface) 0%, rgba(22,27,34,0.4) 100%);
         border: 1px solid var(--pm-border);
         border-bottom: 3px solid var(--pm-amber);
-        border-radius: 12px;
-        backdrop-filter: blur(10px);
+        border-radius: 16px;
+        backdrop-filter: blur(12px);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.2);
     }
     
     .company-logo-dashboard {
-        width: 70px; height: 70px; object-fit: cover;
-        border: 2px solid var(--pm-amber); background-color: var(--pm-bg); padding: 3px;
+        width: 75px; height: 75px; object-fit: cover;
+        border: 2px solid var(--pm-amber); background-color: var(--pm-bg); padding: 4px;
+        box-shadow: 0 0 20px rgba(230,168,23,0.2);
     }
 
     .title-erp { font-family: var(--font-display); font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; }
     .title-erp span { color: var(--pm-amber); }
 
-    /* Tarjetas de Módulos con Glow Effect */
+    /* Tarjetas de Módulos (Acciones) */
     .action-card {
-        background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; padding: 1.8rem 1rem;
-        text-align: center; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); text-decoration: none; color: var(--pm-text);
-        display: flex; flex-direction: column; align-items: center; height: 100%; position: relative; overflow: hidden;
+        background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 16px; padding: 2rem 1.5rem;
+        text-align: center; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); text-decoration: none; color: var(--pm-text);
+        display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; position: relative; overflow: hidden;
     }
-    .action-card::before {
-        content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        background: radial-gradient(circle at center, rgba(255,255,255,0.03) 0%, transparent 70%); opacity: 0; transition: opacity 0.3s ease;
+    .action-card::after {
+        content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 3px;
+        background: var(--pm-border); transition: all 0.4s ease;
     }
     .action-card:hover {
-        border-color: var(--pm-amber); transform: translateY(-5px); color: var(--pm-text);
-        box-shadow: 0 10px 30px rgba(230,168,23,0.15);
+        transform: translateY(-8px); color: var(--pm-text);
+        background: linear-gradient(180deg, var(--pm-surface) 0%, var(--pm-surface-hover) 100%);
     }
-    .action-card:hover::before { opacity: 1; }
-    .action-card.card-blue:hover { border-color: var(--pm-blue); box-shadow: 0 10px 30px rgba(56,139,253,0.15); }
-    .action-card.card-green:hover { border-color: var(--pm-green); box-shadow: 0 10px 30px rgba(35,134,54,0.15); }
-    .action-card.card-red:hover { border-color: var(--pm-red); box-shadow: 0 10px 30px rgba(218,54,51,0.15); }
+    .action-card.card-amber:hover { border-color: var(--pm-amber); box-shadow: 0 15px 35px rgba(230,168,23,0.15); }
+    .action-card.card-amber::after { background: var(--pm-amber); }
+    
+    .action-card.card-blue:hover { border-color: var(--pm-blue); box-shadow: 0 15px 35px rgba(56,139,253,0.15); }
+    .action-card.card-blue::after { background: var(--pm-blue); }
+    
+    .action-card.card-green:hover { border-color: var(--pm-green); box-shadow: 0 15px 35px rgba(35,134,54,0.15); }
+    .action-card.card-green::after { background: var(--pm-green); }
+    
+    .action-card.card-red:hover { border-color: var(--pm-red); box-shadow: 0 15px 35px rgba(218,54,51,0.15); }
+    .action-card.card-red::after { background: var(--pm-red); }
 
-    .action-icon { font-size: 2.2rem; margin-bottom: 1rem; transition: transform 0.3s ease; }
-    .action-card:hover .action-icon { transform: scale(1.1); }
-    .action-card h6 { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; margin: 0; letter-spacing: 0.8px; font-size: 1.15rem; }
+    .action-icon { font-size: 2.5rem; margin-bottom: 1.2rem; transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .action-card:hover .action-icon { transform: scale(1.15) translateY(-5px); }
+    .action-card h6 { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; margin: 0; letter-spacing: 1px; font-size: 1.2rem; }
 
     /* Paneles y Tablas */
-    .card-minimal { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); overflow: hidden;}
-    .card-header-custom { background: rgba(9, 13, 19, 0.5); border-bottom: 1px solid var(--pm-border); padding: 1.2rem 1.5rem; }
-    .card-header-custom h6 { font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin: 0; color: var(--pm-text); }
+    .card-minimal { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); overflow: hidden; transition: box-shadow 0.3s ease;}
+    .card-minimal:hover { box-shadow: 0 15px 40px rgba(0,0,0,0.6); }
+    .card-header-custom { background: rgba(9, 13, 19, 0.7); border-bottom: 1px solid var(--pm-border); padding: 1.2rem 1.5rem; backdrop-filter: blur(5px); }
+    .card-header-custom h6 { font-family: var(--font-display); font-size: 1.2rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin: 0; color: var(--pm-text); display: flex; align-items: center; }
 
     .table-modern { width: 100%; margin-bottom: 0; color: var(--pm-text); }
-    .table-modern th { background: #090d13; text-transform: uppercase; font-family: var(--font-display); font-size: 0.85rem; letter-spacing: 1px; color: var(--pm-text-muted); border-bottom: 2px solid var(--pm-border); padding: 16px; border-top: none;}
-    .table-modern td { vertical-align: middle; border-bottom: 1px solid var(--pm-border); padding: 16px; background: transparent; color: var(--pm-text); }
-    .table-modern tr:hover td { background-color: var(--pm-surface-hover); }
+    .table-modern th { background: rgba(9, 13, 19, 0.4); text-transform: uppercase; font-family: var(--font-display); font-size: 0.9rem; letter-spacing: 1px; color: var(--pm-text-muted); border-bottom: 1px solid var(--pm-border); padding: 18px 16px; border-top: none; white-space: nowrap;}
+    .table-modern td { vertical-align: middle; border-bottom: 1px solid var(--pm-border); padding: 16px; background: transparent; color: var(--pm-text); transition: background 0.2s;}
+    .table-modern tr:hover td { background-color: rgba(255,255,255,0.02); }
+    .table-modern tr:last-child td { border-bottom: none; }
     
     /* Badges Suaves */
-    .badge-soft { padding: 6px 12px; font-weight: 600; font-size: 0.75rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-display); letter-spacing: 0.5px; text-transform: uppercase; }
+    .badge-soft { padding: 6px 12px; font-weight: 600; font-size: 0.75rem; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-display); letter-spacing: 0.5px; text-transform: uppercase; box-shadow: 0 2px 5px rgba(0,0,0,0.2);}
     .badge-soft-warning { background: rgba(230,168,23,0.1); color: var(--pm-amber); border: 1px solid rgba(230,168,23,0.2); }
-    .badge-soft-success { background: rgba(35,134,54,0.1); color: var(--pm-green); border: 1px solid rgba(35,134,54,0.2); }
-    .badge-soft-danger  { background: rgba(218,54,51,0.1); color: var(--pm-red); border: 1px solid rgba(218,54,51,0.2); }
-    .badge-soft-info    { background: rgba(56,139,253,0.1); color: var(--pm-blue); border: 1px solid rgba(56,139,253,0.2); }
+    .badge-soft-success { background: rgba(35,134,54,0.15); color: #4ade80; border: 1px solid rgba(35,134,54,0.3); }
+    .badge-soft-danger  { background: rgba(218,54,51,0.15); color: #ff7b72; border: 1px solid rgba(218,54,51,0.3); }
+    .badge-soft-info    { background: rgba(56,139,253,0.15); color: #79c0ff; border: 1px solid rgba(56,139,253,0.3); }
+    .badge-soft-purple  { background: rgba(188,140,255,0.15); color: var(--pm-purple); border: 1px solid rgba(188,140,255,0.3); }
     .badge-soft-secondary { background: rgba(139,148,158,0.1); color: var(--pm-text-muted); border: 1px solid rgba(139,148,158,0.2); }
 
     /* Timeline de Auditoría */
-    .timeline-item { position: relative; padding-left: 32px; padding-bottom: 1.5rem; border-left: 2px solid var(--pm-border); margin-left: 12px; }
+    .timeline-item { position: relative; padding-left: 36px; padding-bottom: 1.8rem; border-left: 2px solid var(--pm-border); margin-left: 14px; }
     .timeline-item:last-child { border-left-color: transparent; padding-bottom: 0;}
-    .timeline-icon { position: absolute; left: -11px; top: 0; background: var(--pm-surface); border-radius: 50%; padding: 2px; }
+    .timeline-icon { position: absolute; left: -14px; top: 0; background: var(--pm-surface); border-radius: 50%; padding: 3px; z-index: 2; }
 
     /* Botones Específicos */
-    .btn-logout { font-family: var(--font-display); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; border-radius: 20px; font-size: 0.8rem; border: 1px solid var(--pm-border); color: var(--pm-text-muted); padding: 0.5rem 1.2rem; transition: 0.2s; text-decoration: none;}
-    .btn-logout:hover { border-color: var(--pm-red); color: var(--pm-red); background: rgba(218,54,51,0.05); }
+    .btn-logout { font-family: var(--font-display); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; border-radius: 20px; font-size: 0.85rem; border: 1px solid var(--pm-border); color: var(--pm-text-muted); padding: 0.6rem 1.4rem; transition: all 0.3s ease; text-decoration: none;}
+    .btn-logout:hover { border-color: var(--pm-red); color: #fff; background: var(--pm-red); box-shadow: 0 5px 15px rgba(218,54,51,0.4); }
     
-    .btn-pm-amber { background-color: var(--pm-amber); color: #0d1117; transition: all 0.2s; border: none; }
-    .btn-pm-amber:hover { background-color: #f3b92f; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(230,168,23,0.3); color: #000; }
+    .btn-pm-amber { background-color: var(--pm-amber); color: #000; transition: all 0.3s ease; border: none; font-weight: 700; border-radius: 8px;}
+    .btn-pm-amber:hover { background-color: #f3b92f; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(230,168,23,0.3); color: #000; }
 </style>
 
-<div class="container-fluid px-3 px-xl-5 erp-container mb-5">
+<div class="container-fluid px-3 px-xl-5 erp-container">
     
-    <div class="dashboard-banner p-4 mb-4 shadow-lg">
+    <div class="dashboard-banner p-4 mb-4 fade-up">
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
-            <div class="d-flex align-items-center gap-4">
-                <img src="{% static 'web/img/logo.jpg' %}" alt="Logo ProduMetal" class="rounded-circle company-logo-dashboard shadow-lg">
-                <div class="text-center text-md-start">
+            <div class="d-flex align-items-center gap-4 flex-column flex-md-row text-center text-md-start">
+                <img src="{% static 'web/img/logo.jpg' %}" alt="Logo ProduMetal" class="rounded-circle company-logo-dashboard">
+                <div>
                     <h3 class="title-erp mb-1 fs-2">ProduMetal <span>ERP</span></h3>
-                    <p class="mb-0 text-muted" style="font-size: 1rem;">
-                        Bienvenido, <span class="fw-bold text-white">{{ request.user.first_name|default:request.user.username }}</span> 
+                    <p class="mb-0 text-muted" style="font-size: 1.05rem;">
+                        Bienvenido(a), <span class="fw-bold text-white">{{ request.user.first_name|default:request.user.username }}</span> 
                         <span class="d-none d-md-inline mx-2 text-secondary">|</span>
-                        <span class="badge-soft badge-soft-secondary mt-2 mt-md-0">
+                        <span class="badge-soft badge-soft-secondary mt-2 mt-md-0 shadow-none">
                             <i class="bi bi-shield-check"></i> ACCESO: {{ rol }}
                         </span>
                     </p>
@@ -142,9 +171,9 @@
     </div>
 
     {% if messages %}
-        <div class="mb-4">
+        <div class="mb-4 fade-up delay-1">
             {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} alert-dismissible fade show border-0 shadow-lg rounded-3 d-flex align-items-center p-3" role="alert" style="background: var(--pm-surface); border-left: 4px solid var(--pm-amber) !important; color: var(--pm-text);">
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show border-0 shadow-lg rounded-3 d-flex align-items-center p-3 mb-2" role="alert" style="background: var(--pm-surface); border-left: 4px solid var(--pm-amber) !important; color: var(--pm-text);">
                     {% if message.tags == 'success' %}<i class="bi bi-check-circle-fill text-success fs-4 me-3"></i>{% endif %}
                     {% if message.tags == 'warning' %}<i class="bi bi-exclamation-triangle-fill text-warning fs-4 me-3"></i>{% endif %}
                     {% if message.tags == 'danger' %}<i class="bi bi-shield-fill-x text-danger fs-4 me-3"></i>{% endif %}
@@ -156,26 +185,25 @@
         </div>
     {% endif %}
 
-
     {% if rol == 'Administrador' %}
     
-    <div class="action-card-grid mb-5">
-        <a href="{% url 'inventario_actual' %}" class="action-card" style="border-bottom: 3px solid var(--pm-amber);">
-            <div class="action-icon" style="color: var(--pm-amber);"><i class="bi bi-box-seam"></i></div>
+    <div class="action-card-grid mb-5 fade-up delay-1">
+        <a href="{% url 'inventario_actual' %}" class="action-card card-amber">
+            <div class="action-icon" style="color: var(--pm-amber);"><i class="bi bi-boxes"></i></div>
             <h6>Catálogo Maestro</h6>
             <p class="small text-muted mt-2 mb-0">Control Total del Inventario</p>
         </a>
-        <a href="{% url 'gestionar_proyectos' %}" class="action-card card-blue" style="border-bottom: 3px solid var(--pm-blue);">
-            <div class="action-icon" style="color: var(--pm-blue);"><i class="bi bi-building"></i></div>
+        <a href="{% url 'gestionar_proyectos' %}" class="action-card card-blue">
+            <div class="action-icon" style="color: var(--pm-blue);"><i class="bi bi-building-gear"></i></div>
             <h6>Centros de Costo</h6>
             <p class="small text-muted mt-2 mb-0">Gestión de Proyectos Activos</p>
         </a>
-        <a href="{% url 'gestionar_empleados' %}" class="action-card card-green" style="border-bottom: 3px solid var(--pm-green);">
+        <a href="{% url 'gestionar_empleados' %}" class="action-card card-green">
             <div class="action-icon" style="color: var(--pm-green);"><i class="bi bi-people"></i></div>
             <h6>Personal</h6>
             <p class="small text-muted mt-2 mb-0">Usuarios y Asignación de Roles</p>
         </a>
-        <a href="{% url 'gestionar_bloqueos' %}" class="action-card card-red" style="border-bottom: 3px solid var(--pm-red);">
+        <a href="{% url 'gestionar_bloqueos' %}" class="action-card card-red">
             <div class="action-icon" style="color: var(--pm-red);"><i class="bi bi-shield-lock"></i></div>
             <h6>Seguridad</h6>
             <p class="small text-muted mt-2 mb-0">Auditoría de Accesos</p>
@@ -183,24 +211,24 @@
     </div>
 
     {% if cotizaciones_pendientes %}
-    <div class="card card-minimal mb-4 overflow-hidden" style="border-left: 4px solid var(--pm-green);">
-        <div class="card-body p-4 d-flex flex-column flex-md-row justify-content-between align-items-center" style="background: radial-gradient(circle at right, rgba(35,134,54,0.1) 0%, transparent 60%);">
-            <div class="d-flex align-items-center mb-3 mb-md-0">
-                <i class="bi bi-currency-dollar text-success me-3" style="font-size: 2.5rem;"></i>
+    <div class="card card-minimal mb-5 overflow-hidden fade-up delay-2" style="border-left: 4px solid var(--pm-green);">
+        <div class="card-body p-4 p-md-5 d-flex flex-column flex-md-row justify-content-between align-items-center" style="background: radial-gradient(circle at right, rgba(35,134,54,0.15) 0%, transparent 70%);">
+            <div class="d-flex align-items-center mb-4 mb-md-0">
+                <i class="bi bi-currency-dollar text-success me-4" style="font-size: 3rem;"></i>
                 <div>
-                    <h5 class="mb-1 fw-bold title-erp text-white">Aprobación Gerencial Pendiente</h5>
-                    <div class="text-muted">El departamento de Compras ha enviado <strong class="text-white">{{ cotizaciones_pendientes.count }} cotización(es)</strong> para tu revisión final de costos.</div>
+                    <h4 class="mb-1 fw-bold title-erp text-white">Aprobación Gerencial Pendiente</h4>
+                    <div class="text-muted fs-6">El departamento de Compras ha enviado <strong class="text-white">{{ cotizaciones_pendientes.count }} cotización(es)</strong> para la revisión final de costos.</div>
                 </div>
             </div>
-            <a href="{% url 'revisar_cotizacion' cotizaciones_pendientes.first.id %}" class="btn btn-pm-success btn-lg fw-bold px-4 shadow" style="font-family: var(--font-display); letter-spacing: 0.5px; background-color: var(--pm-green); border: none; color: white;">
-                <i class="bi bi-search me-1"></i> Auditar Costos
+            <a href="{% url 'revisar_cotizacion' cotizaciones_pendientes.first.id %}" class="btn btn-lg fw-bold px-5 shadow-lg" style="font-family: var(--font-display); letter-spacing: 0.5px; background-color: var(--pm-green); border: none; color: white; border-radius: 8px;">
+                <i class="bi bi-search me-2"></i> Auditar Costos
             </a>
         </div>
     </div>
     {% endif %}
 
-    <div class="row g-4">
-        <div class="col-12 col-lg-8">
+    <div class="row g-4 mb-4">
+        <div class="col-12 col-xl-8 fade-up delay-3">
             <div class="card card-minimal h-100">
                 <div class="card-header-custom d-flex justify-content-between align-items-center">
                     <h6><i class="bi bi-inbox text-warning me-2 fs-5"></i> Tickets de Requerimiento a Obra</h6>
@@ -226,29 +254,29 @@
                                     </td>
                                     <td>
                                         <div class="d-flex align-items-center">
-                                            <div class="rounded-circle d-flex justify-content-center align-items-center me-3 text-white shadow-sm" style="width: 36px; height: 36px; font-size: 0.9rem; font-weight: bold; background: var(--pm-border);">
+                                            <div class="rounded-circle d-flex justify-content-center align-items-center me-3 text-white shadow-sm" style="width: 38px; height: 38px; font-size: 1rem; font-weight: bold; background: var(--pm-border);">
                                                 {{ req.solicitante.username|make_list|first|upper }}
                                             </div>
                                             <div>
                                                 <div class="fw-semibold text-white">{{ req.solicitante.get_full_name|default:req.solicitante.username }}</div>
-                                                <div class="text-muted" style="font-size: 0.7rem;">Técnico / Operario</div>
+                                                <div class="text-muted" style="font-size: 0.75rem;">Técnico / Operario</div>
                                             </div>
                                         </div>
                                     </td>
                                     <td><span class="badge-soft badge-soft-secondary"><i class="bi bi-geo-alt"></i> {{ req.proyecto.centro_costos }}</span></td>
                                     
                                     <td class="text-end pe-4">
-                                        <a href="{% url 'revisar_requerimiento_items' req.id %}" class="btn btn-sm btn-pm-amber fw-bold shadow-sm px-4 py-2" style="border-radius: 6px; font-family: var(--font-display); letter-spacing: 0.5px; text-transform: uppercase;">
-                                            <i class="bi bi-ui-checks-grid me-1"></i> Inspeccionar Ítems
+                                        <a href="{% url 'revisar_requerimiento_items' req.id %}" class="btn btn-sm btn-pm-amber shadow-sm px-4 py-2 text-uppercase" style="font-family: var(--font-display); letter-spacing: 0.5px;">
+                                            <i class="bi bi-ui-checks-grid me-1"></i> Inspeccionar
                                         </a>
                                     </td>
                                 </tr>
                                 {% empty %}
                                 <tr>
                                     <td colspan="4" class="text-center py-5">
-                                        <i class="bi bi-check2-circle text-muted" style="font-size: 3rem;"></i>
-                                        <h5 class="mt-3" style="font-family: var(--font-display); color: var(--pm-text-muted);">Bandeja Limpia</h5>
-                                        <p class="text-muted small mb-0">No existen requerimientos materiales esperando validación.</p>
+                                        <i class="bi bi-check2-circle text-muted" style="font-size: 3.5rem;"></i>
+                                        <h5 class="mt-3" style="font-family: var(--font-display); color: var(--pm-text-muted); letter-spacing: 1px;">Bandeja Limpia</h5>
+                                        <p class="text-muted mb-0">No existen requerimientos materiales esperando validación.</p>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -259,34 +287,34 @@
             </div>
         </div>
 
-        <div class="col-12 col-lg-4">
+        <div class="col-12 col-xl-4 fade-up delay-4">
             <div class="card card-minimal h-100">
                 <div class="card-header-custom d-flex justify-content-between align-items-center">
-                    <h6><i class="bi bi-activity text-info me-2 fs-5"></i> Log de Auditoría</h6>
-                    <a href="{% url 'historial_movimientos' %}" class="btn btn-sm btn-outline-secondary py-1 text-white border-secondary" style="border-radius: 4px;">Ver todo</a>
+                    <h6><i class="bi bi-activity text-info me-2 fs-5"></i> Auditoría Reciente</h6>
+                    <a href="{% url 'historial_movimientos' %}" class="btn btn-sm btn-outline-secondary py-1 text-white border-secondary rounded-pill px-3" style="font-size: 0.8rem;">Ver todo</a>
                 </div>
                 <div class="card-body px-4 pt-4 pb-3">
                     <div class="mt-2">
                         {% for mov in ultimos_movimientos %}
                         <div class="timeline-item">
-                            <div class="timeline-icon">
+                            <div class="timeline-icon shadow-sm">
                                 {% if mov.tipo == 'INGRESO' %}
-                                    <i class="bi bi-arrow-down-circle-fill text-success fs-5 bg-dark rounded-circle"></i>
+                                    <i class="bi bi-arrow-down-circle-fill text-success fs-4 bg-dark rounded-circle"></i>
                                 {% elif mov.tipo == 'SALIDA' or mov.tipo == 'VENTA' %}
-                                    <i class="bi bi-arrow-up-right-circle-fill text-warning fs-5 bg-dark rounded-circle"></i>
+                                    <i class="bi bi-arrow-up-right-circle-fill text-warning fs-4 bg-dark rounded-circle"></i>
                                 {% else %}
-                                    <i class="bi bi-arrow-left-right text-info fs-5 bg-dark rounded-circle"></i>
+                                    <i class="bi bi-arrow-left-right text-info fs-4 bg-dark rounded-circle"></i>
                                 {% endif %}
                             </div>
                             <div>
                                 <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="fw-bold text-white">{{ mov.material.sku }}</span>
-                                    <span class="fw-bold px-2 py-1 rounded {% if mov.tipo == 'INGRESO' %}bg-success bg-opacity-10 text-success{% elif mov.tipo == 'SALIDA' or mov.tipo == 'VENTA' %}bg-warning bg-opacity-10 text-warning{% else %}bg-info bg-opacity-10 text-info{% endif %}" style="font-size: 0.8rem;">
+                                    <span class="fw-bold text-white fs-6">{{ mov.material.sku }}</span>
+                                    <span class="fw-bold px-2 py-1 rounded {% if mov.tipo == 'INGRESO' %}bg-success bg-opacity-10 text-success{% elif mov.tipo == 'SALIDA' or mov.tipo == 'VENTA' %}bg-warning bg-opacity-10 text-warning{% else %}bg-info bg-opacity-10 text-info{% endif %}" style="font-size: 0.85rem;">
                                         {% if mov.tipo == 'INGRESO' or mov.tipo == 'AJUSTE' and mov.cantidad > 0 %}+{% endif %}{{ mov.cantidad }}
                                     </span>
                                 </div>
                                 <div class="text-muted small">Resp: <span class="text-white">{{ mov.responsable.username }}</span></div>
-                                <div class="text-muted mt-1" style="font-size: 0.7rem;"><i class="bi bi-clock me-1"></i> {{ mov.fecha_hora|timesince }} atrás</div>
+                                <div class="text-muted mt-1" style="font-size: 0.75rem;"><i class="bi bi-clock me-1"></i> {{ mov.fecha_hora|timesince }} atrás</div>
                             </div>
                         </div>
                         {% empty %}
@@ -301,41 +329,40 @@
         </div>
     </div>
 
-
     {% elif rol == 'Bodeguero' %}
     
-    <div class="action-card-grid mb-4">
-        <a href="{% url 'inventario_actual' %}" class="action-card card-blue" style="border-bottom: 3px solid var(--pm-blue);">
+    <div class="action-card-grid mb-4 fade-up delay-1">
+        <a href="{% url 'inventario_actual' %}" class="action-card card-blue">
             <div class="action-icon text-info"><i class="bi bi-search"></i></div>
             <h6>Consultar Stock</h6>
             <p class="small text-muted mt-2 mb-0">Verificar existencias y bodegas</p>
         </a>
-        <a href="{% url 'crear_orden_compra' %}" class="action-card card-amber" style="border-bottom: 3px solid var(--pm-amber);">
+        <a href="{% url 'crear_orden_compra' %}" class="action-card card-amber">
             <div class="action-icon text-warning"><i class="bi bi-cart-plus"></i></div>
             <h6>Borrador O.C.</h6>
             <p class="small text-muted mt-2 mb-0">Iniciar pedido de abastecimiento</p>
         </a>
-        <a href="{% url 'listar_ordenes_compra' %}" class="action-card card-green" style="border-bottom: 3px solid var(--pm-green);">
+        <a href="{% url 'listar_ordenes_compra' %}" class="action-card card-green">
             <div class="action-icon text-success"><i class="bi bi-truck"></i></div>
             <h6>Recibir Proveedores</h6>
             <p class="small text-muted mt-2 mb-0">Ingresar material y comprobantes</p>
         </a>
     </div>
 
-    <div class="row g-4">
+    <div class="row g-4 mb-4">
         {% if alertas_stock %}
-        <div class="col-12">
+        <div class="col-12 fade-up delay-2">
             <div class="card card-minimal" style="border-left: 4px solid var(--pm-red);">
                 <div class="card-header-custom d-flex justify-content-between align-items-center pb-2">
-                    <h6 class="text-danger"><i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i> Materiales bajo el mínimo (Riesgo de Quiebre)</h6>
+                    <h6 class="text-danger m-0"><i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i> Alerta de Stock Mínimo</h6>
                     <span class="badge-soft badge-soft-danger px-3">{{ alertas_stock.count }} Críticos</span>
                 </div>
                 <div class="card-body p-4">
                     <div class="row g-3">
                         {% for item in alertas_stock %}
                         <div class="col-12 col-md-6 col-lg-4">
-                            <div class="p-3 rounded-3" style="background: rgba(218,54,51,0.05); border: 1px solid rgba(218,54,51,0.2);">
-                                <div class="fw-bold text-truncate mb-2" style="color: var(--pm-text); font-size: 0.95rem;">{{ item.sku }} - {{ item.nombre }}</div>
+                            <div class="p-3 rounded-3 h-100" style="background: rgba(218,54,51,0.05); border: 1px solid rgba(218,54,51,0.2); transition: all 0.3s;">
+                                <div class="fw-bold text-truncate mb-2" style="color: var(--pm-text); font-size: 1rem;">{{ item.sku }} - {{ item.nombre }}</div>
                                 <div class="d-flex justify-content-between align-items-center mt-3">
                                     <span class="text-muted small">Umbral: {{ item.stock_minimo }}</span>
                                     <span class="badge-soft badge-soft-danger fw-bold fs-6 shadow-sm">{{ item.stock_actual }} Restantes</span>
@@ -349,7 +376,7 @@
         </div>
         {% endif %}
 
-        <div class="col-12">
+        <div class="col-12 fade-up {% if alertas_stock %}delay-3{% else %}delay-2{% endif %}">
             <div class="card card-minimal">
                 <div class="card-header-custom">
                     <h6><i class="bi bi-hammer text-info me-2 fs-5"></i> Tickets Aprobados (Listos para Despacho a Obra)</h6>
@@ -375,16 +402,15 @@
                                     <td><span class="badge-soft badge-soft-secondary"><i class="bi bi-geo-alt"></i> {{ req.proyecto.nombre }}</span></td>
                                     <td class="text-muted">{{ req.fecha_solicitud|date:"d M, Y" }}</td>
                                     <td class="text-end pe-4">
-                                        <a href="{% url 'imprimir_pdf_ticket' req.id %}" target="_blank" class="btn btn-sm btn-outline-danger px-3 py-2 me-2" style="border-radius: 6px;" title="Imprimir PDF"><i class="bi bi-filetype-pdf"></i> Imprimir</a>
-                                        <button class="btn btn-sm btn-outline-info px-4 py-2 disabled" style="border-radius: 6px; font-family: var(--font-display); font-weight: bold; text-transform: uppercase;">Entregar <i class="bi bi-check2-all ms-1"></i></button>
+                                        <a href="{% url 'imprimir_pdf_ticket' req.id %}" target="_blank" class="btn btn-sm btn-outline-danger px-3 py-2 me-2 mb-1 mb-md-0" style="border-radius: 6px;" title="Imprimir PDF"><i class="bi bi-filetype-pdf me-1"></i> Imprimir Comprobante</a>
                                     </td>
                                 </tr>
                                 {% empty %}
                                 <tr>
                                     <td colspan="4" class="text-center py-5">
-                                        <i class="bi bi-cup-hot text-muted" style="font-size: 3rem;"></i>
-                                        <h5 class="mt-3" style="font-family: var(--font-display); color: var(--pm-text-muted);">Mostrador Vacío</h5>
-                                        <p class="text-muted small mb-0">No hay técnicos esperando material en este momento.</p>
+                                        <i class="bi bi-cup-hot text-muted" style="font-size: 3.5rem;"></i>
+                                        <h5 class="mt-3" style="font-family: var(--font-display); color: var(--pm-text-muted); letter-spacing: 1px;">Mostrador Vacío</h5>
+                                        <p class="text-muted mb-0">No hay técnicos esperando material en este momento.</p>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -396,14 +422,13 @@
         </div>
     </div>
 
-
     {% elif rol == 'Compras' %}
     
-    <div class="row g-4 mt-2">
+    <div class="row g-4 mt-2 mb-4 fade-up delay-1">
         <div class="col-12">
             <div class="card card-minimal shadow-lg" style="border-top: 4px solid var(--pm-amber);">
-                <div class="card-header-custom d-flex justify-content-between align-items-center p-4">
-                    <h5 class="mb-0" style="font-family: var(--font-display); letter-spacing: 0.5px;"><i class="bi bi-cash-coin me-2 fs-4" style="color: var(--pm-amber);"></i> Bandeja de Requerimientos a Cotizar</h5>
+                <div class="card-header-custom d-flex flex-column flex-md-row justify-content-between align-items-center p-4">
+                    <h5 class="mb-3 mb-md-0 m-0" style="font-family: var(--font-display); letter-spacing: 0.5px;"><i class="bi bi-cash-coin me-2 fs-4" style="color: var(--pm-amber);"></i> Bandeja de Requerimientos a Cotizar</h5>
                     <span class="badge-soft badge-soft-warning px-3 fs-6">{{ solicitudes_compras.count }} Pendientes</span>
                 </div>
                 <div class="card-body p-0">
@@ -422,13 +447,13 @@
                                     {% for solicitud in solicitudes_compras %}
                                     <tr>
                                         <td class="ps-4">
-                                            <div class="fw-bold fs-5 text-white">{{ solicitud.folio }}</div>
-                                            <span class="badge-soft badge-soft-warning mt-2"><i class="bi bi-search"></i> Buscando Precios</span>
+                                            <div class="fw-bold fs-5 text-white mb-2">{{ solicitud.folio }}</div>
+                                            <span class="badge-soft badge-soft-warning"><i class="bi bi-search"></i> Buscando Precios</span>
                                         </td>
-                                        <td class="text-muted">{{ solicitud.fecha_creacion|date:"d M, Y" }}</td>
+                                        <td class="text-muted"><i class="bi bi-calendar me-1"></i> {{ solicitud.fecha_creacion|date:"d M, Y" }}</td>
                                         <td><span class="badge-soft badge-soft-info"><i class="bi bi-tag"></i> {{ solicitud.requerimiento_origen.folio }}</span></td>
                                         <td class="text-end pe-4">
-                                            <a href="{% url 'atender_cotizacion' solicitud.id %}" class="btn btn-pm-amber fw-bold px-4 py-2 shadow-sm" style="border-radius: 6px; font-family: var(--font-display); text-transform: uppercase;">
+                                            <a href="{% url 'atender_cotizacion' solicitud.id %}" class="btn btn-pm-amber fw-bold px-4 py-2 shadow-sm" style="border-radius: 8px; font-family: var(--font-display); text-transform: uppercase;">
                                                 Subir Ofertas y PDFs <i class="bi bi-arrow-right-short fs-5 ms-1" style="vertical-align: middle;"></i>
                                             </a>
                                         </td>
@@ -439,9 +464,9 @@
                         </div>
                     {% else %}
                         <div class="text-center py-5">
-                            <i class="bi bi-wallet2 text-muted" style="font-size: 3.5rem;"></i>
-                            <h5 class="mt-3 mb-1" style="font-family: var(--font-display); color: var(--pm-text-muted);">Sin tareas pendientes</h5>
-                            <p class="text-muted small">El área técnica no ha enviado nuevos requerimientos sin stock.</p>
+                            <i class="bi bi-wallet2 text-muted" style="font-size: 4rem;"></i>
+                            <h5 class="mt-4 mb-2" style="font-family: var(--font-display); color: var(--pm-text-muted); letter-spacing: 1px;">Sin tareas pendientes</h5>
+                            <p class="text-muted">El área técnica no ha enviado nuevos requerimientos sin stock.</p>
                         </div>
                     {% endif %}
                 </div>
@@ -449,18 +474,17 @@
         </div>
     </div>
 
-
     {% elif rol == 'Solicitante' %}
     
-    <div class="action-card-grid mb-5" style="grid-template-columns: repeat(auto-fit, minmax(200px, 300px));">
-        <a href="{% url 'crear_requerimiento' %}" class="action-card card-blue" style="border-bottom: 3px solid var(--pm-blue);">
+    <div class="action-card-grid mb-5 fade-up delay-1" style="grid-template-columns: repeat(auto-fit, minmax(300px, 400px));">
+        <a href="{% url 'crear_requerimiento' %}" class="action-card card-blue py-5">
             <div class="action-icon text-info"><i class="bi bi-ticket-detailed"></i></div>
             <h6>Nuevo Requerimiento</h6>
-            <p class="small text-muted mt-2 mb-0">Solicitar material para despacho</p>
+            <p class="small text-muted mt-2 mb-0">Solicitar material para despacho a obra</p>
         </a>
     </div>
 
-    <div class="card card-minimal">
+    <div class="card card-minimal fade-up delay-2 mb-4">
         <div class="card-header-custom">
             <h6><i class="bi bi-clock-history text-info me-2 fs-5"></i> Mi Historial de Requerimientos</h6>
         </div>
@@ -488,15 +512,17 @@
                                     <span class="badge-soft badge-soft-warning"><i class="bi bi-hourglass-split"></i> En Revisión</span>
                                 {% elif req.estado == 'APROBADO' %}
                                     <span class="badge-soft badge-soft-success"><i class="bi bi-check2-all"></i> Disponible (Bodega)</span>
+                                {% elif req.estado == 'PARCIALMENTE_DESPACHADO' %}
+                                    <span class="badge-soft badge-soft-purple"><i class="bi bi-pie-chart"></i> Split: Bodega / Compras</span>
                                 {% elif req.estado == 'RECHAZADO' %}
                                     <span class="badge-soft badge-soft-danger"><i class="bi bi-x-circle"></i> Rechazado</span>
                                 {% elif req.estado == 'EN_COMPRAS' %}
-                                    <span class="badge-soft badge-soft-info"><i class="bi bi-cart"></i> Adquiriendo...</span>
+                                    <span class="badge-soft badge-soft-info"><i class="bi bi-cart"></i> Adquiriendo Faltante</span>
                                 {% endif %}
                             </td>
                             <td class="text-end pe-4">
-                                {% if req.estado == 'APROBADO' or req.estado == 'DESPACHADO' %}
-                                    <a href="{% url 'imprimir_pdf_ticket' req.id %}" target="_blank" class="btn btn-sm btn-outline-danger px-3 py-2 me-2" style="border-radius: 6px;" title="Ver PDF"><i class="bi bi-file-pdf"></i></a>
+                                {% if req.estado == 'APROBADO' or req.estado == 'DESPACHADO' or req.estado == 'PARCIALMENTE_DESPACHADO' %}
+                                    <a href="{% url 'imprimir_pdf_ticket' req.id %}" target="_blank" class="btn btn-sm btn-outline-danger px-3 py-2 me-2 mb-1 mb-md-0" style="border-radius: 6px;" title="Ver PDF"><i class="bi bi-file-pdf"></i></a>
                                 {% endif %}
                                 <a href="{% url 'añadir_materiales' req.id %}" class="btn btn-sm btn-outline-secondary text-white border-secondary px-4 py-2 shadow-sm" style="border-radius: 6px;">
                                     <i class="bi bi-eye"></i> <span class="d-none d-md-inline ms-1">Detalle</span>
@@ -506,8 +532,8 @@
                         {% empty %}
                         <tr>
                             <td colspan="4" class="text-center py-5">
-                                <i class="bi bi-folder2-open text-muted" style="font-size: 3rem;"></i>
-                                <h5 class="mt-3" style="font-family: var(--font-display); color: var(--pm-text-muted);">Aún no has solicitado materiales.</h5>
+                                <i class="bi bi-folder2-open text-muted" style="font-size: 3.5rem;"></i>
+                                <h5 class="mt-3" style="font-family: var(--font-display); color: var(--pm-text-muted); letter-spacing: 1px;">Aún no has solicitado materiales.</h5>
                             </td>
                         </tr>
                         {% endfor %}
