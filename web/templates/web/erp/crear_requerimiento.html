@@ -1,48 +1,76 @@
 {% extends 'web/base.html' %}
 
 {% block content %}
-<div class="container py-5" style="margin-top: 80px;">
+<div class="container py-4 py-md-5" style="margin-top: 80px;">
     
     <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="mb-4">
-                <a href="{% url 'dashboard_erp' %}" class="text-decoration-none text-secondary">
-                    &larr; Volver al Panel
+        <div class="col-12 col-md-10 col-lg-8">
+            
+            <!-- Botón de regreso responsivo -->
+            <div class="mb-3">
+                <a href="{% url 'dashboard_erp' %}" class="text-decoration-none text-secondary fw-bold">
+                    <i class="bi bi-arrow-left-circle me-1"></i> Volver al Panel
                 </a>
             </div>
 
-            <div class="card shadow-lg border-0 rounded-4">
-                <div class="card-header bg-dark text-white p-4 rounded-top-4">
-                    <h3 class="mb-0">Paso 1: Información del Ticket</h3>
-                    <p class="mb-0 text-light opacity-75 small">Selecciona el proyecto al que irán destinados los materiales.</p>
+            <div class="card shadow border-0 rounded-4">
+                <!-- Cabecera -->
+                <div class="card-header bg-dark text-white p-3 p-md-4 rounded-top-4 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-1 fw-bold"><i class="bi bi-ticket-detailed text-warning me-2"></i>Nuevo Ticket</h4>
+                        <p class="mb-0 text-light opacity-75 small">Paso 1: Información General</p>
+                    </div>
+                    <!-- Indicador visual de pasos -->
+                    <span class="badge bg-warning text-dark rounded-pill fs-6 px-3 py-2 d-none d-sm-block shadow-sm">
+                        1 / 2
+                    </span>
                 </div>
                 
-                <div class="card-body p-5">
-                    <form method="POST" novalidate>
+                <div class="card-body p-4 p-md-5 bg-light rounded-bottom-4">
+                    <form method="POST" class="needs-validation" novalidate>
                         {% csrf_token %}
                         
-                        <div class="mb-4">
-                            <label class="form-label fw-bold">Proyecto Destino <span class="text-danger">*</span></label>
-                            {{ form.proyecto }}
-                            {% if form.proyecto.errors %}
-                                <div class="text-danger small mt-1">{{ form.proyecto.errors }}</div>
-                            {% endif %}
+                        <!-- Fila para Proyecto y Prioridad (Lado a lado en PC, Apilados en Móvil) -->
+                        <div class="row g-3 mb-4">
+                            <!-- Proyecto -->
+                            <div class="col-12 col-md-7">
+                                <label class="form-label fw-bold text-dark small text-uppercase">Proyecto Destino <span class="text-danger">*</span></label>
+                                {{ form.proyecto }}
+                                {% if form.proyecto.errors %}
+                                    <div class="text-danger small mt-1 fw-bold"><i class="bi bi-exclamation-triangle"></i> {{ form.proyecto.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Prioridad (AÑADIDO) -->
+                            <div class="col-12 col-md-5">
+                                <label class="form-label fw-bold text-dark small text-uppercase">Nivel de Prioridad <span class="text-danger">*</span></label>
+                                {{ form.prioridad }}
+                                {% if form.prioridad.errors %}
+                                    <div class="text-danger small mt-1 fw-bold"><i class="bi bi-exclamation-triangle"></i> {{ form.prioridad.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
                         </div>
 
+                        <!-- Observaciones -->
                         <div class="mb-4">
-                            <label class="form-label fw-bold">Observaciones / Motivo <span class="text-muted fw-normal">(Opcional)</span></label>
+                            <label class="form-label fw-bold text-dark small text-uppercase">Observaciones / Motivo <span class="text-muted fw-normal text-lowercase">(Opcional)</span></label>
                             {{ form.observaciones }}
-                            <div class="form-text">Ej: Materiales urgentes para el montaje de la cubierta en el bloque B.</div>
+                            {% if form.observaciones.errors %}
+                                <div class="text-danger small mt-1 fw-bold"><i class="bi bi-exclamation-triangle"></i> {{ form.observaciones.errors|striptags }}</div>
+                            {% endif %}
+                            <div class="form-text small" style="font-size: 0.75rem;">Ej: Materiales urgentes para el montaje de la cubierta en el bloque B.</div>
                         </div>
 
+                        <!-- Botonera -->
                         <div class="d-grid mt-5">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                Generar Folio y Continuar &rarr;
+                            <button type="submit" class="btn btn-primary btn-lg fw-bold shadow-sm d-flex justify-content-center align-items-center gap-2">
+                                Generar Folio y Continuar <i class="bi bi-arrow-right-circle fs-5"></i>
                             </button>
                         </div>
                     </form>
                 </div>
             </div>
+            
         </div>
     </div>
 </div>

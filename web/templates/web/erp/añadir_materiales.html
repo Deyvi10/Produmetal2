@@ -1,124 +1,118 @@
 {% extends 'web/base.html' %}
 
 {% block content %}
-<div class="container py-5" style="margin-top: 80px;">
-
-    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
-        <div>
-            <a href="{% url 'dashboard_erp' %}" class="text-decoration-none text-secondary small d-block mb-2">&larr; Volver al Panel</a>
-            <h2 class="fw-bold text-dark mb-0">Ticket: {{ requerimiento.folio }}</h2>
-            <span class="badge bg-secondary mt-1">Proyecto: {{ requerimiento.proyecto.nombre }}</span>
-        </div>
-        <div class="text-end">
-            <p class="mb-0 text-muted small">Estado actual</p>
-            <h5 class="mb-0 fw-bold text-warning">{{ requerimiento.get_estado_display }}</h5>
+<div class="container py-4 py-md-5" style="margin-top: 80px;">
+    
+    <!-- Encabezado y Progreso -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+                <div>
+                    <h4 class="fw-bold text-dark mb-1">
+                        <i class="bi bi-cart-plus text-primary me-2"></i>Paso 2: Añadir Materiales
+                    </h4>
+                    <p class="text-muted small mb-0">Ticket: <span class="fw-bold text-dark">{{ ticket.folio }}</span> | Proyecto: {{ ticket.proyecto.nombre }}</p>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-{{ ticket.prioridad|lower }} text-dark border px-3 py-2 shadow-sm">
+                        Prioridad: {{ ticket.get_prioridad_display }}
+                    </span>
+                    <span class="badge bg-success text-white rounded-pill fs-6 px-3 py-2 d-none d-sm-block shadow-sm">
+                        2 / 2
+                    </span>
+                </div>
+            </div>
         </div>
     </div>
 
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        {% endfor %}
-    {% endif %}
-
-    {% if requerimiento.solicitudcompra_set.first %}
-        <div class="mb-4">
-            <h6 class="text-muted fw-bold mb-3"><i class="bi bi-cart3"></i> Actualizaciones de Compras</h6>
-            {% for cotizacion in requerimiento.solicitudcompra_set.first.items_cotizados.all %}
-                
-                {% if cotizacion.estado_aprobacion == 'RECHAZADO' %}
-                    <div class="alert alert-danger shadow-sm border-0 border-start border-4 border-danger d-flex align-items-center mb-2">
-                        <div class="me-3 fs-3 text-danger">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-x-circle-fill" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293z"/></svg>
-                        </div>
-                        <div>
-                            <strong class="text-danger d-block">Material Rechazado: {{ cotizacion.material.nombre }}</strong>
-                            <span class="text-dark small"><strong>Motivo del Administrador/Compras:</strong> {{ cotizacion.motivo_rechazo }}</span>
-                        </div>
-                    </div>
-                
-                {% elif cotizacion.estado_aprobacion == 'APROBADO' %}
-                    <div class="alert alert-success shadow-sm border-0 border-start border-4 border-success d-flex align-items-center mb-2">
-                        <div class="me-3 fs-3 text-success">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-check-circle-fill" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/></svg>
-                        </div>
-                        <div>
-                            <strong class="text-success d-block">Material en proceso de Compra: {{ cotizacion.material.nombre }}</strong>
-                            <span class="text-dark small">A la espera de que el proveedor entregue a bodega para despacharte.</span>
-                        </div>
-                    </div>
-                {% endif %}
-                
-            {% endfor %}
-        </div>
-    {% endif %}
     <div class="row g-4">
-        <div class="col-lg-4">
-            <div class="card shadow-sm border-0 bg-light rounded-3">
-                <div class="card-body p-4">
-                    <h5 class="fw-bold mb-3 border-bottom pb-2">Añadir Material</h5>
-                    
-                    {% if requerimiento.estado == 'PENDIENTE' %}
-                        <form method="POST">
-                            {% csrf_token %}
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold text-secondary small">Buscar Material en Catálogo</label>
-                                {{ form.material }}
-                            </div>
-                            <div class="mb-4">
-                                <label class="form-label fw-semibold text-secondary small">Cantidad Solicitada</label>
-                                {{ form.cantidad_solicitada }}
-                            </div>
-                            <div class="d-grid">
-                                <button type="submit" class="btn btn-dark">+ Agregar al Ticket</button>
-                            </div>
-                        </form>
-                    {% else %}
-                        <div class="alert alert-info border-0 text-center">
-                            <small>Este ticket ya fue procesado o aprobado. No se pueden añadir más materiales.</small>
+        <!-- COLUMNA IZQUIERDA: Formulario para Agregar -->
+        <div class="col-12 col-lg-5 col-xl-4">
+            <!-- sticky-lg-top mantiene esta tarjeta fija en PC al hacer scroll -->
+            <div class="card border-0 shadow-sm rounded-4 sticky-lg-top" style="top: 100px;">
+                <div class="card-header bg-dark text-white p-3 rounded-top-4">
+                    <h6 class="mb-0 fw-bold"><i class="bi bi-search me-1"></i> Buscar y Agregar</h6>
+                </div>
+                
+                <div class="card-body p-4 bg-light rounded-bottom-4">
+                    <form action="{% url 'agregar_item_requerimiento' ticket.id %}" method="POST" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-dark small text-uppercase">Seleccionar Material <span class="text-danger">*</span></label>
+                            <select name="material_id" class="form-select form-select-lg border-2 shadow-sm" required>
+                                <option value="" disabled selected>Escribe o selecciona...</option>
+                                {% for material in materiales_disponibles %}
+                                    <option value="{{ material.id }}">{{ material.nombre }} ({{ material.sku }})</option>
+                                {% endfor %}
+                            </select>
                         </div>
-                    {% endif %}
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-dark small text-uppercase">Cantidad Requerida <span class="text-danger">*</span></label>
+                            <div class="input-group input-group-lg shadow-sm">
+                                <input type="number" name="cantidad_solicitada" class="form-control text-center fw-bold text-primary border-2" min="0.01" step="0.01" placeholder="0.00" required>
+                                <span class="input-group-text bg-white border-2 text-muted">Unid.</span>
+                            </div>
+                        </div>
+
+                        <div class="d-grid mt-2">
+                            <button type="submit" class="btn btn-primary btn-lg fw-bold shadow-sm d-flex justify-content-center align-items-center gap-2">
+                                <i class="bi bi-plus-circle fs-5"></i> Añadir a la Lista
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
 
-        <div class="col-lg-8">
-            <div class="card shadow-sm border-0 rounded-3">
-                <div class="card-header bg-white py-3">
-                    <h5 class="fw-bold mb-0">Materiales en esta solicitud</h5>
+        <!-- COLUMNA DERECHA: Lista de Materiales Añadidos -->
+        <div class="col-12 col-lg-7 col-xl-8">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-header bg-white border-bottom p-3 d-flex justify-content-between align-items-center rounded-top-4">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-list-check me-1"></i> Resumen del Pedido</h6>
+                    <span class="badge bg-primary rounded-pill px-3 py-1">{{ items.count }} Ítems</span>
                 </div>
+                
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light text-muted small">
+                        <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
+                            <thead class="table-light text-secondary small text-uppercase">
                                 <tr>
-                                    <th class="px-4 py-2">Código</th>
-                                    <th class="py-2">Material</th>
-                                    <th class="py-2 text-center">Cant. Solicitada</th>
-                                    <th class="px-4 py-2 text-center">Cant. Despachada</th>
+                                    <th class="ps-4">Material</th>
+                                    <th class="text-center" style="width: 120px;">Cantidad</th>
+                                    <th class="text-end pe-4" style="width: 80px;">Quitar</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for item in detalles %}
+                                {% for item in items %}
                                 <tr>
-                                    <td class="px-4"><span class="badge bg-light text-dark border">{{ item.material.sku }}</span></td>
-                                    <td class="fw-bold">{{ item.material.nombre }}</td>
-                                    <td class="text-center fs-5">{{ item.cantidad_solicitada }}</td>
-                                    <td class="px-4 text-center">
-                                        {% if item.cantidad_despachada > 0 %}
-                                            <span class="text-success fw-bold">{{ item.cantidad_despachada }}</span>
-                                        {% else %}
-                                            <span class="text-muted">-</span>
-                                        {% endif %}
+                                    <td class="ps-4 py-3">
+                                        <div class="fw-bold text-dark">{{ item.material.nombre }}</div>
+                                        <div class="small text-muted">SKU: {{ item.material.sku }}</div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-primary-subtle text-primary fs-6 px-3 py-2 rounded-pill border border-primary-subtle">
+                                            {{ item.cantidad_solicitada }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <form action="{% url 'eliminar_item_requerimiento' item.id %}" method="POST" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger shadow-sm rounded-circle" style="width: 35px; height: 35px;" onclick="return confirm('¿Eliminar este material del pedido?');">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
+                                        </form>
                                     </td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="4" class="text-center py-5 text-muted">
-                                        <p class="mb-0">Aún no has agregado materiales a este ticket.</p>
+                                    <td colspan="3" class="text-center py-5 text-muted">
+                                        <div class="d-inline-flex align-items-center justify-content-center bg-light rounded-circle mb-3" style="width: 80px; height: 80px;">
+                                            <i class="bi bi-box-seam fs-1 text-secondary opacity-50"></i>
+                                        </div>
+                                        <h6 class="fw-bold text-dark">Tu lista está vacía</h6>
+                                        <p class="small mb-0">Usa el formulario para buscar y agregar los materiales que necesitas.</p>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -126,13 +120,16 @@
                         </table>
                     </div>
                 </div>
-                {% if detalles and requerimiento.estado == 'PENDIENTE' %}
-                <div class="card-footer bg-white p-3 text-end">
-                    <a href="{% url 'dashboard_erp' %}" class="btn btn-success px-4">
-                        Finalizar y Enviar a Revisión
-                    </a>
+                
+                <!-- Botón Final de Envío (Bloqueado si no hay ítems) -->
+                <div class="card-footer bg-light border-top-0 p-3 p-md-4 rounded-bottom-4">
+                    <form action="{% url 'enviar_requerimiento_revision' ticket.id %}" method="POST" class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-success btn-lg fw-bold px-4 shadow-sm" {% if not items %}disabled{% endif %} onclick="return confirm('Una vez enviado, no podrás modificar los materiales solicitados. ¿Deseas confirmar el envío a revisión?');">
+                            <i class="bi bi-send-check me-2"></i> Confirmar y Enviar a Revisión
+                        </button>
+                    </form>
                 </div>
-                {% endif %}
             </div>
         </div>
     </div>

@@ -2,135 +2,273 @@
 {% load static %}
 
 {% block content %}
+<style>
+    /* =========================================
+       ESTILOS PREMIUM - PÁGINA DE INICIO
+       ========================================= */
+    :root {
+        --pm-amber: #e6a817;
+        --pm-amber-hover: #f3b92f;
+        --pm-dark: #111111;
+    }
 
-<header class="position-relative w-100 vh-100 d-flex align-items-center justify-content-center text-center text-white" 
-        style="background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.95)), 
-                    #111111 /* Color de fondo oscuro para rellenar espacios alrededor del logo */
-                    url('{% static 'web/img/logo.jpg' %}') no-repeat center center/contain;">
+    /* Animación del fondo del Hero (Respiración/Zoom Lento) */
+    .hero-section {
+        position: relative;
+        overflow: hidden;
+        background-color: var(--pm-dark);
+    }
+    .hero-bg {
+        position: absolute;
+        top: -5%; left: -5%; width: 110%; height: 110%;
+        background: url('{% static 'web/img/logo.jpg' %}') no-repeat center center/cover;
+        filter: brightness(0.4) contrast(1.1);
+        animation: zoomBg 20s infinite alternate linear;
+        z-index: 0;
+    }
+    @keyframes zoomBg {
+        0% { transform: scale(1); }
+        100% { transform: scale(1.08); }
+    }
+    .hero-content { position: relative; z-index: 10; }
+
+    /* Efectos Hover Premium para Tarjetas */
+    .card-lift {
+        transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1), box-shadow 0.4s ease;
+        border-radius: 1.2rem;
+        overflow: hidden;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+    .card-lift:hover {
+        transform: translateY(-12px);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.12) !important;
+        border-color: rgba(230,168,23,0.3);
+    }
     
-    <div class="container position-relative" style="z-index: 10;">
-        <h1 class="display-1 fw-bold text-uppercase mb-3" data-aos="fade-down" style="letter-spacing: 2px;">
+    /* Iconos Interactivos */
+    .icon-box {
+        width: 90px; height: 90px;
+        display: inline-flex; align-items: center; justify-content: center;
+        border-radius: 50%;
+        background: rgba(230, 168, 23, 0.1);
+        color: var(--pm-amber);
+        transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .card-lift:hover .icon-box {
+        background: var(--pm-amber);
+        color: #fff;
+        transform: scale(1.15) rotate(8deg);
+        box-shadow: 0 10px 20px rgba(230,168,23,0.3);
+    }
+
+    /* Animación del texto VER GALERÍA */
+    .view-more-text { transition: letter-spacing 0.3s ease, color 0.3s ease; }
+    .card-lift:hover .view-more-text { letter-spacing: 2px; color: var(--pm-amber-hover) !important; }
+
+    /* BOTÓN SECRETO DE LOGIN (ESQUINA INFERIOR IZQUIERDA) */
+    .btn-secret {
+        position: fixed;
+        bottom: 20px;
+        left: 20px; /* Cambiado a la izquierda */
+        font-size: 1.2rem;
+        color: #000;
+        opacity: 0.08;
+        z-index: 9999;
+        transition: all 0.3s ease;
+        padding: 10px;
+        border-radius: 50%;
+        text-decoration: none;
+    }
+    .btn-secret:hover {
+        opacity: 1;
+        color: var(--pm-amber);
+        background: rgba(0,0,0,0.8);
+        transform: scale(1.1);
+    }
+    
+    /* Stats Flotantes */
+    .stats-box {
+        background: rgba(255,255,255,0.95);
+        backdrop-filter: blur(10px);
+        border-bottom: 4px solid var(--pm-amber);
+        transition: transform 0.3s ease;
+    }
+    .stats-box:hover { transform: translateY(-5px); }
+
+    /* Botón WhatsApp Pulso */
+    .btn-whatsapp {
+        background: #25D366; 
+        border: none; 
+        color: white !important;
+        transition: all 0.3s;
+        box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.7);
+        animation: pulseWpp 2s infinite;
+        text-decoration: none;
+    }
+    .btn-whatsapp:hover { 
+        background: #1ebe57; 
+        transform: scale(1.05); 
+    }
+    @keyframes pulseWpp {
+        0% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.7); }
+        70% { box-shadow: 0 0 0 15px rgba(37, 211, 102, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0); }
+    }
+</style>
+
+<header class="hero-section w-100 vh-100 d-flex align-items-center justify-content-center text-center text-white">
+    <div class="hero-bg"></div>
+    
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="background: linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(17,17,17,0.9) 100%); z-index: 1;"></div>
+    
+    <div class="container hero-content">
+        <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fw-bold mb-4" data-aos="fade-down" data-aos-delay="100" style="letter-spacing: 1px;">INGENIERÍA & CONSTRUCCIÓN</span>
+        
+        <h1 class="display-1 fw-bold text-uppercase mb-3" data-aos="fade-down" data-aos-delay="300" style="letter-spacing: 3px; text-shadow: 0 10px 20px rgba(0,0,0,0.5);">
             ProduMetal <span class="text-warning">CM</span>
         </h1>
         
-        <p class="lead fs-3 mb-5 fw-light" data-aos="fade-up" data-aos-delay="200">
-            Construcciones metálicas hechas para durar, <br> <span class="fw-bold text-warning">superando tus expectativas.</span>
+        <p class="lead fs-3 mb-5 fw-light mx-auto" data-aos="fade-up" data-aos-delay="500" style="max-width: 800px;">
+            Estructuras de acero hechas para desafiar el tiempo. <br> <span class="fw-bold text-warning">Innovación, precisión y resistencia.</span>
         </p>
 
-        <div data-aos="zoom-in" data-aos-delay="400">
-            <a href="#servicios-preview" class="btn btn-outline-light btn-lg me-3 px-4 fw-bold rounded-pill">Nuestros Servicios</a>
-            <a href="{% url 'contacto' %}" class="btn btn-warning btn-lg px-4 fw-bold text-dark rounded-pill shadow">Cotizar Ahora</a>
+        <div data-aos="zoom-in" data-aos-delay="700" class="d-flex flex-column flex-sm-row justify-content-center gap-3">
+            <a href="#servicios-preview" class="btn btn-outline-light btn-lg px-5 py-3 fw-bold rounded-pill" style="letter-spacing: 1px;">Explorar Servicios</a>
+            <a href="{% url 'contacto' %}" class="btn btn-warning btn-lg px-5 py-3 fw-bold text-dark rounded-pill shadow-lg" style="letter-spacing: 1px;">Solicitar Cotización</a>
         </div>
     </div>
 
-    <div class="position-absolute bottom-0 start-50 translate-middle-x mb-4 animate-bounce" style="z-index: 10;">
-        <a href="#intro" class="text-white fs-1"><i class="bi bi-chevron-down"></i></a>
+    <div class="position-absolute bottom-0 start-50 translate-middle-x mb-4 animate-bounce hero-content">
+        <a href="#intro" class="text-white fs-2 opacity-75 hover-opacity-100 transition-2s"><i class="bi bi-chevron-down"></i></a>
     </div>
 </header>
 
-<section id="intro" class="py-5 bg-white">
-    <div class="container py-4">
+<section id="intro" class="py-5 bg-white position-relative" style="z-index: 20;">
+    <div class="container py-5">
         <div class="row align-items-center">
-            <div class="col-lg-6 mb-4 mb-lg-0" data-aos="fade-right">
-                <h2 class="fw-bold text-dark border-start border-5 border-warning ps-3">Gestión, Diseño y Fabricación</h2>
-                <p class="text-muted mt-3 lead">
-                    Con <strong>8 años de experiencia</strong> en estructuras metálicas y más de <strong>20 años</strong> en carpintería metálica.
+            
+            <div class="col-lg-6 mb-5 mb-lg-0 pe-lg-5" data-aos="fade-right">
+                <h6 class="text-warning fw-bold text-uppercase mb-2" style="letter-spacing: 2px;">Nuestra Trayectoria</h6>
+                <h2 class="display-5 fw-bold text-dark mb-4">Maestría en <br>Fabricación Metálica</h2>
+                <div class="border-start border-4 border-warning ps-4 mb-4">
+                    <p class="text-muted fs-5 mb-0" style="line-height: 1.8;">
+                        En ProduMetal CM, combinamos <strong>8 años de innovación</strong> en ingeniería estructural con más de <strong>20 años de artesanía</strong> en carpintería metálica. 
+                    </p>
+                </div>
+                <p class="text-muted mb-4">
+                    Diseñamos, calculamos y ejecutamos proyectos industriales, comerciales y residenciales a nivel nacional, garantizando normativas de seguridad y acabados de primera categoría.
                 </p>
-                <p class="text-muted">
-                    En ProduMetal CM nos hemos establecido como una opción confiable e innovadora para proyectos residenciales, industriales y comerciales en todo el Ecuador.
-                </p>
-                <a href="{% url 'nosotros' %}" class="btn btn-link text-warning fw-bold text-decoration-none p-0">Leer más sobre nosotros <i class="bi bi-arrow-right"></i></a>
+                <a href="{% url 'nosotros' %}" class="btn btn-link text-dark fw-bold text-decoration-none p-0 d-inline-flex align-items-center" style="font-size: 1.1rem; gap: 8px;">
+                    Conocer la empresa <i class="bi bi-arrow-right text-warning fs-4"></i>
+                </a>
             </div>
-            <div class="col-lg-6 text-center" data-aos="fade-left">
-                <div class="row g-3">
-                    <div class="col-6">
-                        <div class="p-4 bg-light rounded shadow-sm border">
-                            <h3 class="display-4 fw-bold text-primary-custom mb-0">+20</h3>
-                            <small class="text-uppercase fw-bold text-muted">Años en Carpintería Metálica</small>
+            
+            <div class="col-lg-6" data-aos="fade-left" data-aos-delay="200">
+                <div class="row g-4">
+                    <div class="col-sm-6">
+                        <div class="stats-box p-4 rounded-4 shadow-sm text-center h-100 d-flex flex-column justify-content-center">
+                            <i class="bi bi-award text-warning display-4 mb-2"></i>
+                            <h3 class="display-4 fw-bold text-dark mb-0">+20</h3>
+                            <span class="text-uppercase fw-bold text-muted small" style="letter-spacing: 1px;">Años de Experiencia</span>
                         </div>
                     </div>
-                    <div class="col-6">
-                        <div class="p-4 bg-light rounded shadow-sm border">
-                            <h3 class="display-4 fw-bold text-primary-custom mb-0">100%</h3>
-                            <small class="text-uppercase fw-bold text-muted">Clientes Satisfechos</small>
+                    <div class="col-sm-6">
+                        <div class="stats-box p-4 rounded-4 shadow-sm text-center h-100 d-flex flex-column justify-content-center mt-sm-4">
+                            <i class="bi bi-shield-check text-warning display-4 mb-2"></i>
+                            <h3 class="display-4 fw-bold text-dark mb-0">100%</h3>
+                            <span class="text-uppercase fw-bold text-muted small" style="letter-spacing: 1px;">Proyectos Entregados</span>
                         </div>
                     </div>
                 </div>
             </div>
+
         </div>
     </div>
 </section>
 
-<section id="servicios-preview" class="py-5 bg-light">
-    <div class="container py-4">
-        <div class="text-center mb-5" data-aos="fade-up">
-            <h2 class="fw-bold text-uppercase display-6">Nuestras Especialidades</h2>
-            <div style="width: 80px; height: 4px; background-color: #ffc107; margin: 15px auto;"></div>
-            <p class="text-muted w-75 mx-auto">Haz clic en cada especialidad para ver más información y nuestra galería de fotos.</p>
+<section id="servicios-preview" class="py-5" style="background-color: #f8f9fa;">
+    <div class="container py-5">
+        
+        <div class="text-center mb-5 pb-3" data-aos="fade-up">
+            <h6 class="text-warning fw-bold text-uppercase mb-2" style="letter-spacing: 2px;">Áreas de Trabajo</h6>
+            <h2 class="fw-bold text-uppercase display-5 text-dark">Nuestras Especialidades</h2>
+            <div style="width: 60px; height: 5px; background-color: var(--pm-amber); margin: 20px auto; border-radius: 5px;"></div>
+            <p class="text-muted fs-5 w-lg-50 mx-auto">Selecciona una de nuestras áreas para descubrir detalles técnicos y proyectos realizados.</p>
         </div>
 
-        <div class="row g-4">
+        <div class="row g-4 justify-content-center">
             
-            <div class="col-md-4" data-aos="fade-up" data-aos-delay="100">
+            <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="100">
                 <a href="{% url 'detalle_especialidad' 'estructuras' %}" class="text-decoration-none text-dark">
-                    <div class="card h-100 shadow border-0 hover-top">
+                    <div class="card card-lift h-100 shadow-sm bg-white">
                         <div class="card-body text-center p-5">
-                            <div class="mb-4">
-                                <i class="bi bi-building-gear display-1 text-primary-custom"></i>
+                            <div class="icon-box mb-4">
+                                <i class="bi bi-building-gear display-4"></i>
                             </div>
-                            <h4 class="card-title fw-bold">Estructuras Metálicas</h4>
-                            <p class="card-text text-muted">Fabricación y montaje de galpones, cubiertas, techos galvalume y losa colaborante.</p>
-                            <p class="mt-3 text-warning fw-bold small">VER GALERÍA <i class="bi bi-arrow-right"></i></p>
+                            <h4 class="card-title fw-bold mb-3">Estructuras Metálicas</h4>
+                            <p class="card-text text-muted mb-4">Cálculo, fabricación y montaje de galpones industriales, cubiertas pesadas y losas colaborantes.</p>
+                            <span class="text-warning fw-bold small view-more-text">EXPLORAR ÁREA <i class="bi bi-arrow-right"></i></span>
                         </div>
                     </div>
                 </a>
             </div>
 
-            <div class="col-md-4" data-aos="fade-up" data-aos-delay="200">
+            <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="200">
                 <a href="{% url 'detalle_especialidad' 'carpinteria' %}" class="text-decoration-none text-dark">
-                    <div class="card h-100 shadow border-0 hover-top border-bottom border-5 border-warning">
+                    <div class="card card-lift h-100 shadow-sm bg-white">
                         <div class="card-body text-center p-5">
-                            <div class="mb-4">
-                                <i class="bi bi-tools display-1 text-warning"></i>
+                            <div class="icon-box mb-4">
+                                <i class="bi bi-tools display-4"></i>
                             </div>
-                            <h4 class="card-title fw-bold">Carpintería Metálica</h4>
-                            <p class="card-text text-muted">Diseños a medida en hierro y acero para acabados residenciales y comerciales.</p>
-                            <p class="mt-3 text-warning fw-bold small">VER GALERÍA <i class="bi bi-arrow-right"></i></p>
+                            <h4 class="card-title fw-bold mb-3">Carpintería Metálica</h4>
+                            <p class="card-text text-muted mb-4">Diseños arquitectónicos a medida: pasamanos, cerramientos, puertas y mobiliario en hierro/acero.</p>
+                            <span class="text-warning fw-bold small view-more-text">EXPLORAR ÁREA <i class="bi bi-arrow-right"></i></span>
                         </div>
                     </div>
                 </a>
             </div>
 
-            <div class="col-md-4" data-aos="fade-up" data-aos-delay="300">
+            <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="300">
                 <a href="{% url 'detalle_especialidad' 'ingenieria' %}" class="text-decoration-none text-dark">
-                    <div class="card h-100 shadow border-0 hover-top">
+                    <div class="card card-lift h-100 shadow-sm bg-white">
                         <div class="card-body text-center p-5">
-                            <div class="mb-4">
-                                <i class="bi bi-clipboard-data display-1 text-primary-custom"></i>
+                            <div class="icon-box mb-4">
+                                <i class="bi bi-bezier2 display-4"></i>
                             </div>
-                            <h4 class="card-title fw-bold">Ingeniería y Diseño</h4>
-                            <p class="card-text text-muted">Gestión completa del proyecto, análisis estructural y elaboración de planos.</p>
-                            <p class="mt-3 text-warning fw-bold small">VER GALERÍA <i class="bi bi-arrow-right"></i></p>
+                            <h4 class="card-title fw-bold mb-3">Ingeniería y Diseño</h4>
+                            <p class="card-text text-muted mb-4">Modelado 3D, elaboración de planos estructurales, optimización de materiales y dirección de obra.</p>
+                            <span class="text-warning fw-bold small view-more-text">EXPLORAR ÁREA <i class="bi bi-arrow-right"></i></span>
                         </div>
                     </div>
                 </a>
             </div>
+
         </div>
 
-        <div class="text-center mt-5">
-            <a href="{% url 'servicios' %}" class="btn btn-outline-dark px-5 py-2 fw-bold">Ver Todos los Servicios</a>
+        <div class="text-center mt-5 pt-4" data-aos="zoom-in">
+            <a href="{% url 'servicios' %}" class="btn btn-outline-dark btn-lg px-5 py-3 fw-bold rounded-pill" style="letter-spacing: 1px;">Ver Catálogo Completo de Servicios</a>
         </div>
     </div>
 </section>
 
-<section class="py-5 bg-dark text-white position-relative overflow-hidden">
-    <div class="container text-center position-relative z-1">
-        <h2 class="fw-bold mb-3" data-aos="zoom-in">¿Tienes un proyecto en mente?</h2>
-        <p class="lead mb-4 text-white-50">Nuestro equipo de ingenieros y soldadores calificados está listo para asesorarte.</p>
-        <a href="https://wa.me/593982661701" target="_blank" class="btn btn-success btn-lg fw-bold px-5 rounded-pill shadow-lg">
-            <i class="bi bi-whatsapp me-2"></i> Chatea con Nosotros
-        </a>
+<section class="py-5 text-white position-relative" style="background: linear-gradient(135deg, #111111 0%, #2a2a2a 100%);">
+    <div class="container text-center py-5 position-relative z-1">
+        <h2 class="display-5 fw-bold mb-3" data-aos="zoom-in">¿Listo para materializar tu proyecto?</h2>
+        <p class="lead mb-5 text-white-50 mx-auto" style="max-width: 600px;">
+            Nuestros ingenieros están disponibles para brindarte asesoría técnica y cotizaciones sin compromiso.
+        </p>
+        
+        <div data-aos="fade-up" data-aos-delay="200" class="mt-4">
+            <a href="https://wa.me/593982661701" target="_blank" class="btn btn-whatsapp btn-lg fw-bold px-4 py-3 rounded-pill d-inline-flex align-items-center justify-content-center">
+                <i class="bi bi-whatsapp me-2 fs-4"></i> Contactar por WhatsApp
+            </a>
+        </div>
+        
     </div>
 </section>
+
+<a href="{% url 'login' %}" class="btn-secret" title="Acceso Interno">
+    <i class="bi bi-shield-lock-fill"></i>
+</a>
 
 {% endblock %}

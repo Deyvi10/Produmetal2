@@ -212,15 +212,15 @@
 
     {% if cotizaciones_pendientes %}
     <div class="card card-minimal mb-5 overflow-hidden fade-up delay-2" style="border-left: 4px solid var(--pm-green);">
-        <div class="card-body p-4 p-md-5 d-flex flex-column flex-md-row justify-content-between align-items-center" style="background: radial-gradient(circle at right, rgba(35,134,54,0.15) 0%, transparent 70%);">
-            <div class="d-flex align-items-center mb-4 mb-md-0">
-                <i class="bi bi-currency-dollar text-success me-4" style="font-size: 3rem;"></i>
+        <div class="card-body p-4 p-md-5 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3" style="background: radial-gradient(circle at right, rgba(35,134,54,0.15) 0%, transparent 70%);">
+            <div class="d-flex align-items-center flex-column flex-md-row text-center text-md-start mb-2 mb-md-0">
+                <i class="bi bi-currency-dollar text-success fs-1 mb-2 mb-md-0 me-md-4"></i>
                 <div>
                     <h4 class="mb-1 fw-bold title-erp text-white">Aprobación Gerencial Pendiente</h4>
                     <div class="text-muted fs-6">El departamento de Compras ha enviado <strong class="text-white">{{ cotizaciones_pendientes.count }} cotización(es)</strong> para la revisión final de costos.</div>
                 </div>
             </div>
-            <a href="{% url 'revisar_cotizacion' cotizaciones_pendientes.first.id %}" class="btn btn-lg fw-bold px-5 shadow-lg" style="font-family: var(--font-display); letter-spacing: 0.5px; background-color: var(--pm-green); border: none; color: white; border-radius: 8px;">
+            <a href="{% url 'revisar_cotizacion' cotizaciones_pendientes.first.id %}" class="btn btn-lg fw-bold px-5 shadow-lg w-100 w-md-auto text-nowrap" style="font-family: var(--font-display); letter-spacing: 0.5px; background-color: var(--pm-green); border: none; color: white; border-radius: 8px;">
                 <i class="bi bi-search me-2"></i> Auditar Costos
             </a>
         </div>
@@ -248,13 +248,13 @@
                             <tbody>
                                 {% for req in tickets_pendientes %}
                                 <tr>
-                                    <td class="ps-4">
+                                    <td class="ps-4 text-nowrap">
                                         <div class="fw-bold fs-6" style="color: var(--pm-amber);">{{ req.folio }}</div>
                                         <div class="text-muted small mt-1"><i class="bi bi-clock me-1"></i>{{ req.fecha_solicitud|date:"d M, Y" }}</div>
                                     </td>
                                     <td>
                                         <div class="d-flex align-items-center">
-                                            <div class="rounded-circle d-flex justify-content-center align-items-center me-3 text-white shadow-sm" style="width: 38px; height: 38px; font-size: 1rem; font-weight: bold; background: var(--pm-border);">
+                                            <div class="rounded-circle d-flex justify-content-center align-items-center me-3 text-white shadow-sm d-none d-sm-flex" style="width: 38px; height: 38px; font-size: 1rem; font-weight: bold; background: var(--pm-border);">
                                                 {{ req.solicitante.username|make_list|first|upper }}
                                             </div>
                                             <div>
@@ -263,11 +263,11 @@
                                             </div>
                                         </div>
                                     </td>
-                                    <td><span class="badge-soft badge-soft-secondary"><i class="bi bi-geo-alt"></i> {{ req.proyecto.centro_costos }}</span></td>
+                                    <td><span class="badge-soft badge-soft-secondary"><i class="bi bi-geo-alt me-1"></i><span class="d-inline-block text-truncate" style="max-width: 120px;">{{ req.proyecto.centro_costos }}</span></span></td>
                                     
                                     <td class="text-end pe-4">
-                                        <a href="{% url 'revisar_requerimiento_items' req.id %}" class="btn btn-sm btn-pm-amber shadow-sm px-4 py-2 text-uppercase" style="font-family: var(--font-display); letter-spacing: 0.5px;">
-                                            <i class="bi bi-ui-checks-grid me-1"></i> Inspeccionar
+                                        <a href="{% url 'revisar_requerimiento_items' req.id %}" class="btn btn-sm btn-pm-amber shadow-sm px-3 py-2 text-uppercase text-nowrap" style="font-family: var(--font-display); letter-spacing: 0.5px;">
+                                            <i class="bi bi-ui-checks-grid"></i> <span class="d-none d-md-inline ms-1">Inspeccionar</span>
                                         </a>
                                     </td>
                                 </tr>
@@ -308,8 +308,8 @@
                             </div>
                             <div>
                                 <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="fw-bold text-white fs-6">{{ mov.material.sku }}</span>
-                                    <span class="fw-bold px-2 py-1 rounded {% if mov.tipo == 'INGRESO' %}bg-success bg-opacity-10 text-success{% elif mov.tipo == 'SALIDA' or mov.tipo == 'VENTA' %}bg-warning bg-opacity-10 text-warning{% else %}bg-info bg-opacity-10 text-info{% endif %}" style="font-size: 0.85rem;">
+                                    <span class="fw-bold text-white fs-6 text-truncate pe-2" style="max-width: 150px;">{{ mov.material.sku }}</span>
+                                    <span class="fw-bold px-2 py-1 rounded text-nowrap {% if mov.tipo == 'INGRESO' %}bg-success bg-opacity-10 text-success{% elif mov.tipo == 'SALIDA' or mov.tipo == 'VENTA' %}bg-warning bg-opacity-10 text-warning{% else %}bg-info bg-opacity-10 text-info{% endif %}" style="font-size: 0.85rem;">
                                         {% if mov.tipo == 'INGRESO' or mov.tipo == 'AJUSTE' and mov.cantidad > 0 %}+{% endif %}{{ mov.cantidad }}
                                     </span>
                                 </div>
@@ -379,30 +379,41 @@
         <div class="col-12 fade-up {% if alertas_stock %}delay-3{% else %}delay-2{% endif %}">
             <div class="card card-minimal">
                 <div class="card-header-custom">
-                    <h6><i class="bi bi-hammer text-info me-2 fs-5"></i> Tickets Aprobados (Listos para Despacho a Obra)</h6>
+                    <h6><i class="bi bi-hammer text-info me-2 fs-5"></i> Tickets Aprobados (Listos para Despacho)</h6>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
+                        <!-- SECCIÓN CORREGIDA: Se eliminaron los <td> huérfanos y se reestructuró la tabla -->
                         <table class="table table-modern mb-0">
                             <thead>
                                 <tr>
-                                    <th class="ps-4">Folio / Solicitante</th>
-                                    <th>Centro de Costos</th>
-                                    <th>Fecha Autorización</th>
+                                    <th class="ps-4">Folio / Fecha</th>
+                                    <th>Proyecto Destino</th>
+                                    <th>Estado</th>
                                     <th class="text-end pe-4">Despacho</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for req in tickets_por_despachar %}
                                 <tr>
-                                    <td class="ps-4">
+                                    <td class="ps-4 text-nowrap">
                                         <div class="fw-bold fs-6" style="color: var(--pm-amber);">{{ req.folio }}</div>
-                                        <div class="text-muted small mt-1">Por: <span class="text-white">{{ req.solicitante.get_full_name|default:req.solicitante.username }}</span></div>
+                                        <div class="text-muted small mt-1">{{ req.fecha_solicitud|date:"d M, Y" }}</div>
                                     </td>
-                                    <td><span class="badge-soft badge-soft-secondary"><i class="bi bi-geo-alt"></i> {{ req.proyecto.nombre }}</span></td>
-                                    <td class="text-muted">{{ req.fecha_solicitud|date:"d M, Y" }}</td>
-                                    <td class="text-end pe-4">
-                                        <a href="{% url 'imprimir_pdf_ticket' req.id %}" target="_blank" class="btn btn-sm btn-outline-danger px-3 py-2 me-2 mb-1 mb-md-0" style="border-radius: 6px;" title="Imprimir PDF"><i class="bi bi-filetype-pdf me-1"></i> Imprimir Comprobante</a>
+                                    <td>
+                                        <div class="fw-bold text-white"><i class="bi bi-geo-alt me-1 text-muted"></i>{{ req.proyecto.nombre }}</div>
+                                        <div class="text-muted small mt-1">Por: {{ req.solicitante.get_full_name|default:req.solicitante.username }}</div>
+                                    </td>
+                                    <td>
+                                        <span class="badge-soft badge-soft-success">{{ req.estado }}</span>
+                                    </td>
+                                    <td class="text-end pe-4 text-nowrap">
+                                        <a href="{% url 'imprimir_pdf_ticket' req.id %}" target="_blank" class="btn btn-sm btn-outline-secondary px-3 py-2 me-1 mb-1 mb-md-0 rounded-3" title="Imprimir Comprobante">
+                                            <i class="bi bi-printer"></i> <span class="d-none d-md-inline">PDF</span>
+                                        </a>
+                                        <a href="{% url 'despachar_requerimiento' req.id %}" class="btn btn-sm btn-success px-3 py-2 mb-1 mb-md-0 rounded-3 fw-bold shadow-sm">
+                                            <i class="bi bi-box-seam me-1"></i> <span class="d-none d-md-inline">Entregar a Obra</span>
+                                        </a>
                                     </td>
                                 </tr>
                                 {% empty %}
@@ -448,13 +459,15 @@
                                     <tr>
                                         <td class="ps-4">
                                             <div class="fw-bold fs-5 text-white mb-2">{{ solicitud.folio }}</div>
-                                            <span class="badge-soft badge-soft-warning"><i class="bi bi-search"></i> Buscando Precios</span>
+                                            <span class="badge-soft badge-soft-warning"><i class="bi bi-search me-1"></i> Buscando Precios</span>
                                         </td>
-                                        <td class="text-muted"><i class="bi bi-calendar me-1"></i> {{ solicitud.fecha_creacion|date:"d M, Y" }}</td>
-                                        <td><span class="badge-soft badge-soft-info"><i class="bi bi-tag"></i> {{ solicitud.requerimiento_origen.folio }}</span></td>
-                                        <td class="text-end pe-4">
-                                            <a href="{% url 'atender_cotizacion' solicitud.id %}" class="btn btn-pm-amber fw-bold px-4 py-2 shadow-sm" style="border-radius: 8px; font-family: var(--font-display); text-transform: uppercase;">
-                                                Subir Ofertas y PDFs <i class="bi bi-arrow-right-short fs-5 ms-1" style="vertical-align: middle;"></i>
+                                        <td class="text-muted text-nowrap"><i class="bi bi-calendar me-1"></i> {{ solicitud.fecha_creacion|date:"d M, Y" }}</td>
+                                        <td><span class="badge-soft badge-soft-info"><i class="bi bi-tag me-1"></i> {{ solicitud.requerimiento_origen.folio }}</span></td>
+                                        <td class="text-end pe-4 text-nowrap">
+                                            <a href="{% url 'atender_cotizacion' solicitud.id %}" class="btn btn-pm-amber fw-bold px-3 px-md-4 py-2 shadow-sm" style="border-radius: 8px; font-family: var(--font-display); text-transform: uppercase;">
+                                                <i class="bi bi-cloud-arrow-up d-inline d-md-none"></i>
+                                                <span class="d-none d-md-inline">Subir Ofertas y PDFs</span> 
+                                                <i class="bi bi-arrow-right-short fs-5 ms-1 d-none d-md-inline" style="vertical-align: middle;"></i>
                                             </a>
                                         </td>
                                     </tr>
@@ -502,11 +515,11 @@
                     <tbody>
                         {% for req in mis_requerimientos %}
                         <tr>
-                            <td class="ps-4">
+                            <td class="ps-4 text-nowrap">
                                 <div class="fw-bold fs-6 text-white">{{ req.folio|default:"Borrador" }}</div>
                                 <div class="text-muted small mt-1"><i class="bi bi-calendar-event me-1"></i>{{ req.fecha_solicitud|date:"d M, Y" }}</div>
                             </td>
-                            <td><span class="badge-soft badge-soft-secondary"><i class="bi bi-geo-alt"></i> {{ req.proyecto.nombre }}</span></td>
+                            <td><span class="badge-soft badge-soft-secondary"><i class="bi bi-geo-alt me-1"></i> <span class="d-inline-block text-truncate" style="max-width: 150px;">{{ req.proyecto.nombre }}</span></span></td>
                             <td class="text-center">
                                 {% if req.estado == 'PENDIENTE' %}
                                     <span class="badge-soft badge-soft-warning"><i class="bi bi-hourglass-split"></i> En Revisión</span>
@@ -520,11 +533,11 @@
                                     <span class="badge-soft badge-soft-info"><i class="bi bi-cart"></i> Adquiriendo Faltante</span>
                                 {% endif %}
                             </td>
-                            <td class="text-end pe-4">
+                            <td class="text-end pe-4 text-nowrap">
                                 {% if req.estado == 'APROBADO' or req.estado == 'DESPACHADO' or req.estado == 'PARCIALMENTE_DESPACHADO' %}
-                                    <a href="{% url 'imprimir_pdf_ticket' req.id %}" target="_blank" class="btn btn-sm btn-outline-danger px-3 py-2 me-2 mb-1 mb-md-0" style="border-radius: 6px;" title="Ver PDF"><i class="bi bi-file-pdf"></i></a>
+                                    <a href="{% url 'imprimir_pdf_ticket' req.id %}" target="_blank" class="btn btn-sm btn-outline-danger px-3 py-2 me-1 mb-1 mb-md-0" style="border-radius: 6px;" title="Ver PDF"><i class="bi bi-file-pdf"></i></a>
                                 {% endif %}
-                                <a href="{% url 'añadir_materiales' req.id %}" class="btn btn-sm btn-outline-secondary text-white border-secondary px-4 py-2 shadow-sm" style="border-radius: 6px;">
+                                <a href="{% url 'añadir_materiales' req.id %}" class="btn btn-sm btn-outline-secondary text-white border-secondary px-3 py-2 shadow-sm" style="border-radius: 6px;">
                                     <i class="bi bi-eye"></i> <span class="d-none d-md-inline ms-1">Detalle</span>
                                 </a>
                             </td>

@@ -1,79 +1,135 @@
 {% extends 'web/base.html' %}
 
 {% block content %}
-<style>
-    :root {
-        --pm-bg: #0d1117; --pm-surface: #161b22; --pm-border: #30363d;
-        --pm-text: #ffffff; --pm-text-muted: #aab6c4; --pm-amber: #e6a817; 
-        --font-display: 'Barlow Condensed', sans-serif;
-    }
-    .erp-container { margin-top: 80px; max-width: 1200px; color: var(--pm-text); }
-    .card-minimal { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; }
-    .form-control, .form-select { background-color: var(--pm-bg); border: 1px solid var(--pm-border); color: var(--pm-text); }
-    .form-control:focus, .form-select:focus { background-color: #1c2128; border-color: var(--pm-amber); box-shadow: none; color: white;}
-</style>
-
-<div class="container erp-container mb-5">
-    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom border-secondary">
-        <div>
-            <a href="{% url 'dashboard_erp' %}" class="text-decoration-none text-muted small">&larr; Volver al Panel</a>
-            <h2 class="fw-bold mb-0 mt-2" style="font-family: var(--font-display); color: var(--pm-amber);">Atender Cotización: {{ solicitud.folio }}</h2>
-            <p class="text-muted mb-0">Ticket Origen: <span class="badge bg-secondary">{{ solicitud.requerimiento_origen.folio }}</span></p>
+<div class="container my-3 my-md-4 px-2 px-md-3">
+    
+    <div class="card border-0 shadow-sm mb-4 bg-dark text-white rounded-3">
+        <div class="card-body p-3 p-md-4">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+                <div>
+                    <h5 class="card-title mb-1 text-uppercase fw-bold text-info" style="font-size: 1.2rem;">
+                        Cotizar Materiales
+                    </h5>
+                    <p class="card-text small mb-0 opacity-75">
+                        Solicitud: <span class="fw-bold text-white fs-6">{{ solicitud.folio }}</span> 
+                        | Origen: {{ solicitud.requerimiento_origen.proyecto.nombre|default:"Stock General" }}
+                    </p>
+                </div>
+                <span class="badge bg-warning text-dark px-3 py-2 fw-bold shadow-sm">
+                    {{ solicitud.get_estado_display }}
+                </span>
+            </div>
         </div>
     </div>
 
-    <form method="POST">
+    <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
         {% csrf_token %}
-        <div class="card card-minimal shadow-lg mb-4">
-            <div class="card-header bg-dark text-white border-bottom border-secondary p-3">
-                <h6 class="mb-0"><i class="bi bi-list-check me-2 text-warning"></i> Materiales Solicitados</h6>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-dark table-hover mb-0 align-middle">
-                        <thead style="background: var(--pm-bg); font-family: var(--font-display); letter-spacing: 1px; color: var(--pm-text-muted);">
-                            <tr>
-                                <th class="p-3">Material y Cantidad</th>
-                                <th>Proveedor</th>
-                                <th>Precio Unit. ($)</th>
-                                <th>Especificaciones Técnicas</th>
-                                <th class="text-center">¿Trae Certificado?</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in items %}
-                            <tr>
-                                <td class="p-3">
-                                    <div class="fw-bold text-warning">{{ item.material.nombre }}</div>
-                                    <div class="small">Requerido: <strong>{{ item.cantidad_requerida }}</strong> unidades</div>
-                                </td>
-                                <td>
-                                    <input type="text" name="proveedor_{{ item.id }}" class="form-control form-control-sm" placeholder="Ej. Novacero" required>
-                                </td>
-                                <td>
-                                    <input type="number" step="0.01" name="precio_{{ item.id }}" class="form-control form-control-sm" placeholder="0.00" required>
-                                </td>
-                                <td>
-                                    <input type="text" name="especificaciones_{{ item.id }}" class="form-control form-control-sm" placeholder="Ej. ASTM A36, 6m">
-                                </td>
-                                <td class="text-center">
-                                    <div class="form-check form-switch d-flex justify-content-center">
-                                        <input class="form-check-input" type="checkbox" name="certificado_{{ item.id }}" style="cursor: pointer;">
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+        
+        <div class="row">
+            {% for item in items %}
+            <div class="col-12 mb-4">
+                <div class="card border-0 shadow-sm rounded-3 border-top border-4 border-primary">
+                    <div class="card-header bg-white d-flex flex-column flex-sm-row justify-content-between align-items-sm-center py-3 gap-2">
+                        <div>
+                            <h6 class="mb-0 fw-bold text-dark">{{ item.material.nombre }}</h6>
+                            <small class="text-muted">SKU: {{ item.material.sku }}</small>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary-subtle text-primary fs-6 fw-bold px-3 py-1 border border-primary-subtle">
+                                Solicita: {{ item.cantidad_requerida }}
+                            </span>
+                            <button type="button" class="btn btn-sm btn-outline-danger fw-bold" data-bs-toggle="modal" data-bs-target="#modalDesglosar{{ item.id }}">
+                                <i class="bi bi-scissors"></i> Dividir
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="card-body bg-light">
+                        <div class="row g-3">
+                            <div class="col-12 col-md-5">
+                                <label class="form-label small fw-bold text-secondary mb-1">Proveedor <span class="text-danger">*</span></label>
+                                <input type="text" name="proveedor_{{ item.id }}" class="form-control form-control-sm border-secondary-subtle" placeholder="Razón social" required>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small fw-bold text-secondary mb-1">Precio Unit. <span class="text-danger">*</span></label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-white border-secondary-subtle">$</span>
+                                    <input type="number" name="precio_{{ item.id }}" step="0.01" min="0.01" class="form-control border-secondary-subtle fw-bold text-primary" required>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small fw-bold text-secondary mb-1">Entrega (Días)</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="number" name="tiempo_{{ item.id }}" min="0" value="0" class="form-control border-secondary-subtle">
+                                    <span class="input-group-text bg-white border-secondary-subtle">días</span>
+                                </div>
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <label class="form-label small fw-bold text-secondary mb-1">Especificaciones Técnicas</label>
+                                <textarea name="especificaciones_{{ item.id }}" rows="2" class="form-control form-control-sm border-secondary-subtle" placeholder="Marcas, calidades, notas..."></textarea>
+                            </div>
+                            <div class="col-12 col-md-6 d-flex flex-column justify-content-between">
+                                <div>
+                                    <label class="form-label small fw-bold text-secondary mb-1">Subir Proforma (PDF)</label>
+                                    <input type="file" name="archivo_cotizacion_{{ item.id }}" accept=".pdf" class="form-control form-control-sm border-secondary-subtle">
+                                </div>
+                                <div class="form-check form-switch mt-2">
+                                    <input class="form-check-input" type="checkbox" name="certificado_{{ item.id }}" id="cert_{{ item.id }}">
+                                    <label class="form-check-label small fw-bold text-dark" for="cert_{{ item.id }}">¿Incluye certificado de calidad?</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
+            {% empty %}
+            <div class="col-12 text-center py-5 text-muted">
+                <p>No hay ítems pendientes de cotizar en esta solicitud.</p>
+            </div>
+            {% endfor %}
         </div>
-        
-        <div class="text-end">
-            <button type="submit" class="btn btn-warning px-5 fw-bold" style="border-radius: 8px;">
-                <i class="bi bi-send me-2"></i> Enviar a Aprobación Gerencial
+
+        {% if items %}
+        <div class="d-flex flex-column flex-md-row justify-content-end gap-2 mt-2 border-top pt-3">
+            <a href="{% url 'dashboard_erp' %}" class="btn btn-light border fw-bold order-2 order-md-1 py-2 px-4">Guardar como Borrador</a>
+            <button type="submit" class="btn btn-primary fw-bold order-1 order-md-2 py-2 px-4 shadow-sm">
+                Enviar a Revisión de Gerencia
             </button>
         </div>
+        {% endif %}
     </form>
 </div>
+
+{% for item in items %}
+<div class="modal fade" id="modalDesglosar{{ item.id }}" tabindex="-1" aria-labelledby="modalLabel{{ item.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title fs-6 fw-bold" id="modalLabel{{ item.id }}">Dividir Cantidad Requerida</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{% url 'desglosar_item_cotizacion' item.id %}" method="POST">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <p class="small text-muted mb-3">
+                        Estás dividiendo el material <strong>{{ item.material.nombre }}</strong>. Actualmente necesitas <strong>{{ item.cantidad_requerida }}</strong> en total.<br>
+                        Ingresa la cantidad que deseas separar en una <strong>nueva línea</strong> para cotizarla con otro proveedor.
+                    </p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Cantidad a separar:</label>
+                        <input type="number" name="cantidad_separar" class="form-control form-control-lg text-center fw-bold text-danger border-danger" step="0.01" min="0.01" max="{{ item.cantidad_requerida }}" placeholder="Ej: 5.00" required>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top-0">
+                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger fw-bold shadow-sm">Confirmar División</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
 {% endblock %}

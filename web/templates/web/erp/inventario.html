@@ -13,196 +13,197 @@
     :root {
         --pm-bg: #0d1117;
         --pm-surface: #161b22;
-        --pm-surface-hover: #1c2128;
+        --pm-surface-hover: #1f242c;
         --pm-border: #30363d;
-        --pm-text: #ffffff;
-        --pm-text-muted: #aab6c4;
+        --pm-text: #f0f6fc;
+        --pm-text-muted: #8b949e;
         
         --pm-amber: #e6a817; 
-        --pm-blue: #58a6ff;
-        --pm-green: #3fb950;
-        --pm-red: #f85149;
+        --pm-blue: #388bfd;
+        --pm-green: #238636;
+        --pm-red: #da3633;
+        --pm-purple: #bc8cff;
         
         --font-display: 'Barlow Condensed', sans-serif;
         --font-body: 'Barlow', sans-serif;
     }
 
     body { background-color: var(--pm-bg) !important; color: var(--pm-text) !important; font-family: var(--font-body); }
-    .text-muted, .text-secondary { color: var(--pm-text-muted) !important; }
-    .erp-container { margin-top: 30px; max-width: 1400px; }
-    
-    @media (max-width: 768px) {
-        .erp-container { margin-top: 15px; padding-left: 15px !important; padding-right: 15px !important; }
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .btn-mobile-full { width: 100%; justify-content: center; margin-bottom: 8px; }
-    }
-    @media (min-width: 769px) {
-        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
-    }
+    .text-muted { color: var(--pm-text-muted) !important; }
+    .erp-container { margin-top: 100px; max-width: 1440px; padding-bottom: 40px; }
 
+    /* Componentes */
     .title-erp { font-family: var(--font-display); font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; }
     .title-erp span { color: var(--pm-amber); }
     
-    .card-minimal { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
-    
-    /* Botones Estandarizados */
-    .btn-minimal { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; border-radius: 6px; padding: 0.5rem 1rem; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;}
-    .btn-amber { background: var(--pm-amber); color: #000; border: none; }
-    .btn-amber:hover { background: #ffd166; color: #000; }
-    .btn-outline-amber { color: var(--pm-amber); border: 1px solid var(--pm-amber); background: transparent; }
-    .btn-outline-amber:hover { background: var(--pm-amber); color: #000; }
+    .card-minimal { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+    .btn-amber { background-color: var(--pm-amber); color: #000; font-weight: 700; border: none; transition: all 0.3s; }
+    .btn-amber:hover { background-color: #f3b92f; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(230,168,23,0.3); color: #000; }
+    .btn-outline-amber { border: 1px solid var(--pm-amber); color: var(--pm-amber); font-weight: 600; transition: all 0.3s; }
+    .btn-outline-amber:hover { background-color: var(--pm-amber); color: #000; }
 
-    /* Buscador Oscuro */
-    .form-control-pm {
-        background-color: var(--pm-bg) !important; border: 1px solid var(--pm-border) !important; color: var(--pm-text) !important;
-        border-radius: 6px; transition: all 0.3s; font-family: var(--font-body); font-size: 0.9rem; padding: 0.5rem 1rem;
-    }
-    .form-control-pm:focus { border-color: var(--pm-amber) !important; box-shadow: 0 0 0 2px rgba(230, 168, 23, 0.15) !important; outline: none; }
+    /* Filtros (Scroll horizontal en móviles) */
+    .filtros-scroll { display: flex; overflow-x: auto; white-space: nowrap; gap: 8px; padding-bottom: 8px; scrollbar-width: none; }
+    .filtros-scroll::-webkit-scrollbar { display: none; }
+    .filtro-chip { padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; color: var(--pm-text-muted); border: 1px solid var(--pm-border); text-decoration: none; transition: all 0.2s; }
+    .filtro-chip:hover, .filtro-chip.active { background: rgba(255,255,255,0.1); color: var(--pm-text); border-color: var(--pm-text-muted); }
+    .filtro-chip.text-danger.active { background: rgba(218,54,51,0.15); border-color: var(--pm-red); color: #ff7b72 !important; }
 
-    /* Barra de Filtros Alineada */
-    .filtros-bar { padding: 1.2rem 1.5rem; background: var(--pm-surface); border-bottom: 1px solid var(--pm-border); border-radius: 12px 12px 0 0; }
-    .filtro-chip { font-family: var(--font-display); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding: 0.4rem 1rem; border-radius: 6px; border: 1px solid var(--pm-border); color: var(--pm-text-muted); text-decoration: none; transition: all 0.2s; display: inline-block;}
-    .filtro-chip:hover, .filtro-chip.active { background: var(--pm-amber); border-color: var(--pm-amber); color: #000; }
+    /* Buscador */
+    .form-control-pm { background: rgba(0,0,0,0.2); border: 1px solid var(--pm-border); color: var(--pm-text); padding: 10px 15px; border-radius: 8px; font-size: 0.9rem; transition: border 0.3s; }
+    .form-control-pm:focus { outline: none; border-color: var(--pm-amber); background: rgba(0,0,0,0.4); color: white; }
 
-    /* Tablas Modernas */
-    .table-modern { width: 100%; margin-bottom: 0; white-space: nowrap; color: var(--pm-text); }
-    .table-modern th { background: var(--pm-bg); text-transform: uppercase; font-family: var(--font-display); font-size: 0.85rem; letter-spacing: 1px; color: var(--pm-text-muted); border-bottom: 1px solid var(--pm-border); padding: 12px 16px; border-top: none; }
+    /* Tabla */
+    .table-modern { width: 100%; margin-bottom: 0; color: var(--pm-text); font-size: 0.9rem; }
+    .table-modern th { background: rgba(9, 13, 19, 0.4); text-transform: uppercase; font-family: var(--font-display); font-size: 0.85rem; letter-spacing: 1px; color: var(--pm-text-muted); border-bottom: 1px solid var(--pm-border); padding: 14px 16px; border-top: none; }
     .table-modern td { vertical-align: middle; border-bottom: 1px solid var(--pm-border); padding: 14px 16px; background: transparent; color: var(--pm-text); }
-    .table-modern tr:hover td { background: rgba(230,168,23,0.03); }
+    .table-modern tr:hover td { background-color: rgba(255,255,255,0.02); }
+    .row-alerta td { background-color: rgba(218,54,51,0.04); }
+
+    /* Barras de Stock */
+    .stock-bar-bg { height: 6px; background: var(--pm-border); border-radius: 4px; overflow: hidden; margin-top: 6px; }
+    .stock-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+    .fill-ok { background: var(--pm-green); }
+    .fill-warn { background: var(--pm-amber); }
+    .fill-crit { background: var(--pm-red); box-shadow: 0 0 8px var(--pm-red); }
 
     /* Badges */
-    .badge-soft { padding: 4px 8px; font-weight: 600; font-size: 0.75rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-display); letter-spacing: 0.5px; text-transform: uppercase; }
-    .badge-soft-warning { background: rgba(230,168,23,0.1); color: var(--pm-amber); border: 1px solid rgba(230,168,23,0.3); }
-    .badge-soft-danger  { background: rgba(248,81,73,0.1); color: var(--pm-red); border: 1px solid rgba(248,81,73,0.3); }
-    .badge-soft-info    { background: rgba(88,166,255,0.1); color: var(--pm-blue); border: 1px solid rgba(88,166,255,0.3); }
-    .badge-soft-secondary { background: rgba(139,148,158,0.1); color: var(--pm-text-muted); border: 1px solid rgba(139,148,158,0.3); }
+    .badge-soft { padding: 4px 10px; font-weight: 600; font-size: 0.7rem; border-radius: 6px; display: inline-flex; align-items: center; letter-spacing: 0.5px; text-transform: uppercase; }
+    .badge-soft-secondary { background: rgba(139,148,158,0.1); color: var(--pm-text-muted); border: 1px solid rgba(139,148,158,0.2); }
+    .badge-soft-danger { background: rgba(218,54,51,0.15); color: #ff7b72; border: 1px solid rgba(218,54,51,0.3); }
 
-    /* Barra de Stock Visual */
-    .stock-num { font-family: var(--font-display); font-size: 1.2rem; font-weight: 700; width: 45px; display: inline-block; }
-    .stock-ok   { color: var(--pm-green); }
-    .stock-warn { color: var(--pm-amber); }
-    .stock-crit { color: var(--pm-red); }
-    
-    .stock-bar-bg { flex-grow: 1; height: 4px; background: var(--pm-bg); border: 1px solid var(--pm-border); border-radius: 2px; overflow: hidden; min-width: 60px; display: inline-block; vertical-align: middle; }
-    .stock-bar-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
-    .fill-ok   { background: var(--pm-green); }
-    .fill-warn { background: var(--pm-amber); }
-    .fill-crit { background: var(--pm-red); }
-
-    /* Punto rojo de alerta */
-    .alerta-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--pm-red); box-shadow: 0 0 6px var(--pm-red); animation: pulse 1.5s infinite; margin-left: 6px; vertical-align: middle; }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-    .row-alerta td { border-left: 2px solid var(--pm-red); background: rgba(248,81,73,0.02); }
+    /* Móviles */
+    @media (max-width: 768px) {
+        .erp-container { margin-top: 80px; }
+        .btn-mobile-full { width: 100%; justify-content: center; margin-bottom: 8px; }
+        .table-responsive { border: 1px solid var(--pm-border); border-radius: 12px; }
+    }
 </style>
 
 <div class="container-fluid px-3 px-xl-5 erp-container mb-5">
 
+    <!-- Header y Acciones -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
         <div class="d-flex align-items-center gap-3">
-            <a href="{% url 'dashboard_erp' %}" class="btn btn-outline-secondary text-white border-secondary px-3 transition-2s hover-amber">
+            <a href="{% url 'dashboard_erp' %}" class="btn btn-outline-secondary text-white border-secondary px-3" style="border-radius: 8px;">
                 <i class="bi bi-arrow-left"></i>
             </a>
             <div>
-                <h3 class="title-erp mb-0">Inventario <span>Bodega</span></h3>
+                <h3 class="title-erp mb-0 fs-3">Inventario <span>Bodega</span></h3>
                 <p class="mb-0 text-muted small">Catálogo de Materiales y Consumibles</p>
             </div>
         </div>
         
-        <div class="d-flex flex-wrap gap-2 w-100 w-md-auto">
+        <div class="d-flex flex-column flex-sm-row flex-wrap gap-2 w-100 w-md-auto">
             {% if rol == 'Administrador' %}
-                <a href="{% url 'historial_movimientos' %}" class="btn btn-outline-info btn-minimal btn-mobile-full">
-                    <i class="bi bi-journal-text"></i> Auditoría
+                <a href="{% url 'historial_movimientos' %}" class="btn btn-outline-info btn-mobile-full shadow-sm" style="border-radius: 8px;">
+                    <i class="bi bi-journal-text me-1"></i> Auditoría
                 </a>
-                <a href="{% url 'crear_material' %}" class="btn btn-amber btn-minimal btn-mobile-full"><i class="bi bi-plus-lg"></i> Nuevo Material</a>
+                <a href="{% url 'crear_material' %}" class="btn btn-amber btn-mobile-full shadow-sm" style="border-radius: 8px;">
+                    <i class="bi bi-plus-lg me-1"></i> Nuevo Material
+                </a>
             {% endif %}
-            <a href="{% url 'crear_orden_compra' %}" class="btn btn-outline-amber btn-minimal btn-mobile-full"><i class="bi bi-cart-plus"></i> Nueva OC</a>
+            <a href="{% url 'crear_orden_compra' %}" class="btn btn-outline-amber btn-mobile-full shadow-sm" style="border-radius: 8px;">
+                <i class="bi bi-cart-plus me-1"></i> Nueva OC
+            </a>
         </div>
     </div>
 
+    <!-- Alertas Flash -->
     {% if messages %}
         <div class="mb-4">
             {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} alert-dismissible fade show border-0 shadow-sm rounded-3 d-flex align-items-center" role="alert" style="background: var(--pm-surface); border-left: 4px solid var(--pm-amber) !important; color: var(--pm-text);">
-                    {% if message.tags == 'success' %}<i class="bi bi-check-circle-fill text-success fs-5 me-3"></i>{% endif %}
-                    {% if message.tags == 'warning' %}<i class="bi bi-exclamation-triangle-fill text-warning fs-5 me-3"></i>{% endif %}
-                    {% if message.tags == 'danger' %}<i class="bi bi-shield-fill-x text-danger fs-5 me-3"></i>{% endif %}
-                    <div class="flex-grow-1 fw-medium" style="font-size: 0.95rem;">{{ message }}</div>
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show border-0 shadow-sm rounded-3 d-flex align-items-center p-3" role="alert" style="background: var(--pm-surface); border-left: 4px solid var(--pm-amber) !important; color: var(--pm-text);">
+                    <div class="flex-grow-1 fw-medium" style="font-size: 0.9rem;">{{ message }}</div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
                 </div>
             {% endfor %}
         </div>
     {% endif %}
 
+    <!-- Alerta de Stock Crítico -->
     {% if alertas %}
-    <div class="alert alert-danger border-0 shadow-sm rounded-3 d-flex align-items-start mb-4" style="background: rgba(248,81,73,0.1); border-left: 4px solid var(--pm-red) !important; color: var(--pm-text);">
-        <i class="bi bi-exclamation-triangle-fill fs-4 me-3 text-danger"></i>
+    <div class="alert border-0 shadow-sm rounded-3 d-flex align-items-start p-3 mb-4" style="background: rgba(218,54,51,0.08); border-left: 4px solid var(--pm-red) !important;">
+        <i class="bi bi-exclamation-triangle-fill fs-3 me-3 text-danger mt-1"></i>
         <div>
-            <h6 class="fw-bold text-danger mb-1" style="font-family: var(--font-display); letter-spacing: 0.5px;">{{ alertas.count }} Material{{ alertas.count|pluralize }} bajo stock mínimo</h6>
-            <p class="small text-muted mb-2">Estos ítems necesitan reabastecimiento urgente. Genera una orden de compra pronto.</p>
-            <div class="d-flex flex-wrap gap-2">
+            <h6 class="fw-bold text-danger mb-1" style="font-family: var(--font-display); letter-spacing: 0.5px;">{{ alertas.count }} Material{{ alertas.count|pluralize:"es" }} bajo stock mínimo</h6>
+            <p class="small text-muted mb-2" style="font-size: 0.8rem;">Se requiere reabastecimiento urgente. Genera una Orden de Compra.</p>
+            <div class="d-flex flex-wrap gap-2 mt-2">
                 {% for mat in alertas %}
-                    <span class="badge-soft badge-soft-danger">{{ mat.sku }}</span>
+                    <span class="badge-soft badge-soft-danger shadow-sm">{{ mat.sku }}</span>
                 {% endfor %}
             </div>
         </div>
     </div>
     {% endif %}
 
+    <!-- Grid de Estadísticas (Responsive: 2x2 en móvil, 4x1 en PC) -->
     {% with total=materiales.count %}
-    <div class="stats-grid mb-4">
-        <div class="card card-minimal p-3 text-center border-bottom-0" style="border-bottom: 3px solid var(--pm-amber) !important;">
-            <div class="text-muted small text-uppercase fw-bold mb-1">Total Ítems</div>
-            <div class="fs-2 fw-bold text-white" style="font-family: var(--font-display);">{{ total }}</div>
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="card card-minimal h-100 p-3 text-center" style="border-bottom: 3px solid var(--pm-amber);">
+                <div class="text-muted small text-uppercase fw-bold mb-1" style="font-size: 0.7rem;">Total Catálogo</div>
+                <div class="fs-2 fw-bold text-white" style="font-family: var(--font-display);">{{ total }}</div>
+            </div>
         </div>
-        <div class="card card-minimal p-3 text-center border-bottom-0" style="border-bottom: 3px solid var(--pm-blue) !important;">
-            <div class="text-muted small text-uppercase fw-bold mb-1">Materiales Acero</div>
-            <div class="fs-2 fw-bold text-white" style="font-family: var(--font-display);">{{ materiales|length }}</div>
+        <div class="col-6 col-lg-3">
+            <div class="card card-minimal h-100 p-3 text-center" style="border-bottom: 3px solid var(--pm-blue);">
+                <div class="text-muted small text-uppercase fw-bold mb-1" style="font-size: 0.7rem;">Ítems en Stock</div>
+                <div class="fs-2 fw-bold text-white" style="font-family: var(--font-display);">{{ materiales|length }}</div>
+            </div>
         </div>
-        <div class="card card-minimal p-3 text-center border-bottom-0" style="border-bottom: 3px solid var(--pm-red) !important;">
-            <div class="text-muted small text-uppercase fw-bold mb-1">Alertas Stock</div>
-            <div class="fs-2 fw-bold text-danger" style="font-family: var(--font-display);">{{ alertas.count }}</div>
+        <div class="col-6 col-lg-3">
+            <div class="card card-minimal h-100 p-3 text-center" style="border-bottom: 3px solid var(--pm-red);">
+                <div class="text-muted small text-uppercase fw-bold mb-1" style="font-size: 0.7rem;">Alertas Críticas</div>
+                <div class="fs-2 fw-bold text-danger" style="font-family: var(--font-display);">{{ alertas.count }}</div>
+            </div>
         </div>
-        <div class="card card-minimal p-3 text-center border-bottom-0" style="border-bottom: 3px solid var(--pm-green) !important;">
-            <div class="text-muted small text-uppercase fw-bold mb-1">Estado General</div>
-            <div class="fs-4 fw-bold mt-2 {% if alertas.count == 0 %}text-success{% else %}text-warning{% endif %}" style="font-family: var(--font-display);">
-                {% if alertas.count == 0 %}<i class="bi bi-check-circle"></i> ÓPTIMO{% else %}<i class="bi bi-exclamation-circle"></i> REVISAR{% endif %}
+        <div class="col-6 col-lg-3">
+            <div class="card card-minimal h-100 p-3 text-center d-flex flex-column justify-content-center" style="border-bottom: 3px solid var(--pm-green);">
+                <div class="text-muted small text-uppercase fw-bold mb-1" style="font-size: 0.7rem;">Salud Inventario</div>
+                <div class="fs-4 fw-bold mt-1 {% if alertas.count == 0 %}text-success{% else %}text-warning{% endif %}" style="font-family: var(--font-display);">
+                    {% if alertas.count == 0 %}<i class="bi bi-check-circle"></i> ÓPTIMO{% else %}<i class="bi bi-exclamation-circle"></i> REVISAR{% endif %}
+                </div>
             </div>
         </div>
     </div>
     {% endwith %}
 
+    <!-- Panel de Inventario -->
     <div class="card card-minimal overflow-hidden">
         
-        <div class="filtros-bar">
-            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3 w-100">
-                
-                <div class="d-flex flex-wrap align-items-center gap-2">
-                    <span class="text-muted small text-uppercase fw-bold d-none d-md-inline"><i class="bi bi-funnel me-1"></i> Categoría:</span>
-                    <a href="?" class="filtro-chip {% if not request.GET.tipo %}active{% endif %}">Todos</a>
-                    <a href="?tipo=MATERIAL" class="filtro-chip {% if request.GET.tipo == 'MATERIAL' %}active{% endif %}">Materiales</a>
-                    <a href="?tipo=CONSUMIBLE" class="filtro-chip {% if request.GET.tipo == 'CONSUMIBLE' %}active{% endif %}">Consumibles</a>
-                    <a href="?alerta=1" class="filtro-chip {% if request.GET.alerta %}active{% endif %} text-danger border-danger border-opacity-50"><i class="bi bi-exclamation-circle me-1"></i> Alertas</a>
+        <!-- Barra de Búsqueda y Filtros -->
+        <div class="card-header bg-transparent border-bottom p-3 p-md-4">
+            <div class="row g-3 align-items-center">
+                <div class="col-12 col-xl-7 order-2 order-xl-1">
+                    <div class="filtros-scroll">
+                        <span class="text-muted small text-uppercase fw-bold d-flex align-items-center me-2"><i class="bi bi-funnel me-1"></i> Filtrar:</span>
+                        <a href="?" class="filtro-chip {% if not request.GET.tipo %}active{% endif %}">Todos</a>
+                        <a href="?tipo=MATERIAL" class="filtro-chip {% if request.GET.tipo == 'MATERIAL' %}active{% endif %}">Estructurales</a>
+                        <a href="?tipo=CONSUMIBLE" class="filtro-chip {% if request.GET.tipo == 'CONSUMIBLE' %}active{% endif %}">Consumibles</a>
+                        <a href="?alerta=1" class="filtro-chip text-danger {% if request.GET.alerta %}active{% endif %}"><i class="bi bi-exclamation-circle me-1"></i> Stock Bajo</a>
+                    </div>
                 </div>
-
-                <div class="position-relative w-100" style="max-width: 300px;">
-                    <i class="bi bi-search position-absolute" style="left: 12px; top: 50%; transform: translateY(-50%); color: var(--pm-text-muted);"></i>
-                    <input type="text" class="form-control-pm w-100 ps-5" id="searchInput" placeholder="Buscar SKU o nombre..." />
+                <div class="col-12 col-xl-5 order-1 order-xl-2">
+                    <div class="position-relative w-100">
+                        <i class="bi bi-search position-absolute" style="left: 14px; top: 50%; transform: translateY(-50%); color: var(--pm-text-muted);"></i>
+                        <input type="text" class="form-control-pm w-100 ps-5" id="searchInput" placeholder="Buscar por SKU o descripción..." />
+                    </div>
                 </div>
             </div>
         </div>
 
+        <!-- Tabla -->
         <div class="table-responsive">
             <table class="table table-modern" id="invTable">
                 <thead>
                     <tr>
-                        <th>SKU / Código</th>
-                        <th>Tipo</th>
-                        <th>Nombre / Descripción</th>
-                        <th style="min-width: 150px;">Stock Actual</th>
-                        <th>Mínimo</th>
-                        <th>Ubicación</th>
+                        <th class="ps-3 ps-md-4">Material / SKU</th>
+                        <th style="min-width: 140px;">Existencias</th>
+                        <th class="text-end d-none d-sm-table-cell">Precio Total (Inc. IVA)</th>
+                        <th class="d-none d-md-table-cell">Ubicación</th>
                         {% if rol == 'Administrador' %}
-                            <th class="text-end">Acciones</th>
+                            <th class="text-end pe-3 pe-md-4">Gestión</th>
                         {% endif %}
                     </tr>
                 </thead>
@@ -210,86 +211,68 @@
                     {% for mat in materiales %}
                     <tr class="{% if mat.stock_actual <= mat.stock_minimo %}row-alerta{% endif %}" data-search="true" data-nombre="{{ mat.nombre|lower }}" data-sku="{{ mat.sku|lower }}">
                         
-                        <td>
-                            <span class="badge-soft badge-soft-secondary text-white">{{ mat.sku }}</span>
-                        </td>
-
-                        <td>
-                            {% if mat.tipo == 'MATERIAL' %}
-                                <span class="badge-soft badge-soft-info"><i class="bi bi-boxes me-1"></i> Estructural</span>
-                            {% else %}
-                                <span class="badge-soft badge-soft-warning"><i class="bi bi-tools me-1"></i> Consumible</span>
-                            {% endif %}
-                        </td>
-
-                        <td>
-                            <div class="fw-bold" style="color: var(--pm-text);">
-                                {{ mat.nombre }}
-                                {% if mat.stock_actual <= mat.stock_minimo %}
-                                    <span class="alerta-dot" title="Stock bajo mínimo"></span>
+                        <!-- Columna Agrupada: Nombre, SKU y Tipo -->
+                        <td class="ps-3 ps-md-4">
+                            <div class="fw-bold text-white mb-1" style="font-size: 0.95rem;">{{ mat.nombre }}</div>
+                            <div class="d-flex flex-wrap gap-1 mt-1">
+                                <span class="badge-soft badge-soft-secondary">{{ mat.sku }}</span>
+                                {% if mat.tipo == 'MATERIAL' %}
+                                    <span class="badge-soft badge-soft-info" style="font-size: 0.65rem;"><i class="bi bi-boxes me-1"></i> Mat</span>
+                                {% else %}
+                                    <span class="badge-soft badge-soft-warning" style="font-size: 0.65rem;"><i class="bi bi-tools me-1"></i> Cons</span>
                                 {% endif %}
                             </div>
-                            {% if mat.descripcion %}
-                                <div class="small text-muted text-truncate mt-1" style="max-width: 250px;">
-                                    {{ mat.descripcion }}
-                                </div>
-                            {% endif %}
                         </td>
 
+                        <!-- Columna Agrupada: Stock y Barra de progreso -->
                         <td>
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="stock-num 
-                                    {% if mat.stock_actual <= mat.stock_minimo %}stock-crit
-                                    {% elif mat.stock_actual <= mat.stock_minimo|add:mat.stock_minimo %}stock-warn
-                                    {% else %}stock-ok{% endif %}">
-                                    {{ mat.stock_actual }}
+                            <div class="d-flex align-items-end justify-content-between mb-1">
+                                <span class="fw-bold fs-6 {% if mat.stock_actual <= mat.stock_minimo %}text-danger{% elif mat.stock_actual <= mat.stock_minimo|add:mat.stock_minimo %}text-warning{% else %}text-success{% endif %}">
+                                    {{ mat.stock_actual }} <span class="small fw-normal text-muted">{{ mat.unidad_medida }}</span>
                                 </span>
-                                <div class="stock-bar-bg w-100">
-                                    <div class="stock-bar-fill
-                                        {% if mat.stock_actual <= mat.stock_minimo %}fill-crit
-                                        {% elif mat.stock_actual <= mat.stock_minimo|add:mat.stock_minimo %}fill-warn
-                                        {% else %}fill-ok{% endif %}"
-                                        style="width: {% if mat.stock_minimo > 0 %}{% widthratio mat.stock_actual mat.stock_minimo 100 %}{% else %}100{% endif %}%; max-width: 100%;">
-                                    </div>
+                                <span class="text-muted" style="font-size: 0.7rem;">Mín: {{ mat.stock_minimo }}</span>
+                            </div>
+                            <div class="stock-bar-bg w-100">
+                                <div class="stock-bar-fill {% if mat.stock_actual <= mat.stock_minimo %}fill-crit{% elif mat.stock_actual <= mat.stock_minimo|add:mat.stock_minimo %}fill-warn{% else %}fill-ok{% endif %}"
+                                     style="width: {% if mat.stock_minimo > 0 %}{% widthratio mat.stock_actual mat.stock_minimo 100 %}{% else %}100{% endif %}%; max-width: 100%;">
                                 </div>
                             </div>
                         </td>
 
-                        <td class="text-muted small fw-bold">
-                            {{ mat.stock_minimo }}
+                        <!-- Precio Total c/ Impuestos (Oculto en móviles muy pequeños) -->
+                        <td class="text-end fw-bold text-primary d-none d-sm-table-cell align-middle">
+                            ${{ mat.precio_total_con_impuesto|floatformat:2 }}
                         </td>
 
-                        <td class="text-muted small">
-                            <i class="bi bi-geo-alt-fill me-1 text-secondary"></i> {{ mat.ubicacion }}
+                        <!-- Ubicación -->
+                        <td class="text-muted small align-middle d-none d-md-table-cell">
+                            <i class="bi bi-geo-alt-fill me-1 opacity-50"></i> {{ mat.ubicacion }}
                         </td>
                         
+                        <!-- Acciones -->
                         {% if rol == 'Administrador' %}
-                            <td class="text-end">
-                                <div class="d-flex justify-content-end gap-2">
-                                    <a href="{% url 'editar_material' mat.id %}" class="btn btn-sm btn-outline-secondary btn-minimal px-2 py-1 text-white border-secondary" title="Editar Catálogo">
-                                        <i class="bi bi-pencil-square"></i>
-                                    </a>
-                                    
-                                    <a href="{% url 'realizar_ajuste' mat.id %}" class="btn btn-sm btn-outline-warning btn-minimal px-2 py-1 border-warning" title="Ajuste Manual">
-                                        <i class="bi bi-sliders"></i>
-                                    </a>
-                                    <a href="{% url 'eliminar_material' mat.id %}" class="btn btn-sm btn-outline-danger btn-minimal px-2 py-1 border-danger" title="Eliminar / Desactivar" onclick="return confirm('¿Estás seguro de eliminar {{ mat.nombre }}?\n\nSi el material tiene historial de movimientos (ha sido comprado o usado), el sistema solo lo desactivará para no alterar la auditoría.');">
-                                        <i class="bi bi-trash"></i>
-                                    </a>
-                                </div>
-                            </td>
+                        <td class="text-end pe-3 pe-md-4 align-middle text-nowrap">
+                            <a href="{% url 'editar_material' mat.id %}" class="btn btn-sm btn-outline-secondary rounded-circle shadow-sm me-1" style="width: 32px; height: 32px; padding: 4px;" title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'realizar_ajuste' mat.id %}" class="btn btn-sm btn-outline-warning rounded-circle shadow-sm me-1" style="width: 32px; height: 32px; padding: 4px;" title="Ajuste Manual">
+                                <i class="bi bi-sliders"></i>
+                            </a>
+                            <form action="{% url 'eliminar_material' mat.id %}" method="POST" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger rounded-circle shadow-sm" style="width: 32px; height: 32px; padding: 4px;" onclick="return confirm('¿Desactivar este material?');" title="Desactivar">
+                                    <i class="bi bi-trash3"></i>
+                                </button>
+                            </form>
+                        </td>
                         {% endif %}
-
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="text-center py-5">
-                            <i class="bi bi-box-seam text-muted" style="font-size: 3rem;"></i>
-                            <h5 class="mt-3 title-erp text-white">Bodega Vacía</h5>
-                            <p class="text-muted small mb-4">Aún no hay materiales registrados en esta categoría.</p>
-                            {% if rol == 'Administrador' %}
-                                <a href="{% url 'crear_material' %}" class="btn-amber btn-minimal px-4"><i class="bi bi-plus-lg"></i> Añadir Material</a>
-                            {% endif %}
+                        <td colspan="5" class="text-center py-5">
+                            <i class="bi bi-inbox text-muted opacity-25" style="font-size: 4rem;"></i>
+                            <h5 class="mt-3 text-white" style="font-family: var(--font-display); letter-spacing: 1px;">Sin Resultados</h5>
+                            <p class="text-muted small mb-0">No se encontraron materiales que coincidan con la búsqueda.</p>
                         </td>
                     </tr>
                     {% endfor %}
@@ -300,8 +283,8 @@
 
 </div>
 
+<!-- Script de Búsqueda JS -->
 <script>
-    // Búsqueda en tiempo real instantánea
     document.getElementById('searchInput').addEventListener('input', function() {
         const query = this.value.toLowerCase().trim();
         const rows = document.querySelectorAll('#invTable tbody tr[data-search]');

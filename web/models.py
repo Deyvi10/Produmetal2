@@ -73,6 +73,8 @@ class Material(models.Model):
     is_active = models.BooleanField(default=True)
 
     history = HistoricalRecords() # AUDITORÍA TOTAL
+    precio_base = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    impuesto_porcentaje = models.DecimalField(max_digits=5, decimal_places=2, default=15.00) # Asumiendo 15% de IVA
 
     class Meta:
         verbose_name_plural = "Inventario (Materiales y Consumibles)"
@@ -92,7 +94,11 @@ class Material(models.Model):
 
     def __str__(self):
         return f"[{self.sku}] {self.nombre} (Total: {self.stock_actual})"
-
+    
+    @property
+    def precio_total_con_impuesto(self):
+        impuesto = (self.precio_base * self.impuesto_porcentaje) / 100
+        return self.precio_base + impuesto
 class StockBodega(models.Model):
     material = models.ForeignKey(Material, on_delete=models.CASCADE, related_name='stocks_bodegas')
     bodega = models.ForeignKey(Bodega, on_delete=models.CASCADE, related_name='inventario')
@@ -310,7 +316,7 @@ class MovimientoInventario(models.Model):
     bodega_origen = models.ForeignKey(Bodega, on_delete=models.SET_NULL, null=True, blank=True, related_name='movimientos_salida')
     bodega_destino = models.ForeignKey(Bodega, on_delete=models.SET_NULL, null=True, blank=True, related_name='movimientos_ingreso')
     fecha_hora = models.DateTimeField(default=timezone.now)
-    responsable = models.ForeignKey(User, on_delete=models.PROTECT)
+    responsable = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     
     requerimiento_asociado = models.ForeignKey('Requerimiento', on_delete=models.SET_NULL, null=True, blank=True)
     orden_compra_asociada = models.ForeignKey('OrdenCompra', on_delete=models.SET_NULL, null=True, blank=True)

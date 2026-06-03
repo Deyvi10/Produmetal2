@@ -87,4 +87,5 @@ urlpatterns = [
     path('erp/seguridad/desbloquear/<int:intento_id>/', views.desbloquear_usuario, name='desbloquear_usuario'),
 
     path('erp/configuracion/', views.configuracion_erp, name='configuracion_erp'),
+    path('erp/ticket/<int:req_id>/despachar/', views.despachar_requerimiento, name='despachar_requerimiento'),
 ]

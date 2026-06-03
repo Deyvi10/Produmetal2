@@ -6,7 +6,7 @@ from django.db.models import F
 from axes.models import AccessAttempt
 from django.db import transaction
 from django.core.paginator import Paginator
-
+from .forms import MaterialForm
 # =======================================================
 # IMPORTACIONES DE MODELOS Y FORMULARIOS
 # =======================================================
@@ -274,6 +274,76 @@ def procesar_ticket(request, req_id, accion):
     ticket.save()
     return redirect('dashboard_erp')
 
+@login_required(login_url='login')
+@user_passes_test(lambda u: es_bodeguero(u) or es_admin(u), login_url='dashboard_erp')
+@transaction.atomic
+def despachar_requerimiento(request, req_id):
+    ticket = get_object_or_404(Requerimiento, id=req_id)
+    
+    # Solo podemos despachar si está aprobado o parcialmente despachado
+    if ticket.estado not in ['APROBADO', 'PARCIALMENTE_DESPACHADO']:
+        messages.error(request, "Este ticket no está listo para despacho.")
+        return redirect('dashboard_erp')
+
+    if request.method == 'POST':
+        bodega_origen_id = request.POST.get('bodega_origen')
+        bodega_origen = get_object_or_404(Bodega, id=bodega_origen_id) if bodega_origen_id else Bodega.objects.filter(is_principal=True).first()
+        
+        items_a_despachar = ticket.detalles.filter(estado_item='APROBADO_BODEGA')
+        
+        for item in items_a_despachar:
+            cantidad_a_entregar = item.cantidad_solicitada - item.cantidad_despachada
+            
+            if cantidad_a_entregar > 0:
+                # 1. Bloqueo de concurrencia y resta de stock general
+                material = Material.objects.select_for_update().get(id=item.material.id)
+                
+                # Validar que haya stock real en ese momento
+                stock_bodega = StockBodega.objects.select_for_update().filter(bodega=bodega_origen, material=material).first()
+                
+                if not stock_bodega or stock_bodega.cantidad < cantidad_a_entregar:
+                    messages.error(request, f"Error: Stock insuficiente de {material.nombre} en la bodega seleccionada al momento de despachar.")
+                    return redirect('dashboard_erp')
+
+                # Restar stock
+                material.stock_actual -= cantidad_a_entregar
+                material.save()
+                
+                stock_bodega.cantidad -= cantidad_a_entregar
+                stock_bodega.save()
+
+                # 2. Registrar movimiento de SALIDA hacia el proyecto
+                MovimientoInventario.objects.create(
+                    material=material, 
+                    tipo='SALIDA', 
+                    cantidad=cantidad_a_entregar, 
+                    bodega_origen=bodega_origen,
+                    bodega_destino=ticket.proyecto.bodega_proyecto, # Se mueve a la bodega de la obra
+                    responsable=request.user, 
+                    requerimiento_asociado=ticket,
+                    observaciones=f"Despacho de ticket {ticket.folio} para {ticket.proyecto.nombre}"
+                )
+
+                # 3. Actualizar el detalle del requerimiento
+                item.cantidad_despachada += cantidad_a_entregar
+                item.estado_item = 'DESPACHADO' # Nuevo estado interno
+                item.save()
+
+        # 4. Actualizar estado maestro del ticket
+        estados_restantes = ticket.detalles.exclude(estado_item__in=['DESPACHADO', 'RECHAZADO']).values_list('estado_item', flat=True)
+        if not estados_restantes:
+            ticket.estado = 'DESPACHADO'
+        
+        ticket.save()
+        messages.success(request, f"¡Materiales del ticket {ticket.folio} despachados con éxito!")
+        return redirect('dashboard_erp')
+
+    # Si es GET, mostramos un pequeño formulario de confirmación (puedes usar un modal en el dashboard)
+    return render(request, 'web/erp/confirmar_despacho.html', {
+        'ticket': ticket,
+        'items': ticket.detalles.filter(estado_item='APROBADO_BODEGA'),
+        'bodegas': Bodega.objects.filter(is_active=True)
+    })
 
 # =======================================================
 # MÓDULO DE COMPRAS Y COTIZACIONES (DESGLOSE INCLUIDO)
@@ -467,7 +537,7 @@ def aprobar_oc(request, oc_id):
 
 
 @login_required(login_url='login')
-@user_passes_test(es_bodeguero, login_url='dashboard_erp')
+@user_passes_test(lambda u: es_bodeguero(u) or es_admin(u), login_url='dashboard_erp')
 @transaction.atomic
 def recibir_orden_compra(request, oc_id):
     oc = get_object_or_404(OrdenCompra, id=oc_id)
@@ -479,17 +549,32 @@ def recibir_orden_compra(request, oc_id):
         entrega_incompleta = False
 
         for item in detalles:
-            ingresado = float(request.POST.get(f'recibido_{item.id}', 0))
+            # BLINDAJE: Capturar errores de conversión de texto a número
+            try:
+                ingresado = float(request.POST.get(f'recibido_{item.id}', 0))
+            except ValueError:
+                ingresado = 0.0
+
+            # BLINDAJE: Evitar ingresos negativos (restar stock maliciosamente)
+            if ingresado < 0:
+                messages.error(request, "No se permiten valores negativos en la recepción.")
+                return redirect('recibir_orden_compra', oc_id=oc.id)
+
             archivo_certificado = request.FILES.get(f'certificado_{item.id}')
 
             if ingresado > 0:
+                # BLINDAJE: Evitar que el bodeguero reciba más de lo que se pidió en la OC
+                if (item.cantidad_recibida + ingresado) > item.cantidad_pedida:
+                    messages.error(request, f"Error: Estás intentando recibir más {item.material.nombre} del que se solicitó.")
+                    return redirect('recibir_orden_compra', oc_id=oc.id)
+
                 item.cantidad_recibida += ingresado
                 item.save()
 
                 if item.cantidad_recibida < item.cantidad_pedida:
                     entrega_incompleta = True
 
-                # BLOQUEO DE CONCURRENCIA PARA RECEPCIÓN SEGURO
+                # BLOQUEO DE CONCURRENCIA PARA RECEPCIÓN SEGURA
                 material = Material.objects.select_for_update().get(id=item.material.id)
                 material.stock_actual += ingresado
                 material.save()
@@ -583,15 +668,20 @@ def inventario_actual(request):
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
 def crear_material(request):
-    from .forms import MaterialForm
     if request.method == 'POST':
-        form = MaterialForm(request.POST)
+        # PASA REQUEST.POST Y REQUEST.FILES
+        form = MaterialForm(request.POST, request.FILES) 
         if form.is_valid():
             form.save()
-            messages.success(request, 'Material añadido al catálogo correctamente.')
+            messages.success(request, "Material guardado correctamente.")
             return redirect('inventario_actual')
+        else:
+            # Esto es clave para debugear: imprimir errores si el form no es válido
+            print(form.errors) 
+            messages.error(request, "Error al guardar. Revisa los campos.")
     else:
         form = MaterialForm()
+    
     return render(request, 'web/erp/crear_material.html', {'form': form})
 
 @login_required(login_url='login')

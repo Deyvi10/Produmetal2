@@ -115,19 +115,17 @@
                     </h5>
                 </div>
                 <div class="card-body p-4 p-md-5">
-                    <form method="POST">
+                    <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
                         {% csrf_token %}
-
+                        
                         <div class="row g-4 mb-4">
                             <div class="col-md-6">
                                 <label class="form-label">{{ form.sku.label }}</label>
                                 {{ form.sku }}
-                                {% if form.sku.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.sku.errors|join:", " }}</div>{% endif %}
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">{{ form.tipo.label }}</label>
                                 {{ form.tipo }}
-                                {% if form.tipo.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.tipo.errors|join:", " }}</div>{% endif %}
                             </div>
                         </div>
 

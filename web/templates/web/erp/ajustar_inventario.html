@@ -7,87 +7,162 @@
 
 {% block content %}
 <style>
+    /* =========================================
+       AJUSTES - ESTILO PREMIUM MINIMALISTA
+       ========================================= */
     :root {
         --pm-bg: #0d1117;
         --pm-surface: #161b22;
         --pm-border: #30363d;
-        --pm-text: #ffffff;
-        --pm-text-muted: #aab6c4;
+        --pm-text: #f0f6fc;
+        --pm-text-muted: #8b949e;
         --pm-amber: #e6a817; 
-        --pm-red: #f85149;
+        --pm-red: #da3633;
+        
         --font-display: 'Barlow Condensed', sans-serif;
         --font-body: 'Barlow', sans-serif;
     }
-    body { background-color: var(--pm-bg) !important; color: var(--pm-text) !important; font-family: var(--font-body); }
-    .erp-container { margin-top: 30px; max-width: 800px; }
     
+    body { background-color: var(--pm-bg) !important; color: var(--pm-text) !important; font-family: var(--font-body); }
+    
+    /* Cajas y Tarjetas */
     .card-ajuste {
         background: var(--pm-surface);
-        border: 1px solid var(--pm-red); /* Borde rojo de advertencia */
-        border-radius: 12px;
-        box-shadow: 0 10px 30px rgba(248,81,73,0.1);
+        border: 1px solid var(--pm-border);
+        border-top: 4px solid var(--pm-red);
+        border-radius: 16px;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.4);
         overflow: hidden;
     }
-    .card-header-ajuste { background: rgba(248,81,73,0.1); border-bottom: 2px solid var(--pm-red); padding: 1.5rem; }
     
-    .form-control { background-color: var(--pm-bg) !important; border: 1px solid var(--pm-border) !important; color: var(--pm-text) !important; font-family: var(--font-body); border-radius: 8px; }
-    .form-control:focus { border-color: var(--pm-red) !important; box-shadow: 0 0 0 3px rgba(248,81,73,0.2) !important; }
-    .form-label { font-family: var(--font-display); font-weight: 700; color: var(--pm-text-muted); font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; }
+    .info-material {
+        background: rgba(0,0,0,0.2); 
+        border: 1px dashed var(--pm-border); 
+        border-radius: 12px; 
+    }
+
+    /* Formularios */
+    .form-control-pm {
+        background-color: rgba(9, 13, 19, 0.5) !important; 
+        border: 1px solid var(--pm-border) !important; 
+        color: var(--pm-text) !important; 
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+    .form-control-pm:focus { 
+        border-color: var(--pm-red) !important; 
+        box-shadow: 0 0 0 3px rgba(218,54,51,0.15) !important; 
+        background-color: var(--pm-bg) !important;
+    }
     
-    .info-material { background: var(--pm-bg); border: 1px dashed var(--pm-border); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+    .label-pm { 
+        font-family: var(--font-display); 
+        font-weight: 700; 
+        color: var(--pm-text-muted); 
+        font-size: 0.9rem; 
+        text-transform: uppercase; 
+        letter-spacing: 1px; 
+    }
 </style>
 
-<div class="container-fluid px-3 px-xl-5 erp-container mb-5">
-
-    <div class="d-flex align-items-center gap-3 mb-4">
-        <a href="{% url 'inventario_actual' %}" class="btn btn-outline-secondary btn-minimal text-white px-3" style="font-family: var(--font-display); font-weight: 700; text-transform: uppercase;">
-            <i class="bi bi-arrow-left"></i> Volver al Inventario
-        </a>
-    </div>
-
-    <div class="card card-ajuste">
-        <div class="card-header-ajuste">
-            <h4 class="mb-0 text-danger" style="font-family: var(--font-display); font-weight: 800; text-transform: uppercase;">
-                <i class="bi bi-shield-exclamation me-2"></i> Ajuste Manual de Auditoría
-            </h4>
-        </div>
-        <div class="card-body p-4 p-md-5">
+<div class="container py-4 py-md-5" style="margin-top: 80px;">
+    
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-10 col-lg-8">
             
-            <div class="info-material">
-                <div>
-                    <span class="badge bg-secondary mb-2">{{ material.sku }}</span>
-                    <h5 class="fw-bold mb-0 text-white">{{ material.nombre }}</h5>
-                </div>
-                <div class="text-end">
-                    <div class="text-muted small text-uppercase fw-bold">Stock Actual en Sistema</div>
-                    <div class="fs-3 fw-bold" style="font-family: var(--font-display); color: var(--pm-amber);">{{ material.stock_actual }}</div>
-                </div>
+            <!-- Botón de regreso -->
+            <div class="mb-4">
+                <a href="{% url 'inventario_actual' %}" class="text-decoration-none text-secondary fw-bold transition-2s">
+                    <i class="bi bi-arrow-left-circle me-1"></i> Cancelar y volver al Inventario
+                </a>
             </div>
 
-            <form method="POST">
-                {% csrf_token %}
-
-                <div class="mb-4">
-                    <label class="form-label text-white"><i class="bi bi-calculator"></i> {{ form.cantidad_ajuste.label }}</label>
-                    {{ form.cantidad_ajuste }}
-                    <div class="form-text mt-2 text-warning"><i class="bi bi-info-circle"></i> {{ form.cantidad_ajuste.help_text }}</div>
-                    {% if form.cantidad_ajuste.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.cantidad_ajuste.errors|join:", " }}</div>{% endif %}
+            <!-- Contenedor Principal -->
+            <div class="card card-ajuste fade-up">
+                
+                <div class="card-header bg-transparent border-bottom p-4 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-0 text-danger" style="font-family: var(--font-display); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <i class="bi bi-shield-exclamation me-2"></i> Ajuste Manual de Stock
+                        </h4>
+                        <p class="text-muted small mb-0 mt-1">Esta acción quedará registrada permanentemente en la auditoría.</p>
+                    </div>
                 </div>
+                
+                <div class="card-body p-4 p-md-5">
+                    
+                    <!-- Resumen del Material (Responsivo) -->
+                    <div class="info-material p-3 p-md-4 mb-4 d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3">
+                        <div>
+                            <span class="badge bg-secondary mb-2" style="font-family: monospace; letter-spacing: 1px;">{{ material.sku }}</span>
+                            <h5 class="fw-bold mb-0 text-white" style="line-height: 1.3;">{{ material.nombre }}</h5>
+                        </div>
+                        <div class="text-start text-sm-end w-100 w-sm-auto mt-2 mt-sm-0 pt-2 pt-sm-0 border-top border-sm-0" style="border-color: var(--pm-border) !important;">
+                            <div class="text-muted small text-uppercase fw-bold mb-1" style="font-size: 0.7rem;">Stock Actual (Sistema)</div>
+                            <div class="fs-2 fw-bold" style="font-family: var(--font-display); color: var(--pm-amber); line-height: 1;">
+                                {{ material.stock_actual }} <span class="fs-6 fw-normal text-muted">{{ material.unidad_medida }}</span>
+                            </div>
+                        </div>
+                    </div>
 
-                <div class="mb-5">
-                    <label class="form-label text-white"><i class="bi bi-journal-text"></i> {{ form.observaciones.label }} <span class="text-danger">*</span></label>
-                    {{ form.observaciones }}
-                    <div class="form-text mt-2" style="color: var(--pm-text-muted);">{{ form.observaciones.help_text }}</div>
-                    {% if form.observaciones.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.observaciones.errors|join:", " }}</div>{% endif %}
-                </div>
+                    <!-- Formulario de Ajuste -->
+                    <form method="POST" class="needs-validation" novalidate>
+                        {% csrf_token %}
 
-                <div class="d-flex flex-column flex-md-row gap-3 pt-3 border-top" style="border-color: var(--pm-border) !important;">
-                    <button type="submit" class="btn btn-danger w-100 w-md-auto py-2 px-4" style="font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">
-                        <i class="bi bi-check-circle-fill"></i> Ejecutar Ajuste y Firmar
-                    </button>
+                        <div class="row g-4 mb-4">
+                            <!-- Cantidad del Ajuste -->
+                            <div class="col-12 col-md-6">
+                                <label class="label-pm mb-2"><i class="bi bi-calculator me-1"></i> {{ form.cantidad_ajuste.label }} <span class="text-danger">*</span></label>
+                                
+                                <div class="input-group input-group-lg shadow-sm">
+                                    <span class="input-group-text bg-dark border-secondary-subtle text-muted"><i class="bi bi-plus-slash-minus"></i></span>
+                                    <!-- Inyectamos clases al widget de Django -->
+                                    <input type="number" name="{{ form.cantidad_ajuste.name }}" class="form-control form-control-pm text-center fw-bold text-white fs-4" step="0.01" required placeholder="Ej: -5 o +10">
+                                </div>
+                                
+                                <div class="form-text mt-2 text-warning small"><i class="bi bi-info-circle me-1"></i> Usa valores negativos (-) para mermas o positivos (+) para sobrantes.</div>
+                                {% if form.cantidad_ajuste.errors %}
+                                    <div class="text-danger small mt-1 fw-bold"><i class="bi bi-exclamation-triangle"></i> {{ form.cantidad_ajuste.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Observaciones -->
+                            <div class="col-12">
+                                <label class="label-pm mb-2"><i class="bi bi-journal-text me-1"></i> {{ form.observaciones.label }} <span class="text-danger">*</span></label>
+                                <!-- Inyectamos clases al widget de Django -->
+                                <textarea name="{{ form.observaciones.name }}" rows="3" class="form-control form-control-pm" required placeholder="Ej: Material dañado por humedad, conteo físico no cuadra, etc..."></textarea>
+                                
+                                <div class="form-text mt-2" style="color: var(--pm-text-muted); font-size: 0.8rem;">Justificación obligatoria para la gerencia.</div>
+                                {% if form.observaciones.errors %}
+                                    <div class="text-danger small mt-1 fw-bold"><i class="bi bi-exclamation-triangle"></i> {{ form.observaciones.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Botonera -->
+                        <div class="d-flex flex-column flex-md-row justify-content-end gap-3 pt-4 border-top" style="border-color: var(--pm-border) !important;">
+                            <a href="{% url 'inventario_actual' %}" class="btn btn-light fw-bold order-2 order-md-1 py-2 px-4 shadow-sm">Cancelar</a>
+                            <button type="submit" class="btn btn-danger order-1 order-md-2 py-2 px-4 shadow-sm" style="font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 1px;" onclick="return confirm('ATENCIÓN: Vas a alterar el registro contable del inventario. ¿Estás absolutamente seguro de ejecutar este ajuste?');">
+                                <i class="bi bi-check-circle-fill me-1"></i> Ejecutar Ajuste y Firmar
+                            </button>
+                        </div>
+                    </form>
+
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- Animación simple -->
+<style>
+    .fade-up {
+        animation: fadeUpAnim 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    @keyframes fadeUpAnim {
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
 {% endblock %}
