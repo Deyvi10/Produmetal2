@@ -92,4 +92,5 @@ urlpatterns = [
     path('erp/inventario/categoria/nueva/', views.crear_categoria, name='crear_categoria'), # <-- AGREGA ESTA LÍNEA EXACTAMENTE AQUÍ
     path('erp/configuracion/categoria/<int:categoria_id>/alternar/', views.alternar_estado_categoria, name='alternar_categoria'), # <-- AÑADE ESTA LÍNEA
     path('erp/auditoria/trazabilidad/', views.trazabilidad_requerimientos, name='trazabilidad_requerimientos'),
+    path('erp/ticket/eliminar-item/<int:item_id>/', views.eliminar_item_requerimiento, name='eliminar_item_requerimiento'),
 ]

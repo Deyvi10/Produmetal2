@@ -231,6 +231,23 @@ def añadir_materiales(request, req_id):
     }
     return render(request, 'web/erp/añadir_materiales.html', context)
 
+@login_required(login_url='login')
+@user_passes_test(es_solicitante, login_url='dashboard_erp')
+def eliminar_item_requerimiento(request, item_id):
+    """Permite al solicitante eliminar un material de su ticket antes de enviarlo."""
+    if request.method == 'POST':
+        item = get_object_or_404(DetalleRequerimiento, id=item_id)
+        
+        # Validar que el ticket pertenezca al usuario y siga en PENDIENTE
+        if item.requerimiento.solicitante == request.user and item.requerimiento.estado == 'PENDIENTE':
+            nombre_material = item.material.nombre
+            item.delete()
+            messages.success(request, f'Se eliminó "{nombre_material}" de tu lista.')
+        else:
+            messages.error(request, 'No puedes modificar este ticket porque ya está en proceso.')
+            
+        return redirect('añadir_materiales', req_id=item.requerimiento.id)
+    return redirect('dashboard_erp')
 
 # --- VISTA DE APROBACIÓN DE TICKETS AUTOMÁTICA (Admin) ---
 @login_required(login_url='login')
@@ -656,6 +673,7 @@ def recibir_orden_compra(request, oc_id):
     return render(request, 'web/erp/recibir_stock_form.html', {
         'oc': oc, 'detalles': detalles, 'bodegas': Bodega.objects.all()
     })
+
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
 def editar_movimiento_auditoria(request, movimiento_id):

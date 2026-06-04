@@ -187,26 +187,31 @@
 
     {% if rol == 'Administrador' %}
     
-    <div class="action-card-grid mb-5 fade-up delay-1">
+    <div class="action-card-grid mb-5 fade-up delay-1" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
         <a href="{% url 'inventario_actual' %}" class="action-card card-amber">
             <div class="action-icon" style="color: var(--pm-amber);"><i class="bi bi-boxes"></i></div>
             <h6>Catálogo Maestro</h6>
-            <p class="small text-muted mt-2 mb-0">Control Total del Inventario</p>
+            <p class="small text-muted mt-2 mb-0">Control del Inventario</p>
         </a>
-        <a href="{% url 'gestionar_proyectos' %}" class="action-card card-blue">
-            <div class="action-icon" style="color: var(--pm-blue);"><i class="bi bi-building-gear"></i></div>
-            <h6>Centros de Costo</h6>
-            <p class="small text-muted mt-2 mb-0">Gestión de Proyectos Activos</p>
+        <a href="{% url 'trazabilidad_requerimientos' %}" class="action-card card-blue">
+            <div class="action-icon" style="color: var(--pm-blue);"><i class="bi bi-radar"></i></div>
+            <h6>Trazabilidad</h6>
+            <p class="small text-muted mt-2 mb-0">Auditoría de Tickets</p>
         </a>
-        <a href="{% url 'gestionar_empleados' %}" class="action-card card-green">
-            <div class="action-icon" style="color: var(--pm-green);"><i class="bi bi-people"></i></div>
+        <a href="{% url 'gestionar_proyectos' %}" class="action-card card-green">
+            <div class="action-icon" style="color: var(--pm-green);"><i class="bi bi-building-gear"></i></div>
+            <h6>Obras / Proyectos</h6>
+            <p class="small text-muted mt-2 mb-0">Centros de Costo</p>
+        </a>
+        <a href="{% url 'gestionar_empleados' %}" class="action-card card-purple">
+            <div class="action-icon" style="color: var(--pm-purple);"><i class="bi bi-people"></i></div>
             <h6>Personal</h6>
-            <p class="small text-muted mt-2 mb-0">Usuarios y Asignación de Roles</p>
+            <p class="small text-muted mt-2 mb-0">Usuarios y Roles</p>
         </a>
-        <a href="{% url 'gestionar_bloqueos' %}" class="action-card card-red">
-            <div class="action-icon" style="color: var(--pm-red);"><i class="bi bi-shield-lock"></i></div>
-            <h6>Seguridad</h6>
-            <p class="small text-muted mt-2 mb-0">Auditoría de Accesos</p>
+        <a href="{% url 'configuracion_erp' %}" class="action-card card-secondary">
+            <div class="action-icon text-secondary"><i class="bi bi-gear-fill"></i></div>
+            <h6>Configuración</h6>
+            <p class="small text-muted mt-2 mb-0">Ajustes del Sistema</p>
         </a>
     </div>
 
