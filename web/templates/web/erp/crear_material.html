@@ -118,49 +118,95 @@
                     <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
                         {% csrf_token %}
                         
+                        <!-- SECCIÓN 1: SKU Y CATEGORÍA -->
                         <div class="row g-4 mb-4">
+                            <!-- SKU: Solo lectura si estamos editando -->
                             <div class="col-md-6">
-                                <label class="form-label">{{ form.sku.label }}</label>
-                                {{ form.sku }}
+                                <label class="form-label">
+                                    <i class="bi bi-tag me-2" style="color: var(--pm-amber);"></i>
+                                    Código SKU
+                                </label>
+                                {% if editando %}
+                                    <input type="text" class="form-control" value="{{ material.sku }}" readonly disabled style="background: var(--pm-bg); opacity: 0.6;">
+                                    <small class="text-muted d-block mt-2"><i class="bi bi-info-circle"></i> El código SKU se genera automáticamente y no puede modificarse.</small>
+                                {% else %}
+                                    <input type="text" class="form-control" placeholder="Se genera automáticamente al guardar" disabled style="background: var(--pm-bg);">
+                                    <small class="text-muted d-block mt-2"><i class="bi bi-lightbulb"></i> Basado en la categoría seleccionada.</small>
+                                {% endif %}
                             </div>
+                            <!-- CATEGORÍA: Requerida -->
                             <div class="col-md-6">
-                                <label class="form-label">{{ form.tipo.label }}</label>
-                                {{ form.tipo }}
+                                <label class="form-label">{{ form.categoria.label }} <span class="text-danger">*</span></label>
+                                {{ form.categoria }}
+                                {% if form.categoria.errors %}<div class="text-danger small mt-1 fw-bold"><i class="bi bi-exclamation-triangle"></i> {{ form.categoria.errors|join:", " }}</div>{% endif %}
                             </div>
                         </div>
 
+                        <!-- SECCIÓN 2: NOMBRE Y DESCRIPCIÓN -->
                         <div class="mb-4">
-                            <label class="form-label">{{ form.nombre.label }}</label>
+                            <label class="form-label">{{ form.nombre.label }} <span class="text-danger">*</span></label>
                             {{ form.nombre }}
-                            <div class="form-text"><i class="bi bi-info-circle me-1"></i>Norma Técnica y Nombre Comercial.</div>
-                            {% if form.nombre.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.nombre.errors|join:", " }}</div>{% endif %}
+                            <div class="form-text"><i class="bi bi-info-circle me-1"></i>Norma Técnica y Nombre Comercial (ej: Varilla Corrugada Ø12mm).</div>
+                            {% if form.nombre.errors %}<div class="text-danger small mt-1 fw-bold"><i class="bi bi-exclamation-triangle"></i> {{ form.nombre.errors|join:", " }}</div>{% endif %}
                         </div>
 
                         <div class="mb-4">
                             <label class="form-label">{{ form.descripcion.label }}</label>
                             {{ form.descripcion }}
+                            <div class="form-text">Especificaciones técnicas, normas, procedencia, etc.</div>
                         </div>
 
-                        <div class="row g-4 mb-5">
-                            <div class="col-md-4">
-                                <label class="form-label text-warning"><i class="bi bi-exclamation-triangle"></i> {{ form.stock_minimo.label }}</label>
+                        <!-- SECCIÓN 3: INVENTARIO Y PRECIOS -->
+                        <div class="row g-4 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label text-warning">
+                                    <i class="bi bi-exclamation-triangle"></i> 
+                                    {{ form.stock_minimo.label }}
+                                    <span class="text-danger">*</span>
+                                </label>
                                 {{ form.stock_minimo }}
-                                {% if form.stock_minimo.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.stock_minimo.errors|join:", " }}</div>{% endif %}
+                                <small class="text-muted d-block mt-2">Cantidad que activa alertas de reabastecimiento.</small>
+                                {% if form.stock_minimo.errors %}<div class="text-danger small mt-1 fw-bold"><i class="bi bi-exclamation-triangle"></i> {{ form.stock_minimo.errors|join:", " }}</div>{% endif %}
                             </div>
-                            <div class="col-md-4">
-                                <label class="form-label">{{ form.stock_actual.label }}</label>
-                                {{ form.stock_actual }}
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">{{ form.ubicacion.label }}</label>
-                                {{ form.ubicacion }}
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.precio_base.label }}</label>
+                                {{ form.precio_base }}
+                                <small class="text-muted d-block mt-2">Precio unitario base (sin impuesto).</small>
+                                {% if form.precio_base.errors %}<div class="text-danger small mt-1 fw-bold"><i class="bi bi-exclamation-triangle"></i> {{ form.precio_base.errors|join:", " }}</div>{% endif %}
                             </div>
                         </div>
 
+                        <!-- SECCIÓN 4: IMPUESTOS Y ESTADO -->
+                        <div class="row g-4 mb-5">
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.impuesto_porcentaje.label }}</label>
+                                {{ form.impuesto_porcentaje }}
+                                <small class="text-muted d-block mt-2">Porcentaje de IVA u otro impuesto aplicable (0-100%).</small>
+                                {% if form.impuesto_porcentaje.errors %}<div class="text-danger small mt-1 fw-bold"><i class="bi bi-exclamation-triangle"></i> {{ form.impuesto_porcentaje.errors|join:", " }}</div>{% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label d-flex align-items-center gap-2">
+                                    {{ form.is_active }} <span>{{ form.is_active.label }}</span>
+                                </label>
+                                <small class="text-muted d-block mt-2">
+                                    {% if editando %}
+                                        Desmarcar para desactivar sin eliminar de histórico.
+                                    {% else %}
+                                        Mantener marcado para que sea visible en sistemas.
+                                    {% endif %}
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- BOTONES DE ACCIÓN -->
                         <div class="d-flex flex-column flex-md-row gap-3 pt-3 border-top" style="border-color: var(--pm-border) !important;">
                             <button type="submit" class="btn-amber btn-minimal w-100 w-md-auto justify-content-center">
-                                <i class="bi bi-save2"></i> {% if editando %}Actualizar Ficha{% else %}Guardar en Catálogo{% endif %}
+                                <i class="bi bi-save2"></i> 
+                                {% if editando %}Actualizar Ficha{% else %}Guardar en Catálogo{% endif %}
                             </button>
+                            <a href="{% url 'inventario_actual' %}" class="btn-outline-secondary-custom btn-minimal w-100 w-md-auto justify-content-center">
+                                <i class="bi bi-arrow-left"></i> Cancelar
+                            </a>
                         </div>
                     </form>
                 </div>

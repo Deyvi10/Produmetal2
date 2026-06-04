@@ -119,14 +119,78 @@ class ProyectoForm(forms.ModelForm):
 class MaterialForm(forms.ModelForm):
     class Meta:
         model = Material
-        # CORRECCIÓN CRÍTICA: Adaptado a la nueva arquitectura de Categoria (se eliminó tipo y subcategoria)
-        fields = ['categoria', 'nombre', 'descripcion', 'stock_minimo']
+        fields = ['categoria', 'nombre', 'descripcion', 'precio_base', 
+                  'impuesto_porcentaje', 'stock_minimo', 'is_active']
         widgets = {
-            'categoria': forms.Select(attrs={'class': 'form-select'}),
-            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Varilla Corrugada 12mm'}),
-            'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
-            'stock_minimo': forms.NumberInput(attrs={'class': 'form-control', 'min': '0', 'step': '0.01'}),
+            'categoria': forms.Select(attrs={
+                'class': 'form-select',
+                'required': 'required'
+            }),
+            'nombre': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ej: Varilla Corrugada 12mm',
+                'required': 'required',
+                'maxlength': '200'
+            }),
+            'descripcion': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 2,
+                'placeholder': 'Especificaciones técnicas (Opcional)'
+            }),
+            'precio_base': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'placeholder': '0.00'
+            }),
+            'impuesto_porcentaje': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'max': '100',
+                'value': '15'
+            }),
+            'stock_minimo': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'placeholder': 'Cantidad mínima para alertas'
+            }),
+            'is_active': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            })
         }
+
+    def clean_nombre(self):
+        """Validar que el nombre no sea vacío y tenga longitud mínima"""
+        nombre = self.cleaned_data.get('nombre', '').strip()
+        if not nombre:
+            raise ValidationError("El nombre del material es obligatorio y no puede estar vacío.")
+        if len(nombre) < 3:
+            raise ValidationError("El nombre debe tener al menos 3 caracteres.")
+        return nombre
+
+    def clean_precio_base(self):
+        """Validar que el precio no sea negativo"""
+        precio = self.cleaned_data.get('precio_base')
+        if precio is not None and precio < 0:
+            raise ValidationError("El precio base no puede ser negativo.")
+        return precio
+
+    def clean_stock_minimo(self):
+        """Validar que stock mínimo sea válido"""
+        stock = self.cleaned_data.get('stock_minimo')
+        if stock is not None and stock < 0:
+            raise ValidationError("El stock mínimo no puede ser negativo.")
+        return stock
+
+    def clean_impuesto_porcentaje(self):
+        """Validar que el porcentaje sea válido (0-100%)"""
+        impuesto = self.cleaned_data.get('impuesto_porcentaje')
+        if impuesto is not None:
+            if impuesto < 0 or impuesto > 100:
+                raise ValidationError("El porcentaje de impuesto debe estar entre 0 y 100.")
+        return impuesto
 
 class AjusteInventarioForm(forms.Form):
     bodega = forms.ModelChoiceField(

@@ -668,41 +668,126 @@ def inventario_actual(request):
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
 def crear_material(request):
+    """
+    Vista para crear nuevo material en el catálogo maestro.
+    Solo administrador puede acceder.
+    
+    GET: Muestra formulario vacío
+    POST: Valida y guarda material (genera SKU automático)
+    """
     if request.method == 'POST':
-        # PASA REQUEST.POST Y REQUEST.FILES
-        form = MaterialForm(request.POST, request.FILES) 
+        form = MaterialForm(request.POST, request.FILES)
+        
         if form.is_valid():
-            form.save()
-            messages.success(request, "Material guardado correctamente.")
-            return redirect('inventario_actual')
+            try:
+                material = form.save(commit=False)
+                material.save()  # Aquí se genera el SKU automáticamente
+                
+                # Mensaje de éxito con el código generado
+                messages.success(
+                    request,
+                    f"✅ Material '{material.nombre}' creado exitosamente. "
+                    f"Código asignado: <strong>{material.sku}</strong>"
+                )
+                
+                # Log para auditoría (implementar después)
+                # log_auditoria(request.user, 'CREATE', 'Material', material.id)
+                
+                return redirect('inventario_actual')
+            
+            except Exception as e:
+                # Capturar errores de base de datos
+                messages.error(
+                    request,
+                    f"❌ Error al guardar material: {str(e)}"
+                )
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error creando material: {str(e)}", exc_info=True)
+        
         else:
-            # Esto es clave para debugear: imprimir errores si el form no es válido
-            print(form.errors) 
-            messages.error(request, "Error al guardar. Revisa los campos.")
+            # Mostrar errores de validación específicos
+            error_messages = []
+            for field, errors in form.errors.items():
+                for error in errors:
+                    if field == '__all__':
+                        error_messages.append(f"⚠️ {error}")
+                    else:
+                        field_label = form.fields[field].label if field in form.fields else field
+                        error_messages.append(f"⚠️ {field_label}: {error}")
+            
+            for error_msg in error_messages:
+                messages.error(request, error_msg)
+    
     else:
+        # GET: mostrar formulario vacío
         form = MaterialForm()
     
-    return render(request, 'web/erp/crear_material.html', {'form': form})
+    context = {
+        'form': form,
+        'editando': False,
+        'titulo': 'Crear Nuevo Material',
+    }
+    return render(request, 'web/erp/crear_material.html', context)
 
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
 def editar_material(request, material_id):
-    from .forms import MaterialForm 
+    """
+    Vista para editar propiedades de un material existente.
+    Solo administrador puede acceder.
+    
+    Nota: El SKU es inmutable (auto-generado)
+    """
     material = get_object_or_404(Material, id=material_id)
+    
     if request.method == 'POST':
-        form = MaterialForm(request.POST, instance=material)
+        form = MaterialForm(request.POST, request.FILES, instance=material)
+        
         if form.is_valid():
-            form.save()
-            messages.success(request, f'¡Material {material.sku} actualizado correctamente!')
-            return redirect('inventario_actual')
+            try:
+                form.save()
+                messages.success(
+                    request,
+                    f"✅ Material {material.sku} actualizado correctamente."
+                )
+                return redirect('inventario_actual')
+            
+            except Exception as e:
+                messages.error(
+                    request,
+                    f"❌ Error al actualizar material: {str(e)}"
+                )
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error editando material {material_id}: {str(e)}", 
+                           exc_info=True)
+        
+        else:
+            # Mostrar errores de validación
+            error_messages = []
+            for field, errors in form.errors.items():
+                for error in errors:
+                    if field == '__all__':
+                        error_messages.append(f"⚠️ {error}")
+                    else:
+                        field_label = form.fields[field].label if field in form.fields else field
+                        error_messages.append(f"⚠️ {field_label}: {error}")
+            
+            for error_msg in error_messages:
+                messages.error(request, error_msg)
+    
     else:
         form = MaterialForm(instance=material)
-        
-    return render(request, 'web/erp/crear_material.html', {
+    
+    context = {
         'form': form,
-        'editando': True, 
-        'material': material
-    })
+        'editando': True,
+        'material': material,
+        'titulo': f'Editar Material: {material.sku}',
+    }
+    return render(request, 'web/erp/crear_material.html', context)
+
     
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')

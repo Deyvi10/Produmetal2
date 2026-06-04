@@ -64,23 +64,70 @@ class Proyecto(models.Model):
 # 2. CATÁLOGO DE INVENTARIO (Anti-Duplicados y Concurrencia)
 # =====================================================================
 class Material(models.Model):
+    """
+    Catálogo maestro de materiales y consumibles.
+    
+    Características:
+    - SKU auto-generado por categoría (FERR-0001, ELEC-0002, etc)
+    - Stock denormalizado pero actualizable
+    - Trazabilidad histórica completa
+    - Cálculo automático de precio con impuesto
+    """
     categoria = models.ForeignKey(Categoria, on_delete=models.PROTECT) 
-    sku = models.CharField(max_length=50, unique=True, blank=True, editable=False) # AUTO
-    nombre = models.CharField(max_length=200)
+    sku = models.CharField(
+        max_length=50, unique=True, blank=True, editable=False,
+        help_text="Código único auto-generado"
+    )
+    nombre = models.CharField(
+        max_length=200,
+        help_text="Nombre comercial o norma técnica"
+    )
     descripcion = models.TextField(blank=True, null=True)
-    stock_actual = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Stock Total (Suma de bodegas)")
-    stock_minimo = models.DecimalField(max_digits=10, decimal_places=2, default=5.00, help_text="Umbral para alertas")
-    is_active = models.BooleanField(default=True)
-
-    history = HistoricalRecords() # AUDITORÍA TOTAL
-    precio_base = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    impuesto_porcentaje = models.DecimalField(max_digits=5, decimal_places=2, default=15.00) # Asumiendo 15% de IVA
+    
+    # INVENTARIO
+    stock_actual = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0.00,
+        help_text="Stock Total (Suma de bodegas). Denormalizado para reportes rápidos."
+    )
+    stock_minimo = models.DecimalField(
+        max_digits=10, decimal_places=2, default=5.00,
+        help_text="Umbral para alertas de reabastecimiento"
+    )
+    
+    # PRECIOS Y COSTOS
+    precio_base = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0.00,
+        help_text="Precio unitario sin impuesto"
+    )
+    impuesto_porcentaje = models.DecimalField(
+        max_digits=5, decimal_places=2, default=15.00,
+        help_text="Porcentaje de impuesto (IVA, etc)"
+    )
+    
+    # ESTADO
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Desmarcar para borrado lógico (mantiene histórico)"
+    )
+    
+    # AUDITORÍA
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+    history = HistoricalRecords()
 
     class Meta:
         verbose_name_plural = "Inventario (Materiales y Consumibles)"
+        ordering = ['-fecha_creacion']
+        indexes = [
+            models.Index(fields=['sku']),
+            models.Index(fields=['categoria', 'is_active']),
+        ]
 
     def save(self, *args, **kwargs):
-        # GENERACIÓN AUTOMÁTICA DE CÓDIGO ESTRICTA (Sin Race Conditions)
+        """
+        Genera SKU automático en primera creación.
+        Usa transacción para evitar race conditions.
+        """
         if not self.sku:
             with transaction.atomic():
                 secuencia, created = SecuenciaCodigo.objects.select_for_update().get_or_create(
@@ -90,15 +137,34 @@ class Material(models.Model):
                 secuencia.ultimo_valor += 1
                 secuencia.save()
                 self.sku = f'{self.categoria.prefijo}-{secuencia.ultimo_valor:04d}'
+        
+        # Recalcular stock desde bodega (denormalización)
+        self.stock_actual = self._calcular_stock_total()
+        
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"[{self.sku}] {self.nombre} (Total: {self.stock_actual})"
+        return f"[{self.sku}] {self.nombre}"
+    
+    def _calcular_stock_total(self):
+        """Suma el stock de todas las bodegas"""
+        return sum(sb.cantidad for sb in self.stocks_bodegas.all()) or 0
     
     @property
     def precio_total_con_impuesto(self):
+        """Calcula el precio final con impuesto incluido"""
         impuesto = (self.precio_base * self.impuesto_porcentaje) / 100
         return self.precio_base + impuesto
+    
+    @property
+    def stock_en_alerta(self):
+        """Retorna True si stock está por debajo del mínimo"""
+        return self.stock_actual < self.stock_minimo
+    
+    def tiene_movimientos(self):
+        """Verifica si el material tiene auditoría de movimientos"""
+        return self.movimientos.exists()
+    
 class StockBodega(models.Model):
     material = models.ForeignKey(Material, on_delete=models.CASCADE, related_name='stocks_bodegas')
     bodega = models.ForeignKey(Bodega, on_delete=models.CASCADE, related_name='inventario')
