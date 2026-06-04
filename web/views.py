@@ -7,17 +7,19 @@ from axes.models import AccessAttempt
 from django.db import transaction
 from django.core.paginator import Paginator
 from .forms import MaterialForm
+from decimal import Decimal
 # =======================================================
 # IMPORTACIONES DE MODELOS Y FORMULARIOS
 # =======================================================
 from .models import (
     Requerimiento, DetalleRequerimiento, Material, Proyecto, MovimientoInventario, 
-    OrdenCompra, DetalleOrdenCompra, SolicitudCompra, CotizacionItem, Bodega, StockBodega
-)
+    OrdenCompra, DetalleOrdenCompra, SolicitudCompra, CotizacionItem, Bodega, StockBodega,
+    Categoria
+    )
 from .forms import (
     RequerimientoForm, DetalleRequerimientoForm, RegistroEmpleadoForm, 
     ProyectoForm, OrdenCompraForm, DetalleOrdenCompraForm, AjusteInventarioForm,
-    VentaMaterialForm
+    VentaMaterialForm, BodegaForm, CategoriaForm
 )
 
 # IMPORTS PARA GENERACIÓN DE PDF
@@ -342,7 +344,7 @@ def despachar_requerimiento(request, req_id):
     return render(request, 'web/erp/confirmar_despacho.html', {
         'ticket': ticket,
         'items': ticket.detalles.filter(estado_item='APROBADO_BODEGA'),
-        'bodegas': Bodega.objects.filter(is_active=True)
+        'bodegas': Bodega.objects.all()
     })
 
 # =======================================================
@@ -549,11 +551,16 @@ def recibir_orden_compra(request, oc_id):
         entrega_incompleta = False
 
         for item in detalles:
-            # BLINDAJE: Capturar errores de conversión de texto a número
+            # BLINDAJE: Capturar errores y convertir a Decimal (Alta precisión)
             try:
-                ingresado = float(request.POST.get(f'recibido_{item.id}', 0))
-            except ValueError:
-                ingresado = 0.0
+                # Obtenemos el texto, por defecto '0'
+                valor_texto = request.POST.get(f'recibido_{item.id}', '0')
+                # Reemplazamos coma por punto por si el navegador manda formato europeo
+                valor_texto = valor_texto.replace(',', '.') 
+                # Convertimos estrictamente a Decimal
+                ingresado = Decimal(valor_texto)
+            except Exception:
+                ingresado = Decimal('0.0')
 
             # BLINDAJE: Evitar ingresos negativos (restar stock maliciosamente)
             if ingresado < 0:
@@ -563,30 +570,78 @@ def recibir_orden_compra(request, oc_id):
             archivo_certificado = request.FILES.get(f'certificado_{item.id}')
 
             if ingresado > 0:
-                # BLINDAJE: Evitar que el bodeguero reciba más de lo que se pidió en la OC
-                if (item.cantidad_recibida + ingresado) > item.cantidad_pedida:
+                # 1. Homologar todos los valores de la base de datos a Decimal
+                cant_recibida = Decimal(str(item.cantidad_recibida))
+                cant_pedida = Decimal(str(item.cantidad_pedida))
+
+                # BLINDAJE: Evitar que el bodeguero reciba más de lo que se pidió
+                if (cant_recibida + ingresado) > cant_pedida:
                     messages.error(request, f"Error: Estás intentando recibir más {item.material.nombre} del que se solicitó.")
                     return redirect('recibir_orden_compra', oc_id=oc.id)
 
-                item.cantidad_recibida += ingresado
+                item.cantidad_recibida = cant_recibida + ingresado
                 item.save()
 
-                if item.cantidad_recibida < item.cantidad_pedida:
+                if item.cantidad_recibida < cant_pedida:
                     entrega_incompleta = True
 
                 # BLOQUEO DE CONCURRENCIA PARA RECEPCIÓN SEGURA
                 material = Material.objects.select_for_update().get(id=item.material.id)
-                material.stock_actual += ingresado
-                material.save()
 
+                # 1. PRIMERO ACTUALIZAMOS EL STOCK EN LA BODEGA
                 stock_b, _ = StockBodega.objects.select_for_update().get_or_create(bodega=bodega, material=material)
-                stock_b.cantidad += ingresado
-                stock_b.save()
+                
+                # Prevenir error si la cantidad de la bodega viene vacía o nula
+                cant_bodega = Decimal(str(stock_b.cantidad)) if stock_b.cantidad else Decimal('0.0')
+                stock_b.cantidad = cant_bodega + ingresado
+                stock_b.save() # <-- Se guarda la bodega primero
+
+                # 2. LUEGO GUARDAMOS EL MATERIAL
+                # Como la bodega ya tiene el nuevo stock, el save() del modelo hará la suma matemática perfecta automáticamente.
+                material.save() 
 
                 MovimientoInventario.objects.create(
                     material=material, tipo='INGRESO', cantidad=ingresado, bodega_destino=bodega,
                     responsable=request.user, orden_compra_asociada=oc, certificado_calidad=archivo_certificado
                 )
+
+                # ==========================================================
+                # MAGIA: DESPERTAR TICKETS EN ESPERA (BACKORDER)
+                # ==========================================================
+                # Buscamos los tickets antiguos que se quedaron esperando este material
+                detalles_en_espera = DetalleRequerimiento.objects.filter(
+                    material=material, 
+                    estado_item='EN_COMPRAS'
+                ).order_by('requerimiento__fecha_solicitud')
+                
+                stock_restante = ingresado # Usamos el stock que acaba de llegar
+                
+                for det in detalles_en_espera:
+                    # Blindaje: Conversión a Decimal para la lógica de Backorder
+                    cant_solicitada_det = Decimal(str(det.cantidad_solicitada))
+                    cant_despachada_det = Decimal(str(det.cantidad_despachada))
+                    cantidad_pendiente = cant_solicitada_det - cant_despachada_det
+                    
+                    if stock_restante >= cantidad_pendiente:
+                        # Si alcanza, lo liberamos para que el bodeguero lo despache
+                        det.estado_item = 'APROBADO_BODEGA'
+                        det.save()
+                        stock_restante -= cantidad_pendiente
+                        
+                        # Actualizamos el estado del ticket padre para que vuelva a aparecer en el Dashboard
+                        req = det.requerimiento
+                        estados_req = list(req.detalles.values_list('estado_item', flat=True))
+                        
+                        if 'EN_COMPRAS' not in estados_req:
+                            # Si ya no le falta nada por comprar
+                            req.estado = 'APROBADO'
+                        else:
+                            req.estado = 'PARCIALMENTE_DESPACHADO'
+                        req.save()
+                    else:
+                        # Si el stock no alcanzó para este ticket, rompemos el ciclo
+                        break
+                # ==========================================================
         
         if entrega_incompleta:
             oc.estado = 'RECIBIDA_PARCIAL'
@@ -599,9 +654,8 @@ def recibir_orden_compra(request, oc_id):
         return redirect('listar_ordenes_compra')
 
     return render(request, 'web/erp/recibir_stock_form.html', {
-        'oc': oc, 'detalles': detalles, 'bodegas': Bodega.objects.filter(is_active=True)
+        'oc': oc, 'detalles': detalles, 'bodegas': Bodega.objects.all()
     })
-
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
 def editar_movimiento_auditoria(request, movimiento_id):
@@ -1116,8 +1170,6 @@ def alternar_estado_empleado(request, empleado_id):
 @user_passes_test(es_admin, login_url='dashboard_erp')
 @transaction.atomic
 def revisar_requerimiento_items(request, req_id):
-    # NOTA: En la nueva arquitectura, usamos procesar_ticket('aprobar') para que sea 100% automático.
-    # Esta vista se mantiene por si en el futuro necesitas anular/rechazar individualmente antes de la división automática.
     requerimiento = get_object_or_404(Requerimiento, id=req_id)
     items = requerimiento.detalles.all()
     
@@ -1129,25 +1181,43 @@ def revisar_requerimiento_items(request, req_id):
             decision = request.POST.get(f'decision_{item.id}')
             motivo = request.POST.get(f'motivo_{item.id}', '')
 
-            if decision == 'RECHAZADO':
+            # Ahora procesamos TODAS las decisiones manuales, no solo los rechazos
+            if decision in ['RECHAZADO', 'APROBADO_BODEGA', 'EN_COMPRAS']:
                 item.estado_item = decision
-                item.motivo_rechazo = motivo
+                if decision == 'RECHAZADO':
+                    item.motivo_rechazo = motivo
                 item.save()
 
-        # Actualizamos el estado maestro del ticket
-        estados = requerimiento.detalles.values_list('estado_item', flat=True)
+        # Si el administrador mandó manualmente ítems a compras, generamos la solicitud
+        if requerimiento.detalles.filter(estado_item='EN_COMPRAS').exists():
+            solicitud, _ = SolicitudCompra.objects.get_or_create(
+                requerimiento_origen=requerimiento, defaults={'estado': 'ENVIADO_A_COMPRAS'}
+            )
+            for detalle in requerimiento.detalles.filter(estado_item='EN_COMPRAS'):
+                CotizacionItem.objects.get_or_create(
+                    solicitud=solicitud, material=detalle.material,
+                    defaults={'cantidad_requerida': detalle.cantidad_solicitada}
+                )
+
+        # Actualizamos el estado maestro del ticket según las decisiones tomadas
+        estados = list(requerimiento.detalles.values_list('estado_item', flat=True))
         if all(e == 'RECHAZADO' for e in estados):
             requerimiento.estado = 'RECHAZADO'
+        elif all(e == 'APROBADO_BODEGA' for e in estados):
+            requerimiento.estado = 'APROBADO'
+        elif 'EN_COMPRAS' in estados and 'APROBADO_BODEGA' in estados:
+            requerimiento.estado = 'PARCIALMENTE_DESPACHADO'
+        elif all(e == 'EN_COMPRAS' for e in estados):
+            requerimiento.estado = 'EN_COMPRAS'
+            
         requerimiento.save()
-        
-        messages.success(request, "Rechazos parciales guardados. Para procesar el inventario, utiliza el botón 'Aprobar'.")
+        messages.success(request, f"Las decisiones manuales para el ticket {requerimiento.folio} han sido guardadas y procesadas.")
         return redirect('dashboard_erp')
 
     return render(request, 'web/erp/revisar_requerimiento.html', {
         'requerimiento': requerimiento,
         'items': items
     })
-
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
 def configuracion_erp(request):
@@ -1172,4 +1242,74 @@ def configuracion_erp(request):
         'form_categoria': CategoriaForm(),
         'bodegas': Bodega.objects.all(),
         'categorias': Categoria.objects.all()
+    })
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def crear_categoria(request):
+    """
+    Vista para crear una nueva categoría en el catálogo maestro.
+    Acceso restringido estrictamente al Administrador.
+    """
+    if request.method == 'POST':
+        form = CategoriaForm(request.POST)
+        if form.is_valid():
+            try:
+                categoria = form.save()
+                messages.success(
+                    request, 
+                    f"✅ Categoría '{categoria.nombre}' creada con éxito. Prefijo asignado: <strong>{categoria.prefijo}</strong>"
+                )
+                return redirect('inventario_actual')
+            except Exception as e:
+                messages.error(request, f"❌ Error al guardar la categoría: {str(e)}")
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"⚠️ {form.fields[field].label}: {error}")
+    else:
+        form = CategoriaForm()
+
+    context = {
+        'form': form,
+        'titulo': 'Crear Nueva Categoría de Materiales',
+    }
+    return render(request, 'web/erp/crear_categoria.html', context)
+
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def alternar_estado_categoria(request, categoria_id):
+    """Permite encender o apagar una categoría desde la vista de configuración"""
+    categoria = get_object_or_404(Categoria, id=categoria_id)
+    
+    # Invertimos el estado (Si era True, pasa a False, y viceversa)
+    categoria.is_active = not categoria.is_active
+    categoria.save()
+    
+    estado_texto = "activada" if categoria.is_active else "desactivada"
+    if categoria.is_active:
+        messages.success(request, f"¡La categoría '{categoria.nombre}' ha sido {estado_texto} con éxito!")
+    else:
+        messages.warning(request, f"La categoría '{categoria.nombre}' ha sido {estado_texto}. Ya no aparecerá en los nuevos ingresos.")
+        
+    return redirect('configuracion_erp')
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def trazabilidad_requerimientos(request):
+    """
+    Panel de control maestro para el Administrador.
+    Permite ver el ciclo de vida completo de cada solicitud ordenada por fecha.
+    """
+    # Traemos todos los tickets ordenados del más reciente al más antiguo
+    requerimientos = Requerimiento.objects.all().order_by('-fecha_solicitud')
+    
+    # Filtro opcional por estado
+    estado_filtro = request.GET.get('estado')
+    if estado_filtro:
+        requerimientos = requerimientos.filter(estado=estado_filtro)
+        
+    return render(request, 'web/erp/trazabilidad.html', {
+        'requerimientos': requerimientos,
+        'estado_actual': estado_filtro
     })

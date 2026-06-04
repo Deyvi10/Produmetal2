@@ -11,7 +11,7 @@ import datetime
 class Bodega(models.Model):
     nombre = models.CharField(max_length=100, unique=True)
     ubicacion = models.CharField(max_length=200, blank=True, null=True)
-    is_principal = models.BooleanField(default=False, help_text="¿Es la bodega central?")
+    is_principal = models.BooleanField(default=False)
     
     def __str__(self):
         return self.nombre
@@ -138,8 +138,11 @@ class Material(models.Model):
                 secuencia.save()
                 self.sku = f'{self.categoria.prefijo}-{secuencia.ultimo_valor:04d}'
         
-        # Recalcular stock desde bodega (denormalización)
-        self.stock_actual = self._calcular_stock_total()
+        # EL FIX: Solo calcular stock de bodegas si el material YA EXISTE (tiene ID/PK)
+        if self.pk:
+            self.stock_actual = self._calcular_stock_total()
+        else:
+            self.stock_actual = 0.00  # Si es nuevo, arranca con stock cero
         
         super().save(*args, **kwargs)
 

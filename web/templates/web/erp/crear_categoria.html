@@ -1,0 +1,43 @@
+{% extends 'web/base.html' %}
+
+{% block content %}
+<div class="container mt-4 d-flex justify-content-center">
+    <div class="card shadow-lg" style="width: 100%; max-width: 600px; border-radius: 12px;">
+        <div class="card-header bg-primary text-white py-3" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-tags-fill me-2"></i> {{ titulo }}</h5>
+        </div>
+        <div class="card-body p-4">
+            <form method="POST" novalidate>
+                {% csrf_token %}
+                
+                {% for field in form %}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-secondary">{{ field.label }}</label>
+                        
+                        {% if field.field.widget.input_type == "checkbox" %}
+                            <div class="form-check form-switch mt-1">
+                                {{ field }}
+                                {% if field.help_text %}
+                                    <span class="form-text ms-2">{{ field.help_text }}</span>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            {{ field }}
+                            {% if field.help_text %}
+                                <div class="form-text text-muted style="font-size: 0.85rem;">{{ field.help_text }}</div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                {% endfor %}
+
+                <hr class="my-4">
+
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="{% url 'inventario_actual' %}" class="btn btn-light border px-4">Cancelar</a>
+                    <button type="submit" class="btn btn-success px-4 fw-bold">Guardar Categoría</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

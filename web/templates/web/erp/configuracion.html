@@ -1,0 +1,120 @@
+{% extends 'web/base.html' %}
+
+{% block content %}
+<style>
+    /* Transiciones y sombras para darle un toque premium */
+    .hover-card { transition: transform 0.3s ease, box-shadow 0.3s ease; border: none; }
+    .hover-card:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.1)!important; }
+    .btn-transition { transition: all 0.2s ease-in-out; }
+    .btn-transition:active { transform: scale(0.95); }
+    .list-item-hover { transition: background-color 0.2s ease; border-left: 4px solid transparent; }
+    .list-item-hover:hover { background-color: #f8f9fa; border-left-color: #0d6efd; }
+    .form-control { border-radius: 8px; }
+</style>
+
+<div class="container mt-4 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <h2 class="mb-0 fw-bold text-dark">
+            <i class="bi bi-sliders text-primary me-2"></i>Configuración del Sistema
+        </h2>
+        <a href="{% url 'inventario_actual' %}" class="btn btn-outline-secondary shadow-sm btn-transition fw-semibold">
+            <i class="bi bi-arrow-left-circle me-2"></i>Regresar al Inventario
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm rounded-3" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="card shadow-sm hover-card h-100 rounded-4">
+                <div class="card-header bg-primary text-white py-3 rounded-top-4">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-tags-fill me-2"></i>Gestión de Categorías</h5>
+                </div>
+                <div class="card-body p-4">
+                    <form method="POST" action="{% url 'configuracion_erp' %}" class="bg-light p-3 rounded-3 mb-4 border">
+                        {% csrf_token %}
+                        {{ form_categoria.as_p }}
+                        <div class="text-end mt-3">
+                            <button type="submit" name="form_categoria" class="btn btn-primary px-4 btn-transition shadow-sm fw-bold">
+                                <i class="bi bi-save me-1"></i> Guardar Categoría
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <h6 class="fw-bold text-secondary mb-3"><i class="bi bi-list-ul me-2"></i>Categorías Registradas:</h6>
+                    <ul class="list-group list-group-flush border-top">
+                        {% for cat in categorias %}
+                            <li class="list-group-item list-item-hover d-flex justify-content-between align-items-center py-3">
+                                <div>
+                                    <strong class="d-block text-dark fs-5">{{ cat.nombre }}</strong>
+                                    <span class="text-muted small">Prefijo: <span class="badge bg-secondary">{{ cat.prefijo }}</span></span>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    {% if cat.is_active %}
+                                        <span class="badge bg-success-subtle text-success border border-success rounded-pill px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i> Activa</span>
+                                        <a href="{% url 'alternar_categoria' cat.id %}" class="btn btn-sm btn-outline-danger btn-transition" title="Desactivar">
+                                            <i class="bi bi-power"></i>
+                                        </a>
+                                    {% else %}
+                                        <span class="badge bg-danger-subtle text-danger border border-danger rounded-pill px-3 py-2"><i class="bi bi-x-circle-fill me-1"></i> Inactiva</span>
+                                        <a href="{% url 'alternar_categoria' cat.id %}" class="btn btn-sm btn-outline-success btn-transition" title="Activar">
+                                            <i class="bi bi-power"></i>
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </li>
+                        {% empty %}
+                            <li class="list-group-item text-muted text-center py-4 bg-light rounded">No hay categorías registradas aún.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card shadow-sm hover-card h-100 rounded-4">
+                <div class="card-header bg-dark text-white py-3 rounded-top-4">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-box-seam-fill me-2"></i>Gestión de Bodegas</h5>
+                </div>
+                <div class="card-body p-4">
+                    <form method="POST" action="{% url 'configuracion_erp' %}" class="bg-light p-3 rounded-3 mb-4 border">
+                        {% csrf_token %}
+                        {{ form_bodega.as_p }}
+                        <div class="text-end mt-3">
+                            <button type="submit" name="form_bodega" class="btn btn-dark px-4 btn-transition shadow-sm fw-bold">
+                                <i class="bi bi-save me-1"></i> Guardar Bodega
+                            </button>
+                        </div>
+                    </form>
+
+                    <h6 class="fw-bold text-secondary mb-3"><i class="bi bi-buildings me-2"></i>Bodegas Existentes:</h6>
+                    <ul class="list-group list-group-flush border-top">
+                        {% for bodega in bodegas %}
+                            <li class="list-group-item list-item-hover d-flex justify-content-between align-items-center py-3">
+                                <div>
+                                    <strong class="d-block text-dark fs-5">{{ bodega.nombre }}</strong>
+                                    {% if bodega.ubicacion %}
+                                        <span class="text-muted small"><i class="bi bi-geo-alt me-1"></i>{{ bodega.ubicacion }}</span>
+                                    {% endif %}
+                                </div>
+                                {% if bodega.is_principal %}
+                                    <span class="badge bg-warning text-dark rounded-pill px-3 py-2 shadow-sm"><i class="bi bi-star-fill me-1"></i> Central</span>
+                                {% endif %}
+                            </li>
+                        {% empty %}
+                            <li class="list-group-item text-muted text-center py-4 bg-light rounded">No hay bodegas registradas.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

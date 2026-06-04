@@ -259,18 +259,28 @@ class CategoriaForm(forms.ModelForm):
     class Meta:
         model = Categoria
         fields = ['nombre', 'prefijo', 'is_active']
-        widgets = {
-            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Ferretería'}),
-            'prefijo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: FER'}),
-            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        labels = {
+            'nombre': 'Nombre de la Categoría',
+            'prefijo': 'Prefijo (Código Único)',
+            'is_active': '¿Categoría Activa?'
         }
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Tuberías y Conexiones PVC'}),
+            'prefijo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: PVC'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'})
+        }
+
 
 class BodegaForm(forms.ModelForm):
     class Meta:
         model = Bodega
         fields = ['nombre', 'ubicacion', 'is_principal']
-        widgets = {
-            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
-            'ubicacion': forms.TextInput(attrs={'class': 'form-control'}),
-            'is_principal': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        labels = {
+            'is_principal': '¿Es la bodega central?'
         }
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Bodega Norte'}),
+            'ubicacion': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Av. Principal y Secundaria'}),
+            'is_principal': forms.CheckboxInput(attrs={'class': 'form-check-input'})
+        }
+

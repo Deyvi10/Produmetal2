@@ -88,4 +88,8 @@ urlpatterns = [
 
     path('erp/configuracion/', views.configuracion_erp, name='configuracion_erp'),
     path('erp/ticket/<int:req_id>/despachar/', views.despachar_requerimiento, name='despachar_requerimiento'),
+
+    path('erp/inventario/categoria/nueva/', views.crear_categoria, name='crear_categoria'), # <-- AGREGA ESTA LÍNEA EXACTAMENTE AQUÍ
+    path('erp/configuracion/categoria/<int:categoria_id>/alternar/', views.alternar_estado_categoria, name='alternar_categoria'), # <-- AÑADE ESTA LÍNEA
+    path('erp/auditoria/trazabilidad/', views.trazabilidad_requerimientos, name='trazabilidad_requerimientos'),
 ]

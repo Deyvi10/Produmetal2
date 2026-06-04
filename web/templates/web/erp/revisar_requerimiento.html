@@ -4,91 +4,107 @@
 {% block content %}
 <style>
     /* =========================================
-       UI PREMIUM - REVISIÓN LOGÍSTICA
+       UI PREMIUM - REVISIÓN LOGÍSTICA CORREGIDA
        ========================================= */
     :root {
-        --pm-bg: #0d1117;
-        --pm-surface: #161b22;
-        --pm-surface-hover: #1c2128;
-        --pm-border: #30363d;
-        --pm-text: #f0f6fc;
-        --pm-text-muted: #8b949e;
-        --pm-amber: #e6a817;
-        --pm-success: #2ea043;
-        --pm-danger: #f85149;
-        --pm-info: #388bfd;
+        --pm-bg: #f8f9fa;
+        --pm-surface: #ffffff;
+        --pm-surface-hover: #f1f4f9;
+        --pm-border: #e1e4e8;
+        --pm-text: #24292e;
+        --pm-text-muted: #586069;
+        --pm-amber: #f9a826;
+        --pm-success: #28a745;
+        --pm-danger: #dc3545;
+        --pm-info: #0366d6;
     }
 
-    .fade-in { animation: fadeIn 0.5s ease-in-out; }
+    .fade-in { animation: fadeIn 0.4s ease-in-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
     .card-master {
         background: var(--pm-surface);
         border: 1px solid var(--pm-border);
-        border-radius: 16px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         overflow: hidden;
     }
 
     .table-req { margin-bottom: 0; color: var(--pm-text); vertical-align: middle; }
     .table-req th { 
-        font-family: 'Barlow Condensed', sans-serif; color: var(--pm-text-muted); 
-        font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1.5px; 
-        padding: 20px; border: none; background: #090d13;
+        color: var(--pm-text-muted); 
+        font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; 
+        padding: 16px 20px; border-bottom: 2px solid var(--pm-border); background: #f8f9fa;
     }
     .table-req td { 
-        padding: 24px 20px; border-bottom: 1px solid var(--pm-border); 
-        background: var(--pm-surface); transition: background 0.3s ease;
+        padding: 20px; border-bottom: 1px solid var(--pm-border); 
+        background: var(--pm-surface); transition: background 0.2s ease;
     }
     .table-req tr:hover td { background-color: var(--pm-surface-hover); }
 
-    /* Inputs y Selects Premium */
+    /* Inputs corregidos para que se lean bien */
     .form-control-solid, .form-select-solid {
-        background: #090d13 !important;
-        border: 1px solid var(--pm-border) !important;
-        color: #fff !important;
-        border-radius: 8px;
-        padding: 12px;
-        transition: all 0.3s ease;
+        background: #f1f4f9 !important;
+        border: 1px solid #d1d5da !important;
+        color: #24292e !important;
+        border-radius: 6px;
+        padding: 10px 12px;
+        font-weight: 500;
+        transition: all 0.2s ease;
     }
     .form-control-solid:focus, .form-select-solid:focus {
         border-color: var(--pm-info) !important;
-        box-shadow: 0 0 0 3px rgba(56, 139, 253, 0.2);
+        box-shadow: 0 0 0 3px rgba(3, 102, 214, 0.2);
         outline: none;
+        background: #ffffff !important;
     }
 
     .stock-pill {
-        display: inline-flex; align-items: center; gap: 8px;
-        padding: 6px 14px; border-radius: 20px;
-        font-family: 'Barlow Condensed', sans-serif; font-weight: 600;
-        letter-spacing: 0.5px;
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 6px 12px; border-radius: 20px;
+        font-weight: 700; font-size: 0.9rem;
     }
+    .pill-success { background: #e6ffed; color: #1a7f37; border: 1px solid #2ea043; }
+    .pill-danger { background: #ffebe9; color: #cf222e; border: 1px solid #ff7b72; }
 
-    .btn-master-amber {
-        background: var(--pm-amber); color: #000;
-        font-weight: 800; text-transform: uppercase;
-        border-radius: 8px; padding: 14px 40px;
-        border: none; transition: all 0.3s ease;
+    .btn-auto {
+        background: var(--pm-info); color: white;
+        font-weight: bold; border-radius: 8px; padding: 12px 24px;
+        border: none; transition: all 0.2s ease;
     }
-    .btn-master-amber:hover {
-        transform: scale(1.02);
-        box-shadow: 0 8px 20px rgba(230, 168, 23, 0.4);
+    .btn-auto:hover { background: #005cc5; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(3, 102, 214, 0.3); }
+
+    .btn-manual {
+        background: var(--pm-success); color: white;
+        font-weight: bold; border-radius: 8px; padding: 12px 24px;
+        border: none; transition: all 0.2s ease;
     }
+    .btn-manual:hover { background: #22863a; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(40, 167, 69, 0.3); }
 </style>
 
-<div class="container erp-container mb-5 fade-in">
+<div class="container erp-container mb-5 fade-in pt-4">
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
         <div>
-            <a href="{% url 'dashboard_erp' %}" class="text-decoration-none text-muted small fw-bold text-uppercase">
+            <a href="{% url 'dashboard_erp' %}" class="btn btn-sm btn-outline-secondary fw-bold mb-3">
                 <i class="bi bi-arrow-left me-1"></i> Volver al panel
             </a>
-            <h2 class="fw-bold text-white mt-2" style="font-family: 'Barlow Condensed', sans-serif; font-size: 2.5rem;">
-                Ticket <span style="color: var(--pm-amber);">{{ requerimiento.folio }}</span>
+            <h2 class="fw-bold text-dark mb-0">
+                Auditoría de Ticket <span class="text-primary">#{{ requerimiento.folio }}</span>
             </h2>
         </div>
         <div class="text-md-end">
-            <span class="badge-soft badge-soft-info fs-6">Proyecto: {{ requerimiento.proyecto.centro_costos }}</span>
+            <span class="badge bg-dark fs-6 shadow-sm"><i class="bi bi-building me-1"></i> {{ requerimiento.proyecto.centro_costos }}</span>
         </div>
+    </div>
+
+    <div class="alert alert-info shadow-sm border-0 d-flex justify-content-between align-items-center mb-4 rounded-3">
+        <div>
+            <h5 class="fw-bold text-dark mb-1"></i> Asistente de Logística</h5>
+            <p class="mb-0 small text-dark">Permite que el sistema evalúe el stock actual. Enviará a bodega lo que haya y generará órdenes de compra para los faltantes automáticamente.</p>
+        </div>
+        <a href="{% url 'procesar_ticket' requerimiento.id 'aprobar' %}" class="btn-auto text-decoration-none">
+            <i class="bi bi-magic me-2"></i> Dividir y Aprobar Automáticamente
+        </a>
     </div>
 
     <form method="POST">
@@ -98,10 +114,10 @@
                 <table class="table table-req">
                     <thead>
                         <tr>
-                            <th>Material</th>
-                            <th class="text-center">Stock</th>
-                            <th>Decisión</th>
-                            <th>Notas</th>
+                            <th>Detalle del Material</th>
+                            <th class="text-center">Inventario Actual</th>
+                            <th>Decisión Manual</th>
+                            <th>Notas Adicionales</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -109,42 +125,44 @@
                         <tr>
                             <td>
                                 <div class="d-flex align-items-center gap-3">
-                                    <div class="bg-black rounded-3 px-3 py-2 border border-secondary text-center">
-                                        <span class="d-block text-muted" style="font-size: 0.65rem;">REQ</span>
-                                        <span class="fw-bold fs-5 text-info">{{ item.cantidad_solicitada|floatformat:"0" }}</span>
+                                    <div class="bg-light rounded-3 px-3 py-2 border text-center">
+                                        <span class="d-block text-muted" style="font-size: 0.65rem; font-weight: bold;">CANTIDAD</span>
+                                        <span class="fw-bold fs-5 text-dark">{{ item.cantidad_solicitada|floatformat:"0" }}</span>
                                     </div>
                                     <div>
-                                        <div class="fw-bold text-white">{{ item.material.nombre }}</div>
-                                        <div class="text-muted small">SKU: {{ item.material.sku }}</div>
+                                        <div class="fw-bold text-dark fs-6">{{ item.material.nombre }}</div>
+                                        <div class="text-muted small"><i class="bi bi-upc-scan"></i> SKU: {{ item.material.sku }}</div>
                                     </div>
                                 </div>
                             </td>
                             <td class="text-center">
                                 {% if item.material.stock_actual >= item.cantidad_solicitada %}
-                                    <span class="stock-pill pill-success"><i class="bi bi-check-circle"></i> {{ item.material.stock_actual|floatformat:"0" }}</span>
+                                    <span class="stock-pill pill-success" title="Hay suficiente stock">
+                                        <i class="bi bi-check-circle-fill"></i> {{ item.material.stock_actual|floatformat:"0" }} en Bodega
+                                    </span>
                                 {% else %}
-                                    <span class="stock-pill pill-danger"><i class="bi bi-exclamation-triangle"></i> {{ item.material.stock_actual|floatformat:"0" }}</span>
+                                    <span class="stock-pill pill-danger" title="Falta stock">
+                                        <i class="bi bi-exclamation-triangle-fill"></i> {{ item.material.stock_actual|floatformat:"0" }} disponibles
+                                    </span>
                                 {% endif %}
                             </td>
                             <td>
                                 {% if item.estado_item != 'PENDIENTE' %}
-                                    <div class="badge-soft badge-soft-secondary w-100 justify-content-center">
-                                        {{ item.get_estado_item_display }}
-                                    </div>
+                                    <span class="badge bg-secondary w-100 py-2 fs-6">{{ item.get_estado_item_display }}</span>
                                 {% else %}
                                     <select name="decision_{{ item.id }}" class="form-select-solid w-100">
-                                        <option value="PENDIENTE">⏳ Pendiente</option>
-                                        <option value="APROBADO_BODEGA" style="color: #3fb950;">📦 Despachar</option>
-                                        <option value="EN_COMPRAS" style="color: #388bfd;">🛒 Comprar</option>
-                                        <option value="RECHAZADO" style="color: #f85149;">❌ Rechazar</option>
+                                        <option value="PENDIENTE" selected>⏳ Pendiente de revisión</option>
+                                        <option value="APROBADO_BODEGA">📦 Aprobar para Despacho</option>
+                                        <option value="EN_COMPRAS">🛒 Mandar a Compras</option>
+                                        <option value="RECHAZADO">❌ Rechazar Ítem</option>
                                     </select>
                                 {% endif %}
                             </td>
                             <td>
                                 {% if item.estado_item == 'PENDIENTE' %}
-                                    <input type="text" name="motivo_{{ item.id }}" class="form-control-solid w-100" placeholder="Nota técnica...">
+                                    <input type="text" name="motivo_{{ item.id }}" class="form-control-solid w-100" placeholder="Añadir nota o motivo...">
                                 {% else %}
-                                    <span class="text-muted small">{{ item.motivo_rechazo|default:"---" }}</span>
+                                    <span class="text-muted small fw-bold">{{ item.motivo_rechazo|default:"---" }}</span>
                                 {% endif %}
                             </td>
                         </tr>
@@ -152,15 +170,12 @@
                     </tbody>
                 </table>
             </div>
-        </div>
-
-        <div class="mt-4 p-4 rounded-3 d-flex align-items-center justify-content-between" style="background: rgba(230, 168, 23, 0.05); border: 1px solid rgba(230, 168, 23, 0.2);">
-            <div class="text-muted">
-                <i class="bi bi-lightbulb me-2"></i><strong>Tip:</strong> El sistema calculará automáticamente la división entre bodega y compras al guardar.
+            
+            <div class="card-footer bg-light p-4 border-top d-flex justify-content-end align-items-center">
+                <button type="submit" class="btn-manual">
+                    <i class="bi bi-save-fill me-2"></i> Guardar Decisiones Manuales
+                </button>
             </div>
-            <button type="submit" class="btn-master-amber">
-                <i class="bi bi-save2-fill me-2"></i> Procesar Ticket
-            </button>
         </div>
     </form>
 </div>
