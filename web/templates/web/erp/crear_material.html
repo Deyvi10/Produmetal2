@@ -2,210 +2,203 @@
 {% load static %}
 
 {% block extra_head %}
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
 <style>
     /* =========================================
-       CREAR MATERIAL - ESTILO PREMIUM INDUSTRIAL
+       TRUE DARK MODE - FICHA DE MATERIAL
        ========================================= */
     :root {
-        --pm-bg: #0d1117;
-        --pm-surface: #161b22;
-        --pm-border: #30363d;
-        --pm-text: #ffffff;
-        --pm-text-muted: #aab6c4;
-        --pm-amber: #e6a817; 
-        --font-display: 'Barlow Condensed', sans-serif;
-        --font-body: 'Barlow', sans-serif;
+        --dark-bg: #0f1115;         /* Fondo súper oscuro */
+        --dark-surface: #1a1d24;    /* Tarjetas elevadas */
+        --dark-border: #2d333b;     /* Bordes sutiles */
+        
+        --text-white: #ffffff;      /* Blanco puro para leer fácil */
+        --text-light: #9ca3af;      /* Gris claro para subtítulos y ayudas */
+        
+        --blue-primary: #3b82f6;    /* Acento principal */
+        --yellow-warning: #f59e0b;  /* Acento para alertas */
     }
 
-    body {
-        background-color: var(--pm-bg) !important;
-        color: var(--pm-text) !important;
-        font-family: var(--font-body);
-    }
-
-    /* Adaptamos el ancho si estamos editando para que quepan las dos columnas */
-    .erp-container { margin-top: 30px; max-width: {% if editando %}1200px{% else %}850px{% endif %}; transition: all 0.3s ease; }
+    body { background-color: var(--dark-bg) !important; color: var(--text-white) !important; font-family: 'Inter', sans-serif; }
     
-    .title-erp { font-family: var(--font-display); font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; }
-    .title-erp span { color: var(--pm-amber); }
-    
-    .card-minimal {
-        background: var(--pm-surface);
-        border: 1px solid var(--pm-border);
+    /* Contenedores */
+    .card-elegant {
+        background-color: var(--dark-surface);
+        border: 1px solid var(--dark-border);
         border-radius: 12px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         overflow: hidden;
     }
 
-    .card-header-custom {
-        background: rgba(230,168,23,0.05);
-        border-bottom: 2px solid var(--pm-amber);
-        padding: 1.5rem;
+    .card-header-elegant {
+        background-color: rgba(59, 130, 246, 0.05);
+        border-bottom: 1px solid var(--dark-border);
+        padding: 1.25rem 1.5rem;
     }
 
-    /* ESTILOS DE LOS INPUTS DE DJANGO */
+    /* Formularios Nativos */
     .form-control, .form-select {
-        background-color: var(--pm-bg) !important;
-        border: 1px solid var(--pm-border) !important;
-        color: var(--pm-text) !important;
-        font-family: var(--font-body);
-        padding: 0.8rem 1rem;
+        background-color: #000000 !important;
+        border: 1px solid var(--dark-border) !important;
+        color: var(--text-white) !important;
         border-radius: 8px;
-        transition: all 0.3s;
+        padding: 0.75rem 1rem;
+        font-size: 0.95rem;
+        transition: 0.2s;
     }
     .form-control:focus, .form-select:focus {
-        border-color: var(--pm-amber) !important;
-        box-shadow: 0 0 0 3px rgba(230, 168, 23, 0.15) !important;
+        border-color: var(--blue-primary) !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
         outline: none;
     }
-    
+    ::placeholder { color: #6b7280 !important; }
+
     .form-label {
-        font-family: var(--font-display);
+        color: var(--text-light);
         font-weight: 600;
-        color: var(--pm-text-muted);
-        font-size: 0.95rem;
+        font-size: 0.8rem;
         text-transform: uppercase;
-        letter-spacing: 1px;
-        margin-bottom: 0.4rem;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
     }
-    
-    .form-text { color: #6e7681; font-size: 0.8rem; margin-top: 0.3rem; }
-    
+    .form-text { color: #6b7280; font-size: 0.75rem; margin-top: 0.4rem; }
+
+    /* Fix para el icono del Select en navegadores */
     .form-select {
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23aab6c4' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
     }
 
-    .btn-minimal {
-        font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;
-        border-radius: 6px; padding: 0.8rem 1.8rem; transition: 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; border: none;
-    }
-    .btn-amber { background: var(--pm-amber); color: #000; }
-    .btn-amber:hover { background: #ffd166; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(230,168,23,0.2); color: #000; }
-    .btn-outline-secondary-custom { border: 1px solid var(--pm-border); color: var(--pm-text-muted); background: transparent; }
-    .btn-outline-secondary-custom:hover { background: var(--pm-border); color: #fff; }
+    /* Botones */
+    .btn-primary-custom { background-color: var(--blue-primary); color: white; border: none; font-weight: 600; padding: 0.7rem 1.5rem; border-radius: 8px; transition: 0.2s; }
+    .btn-primary-custom:hover { background-color: #2563eb; transform: translateY(-1px); }
+    
+    .btn-outline-custom { background-color: transparent; border: 1px solid var(--dark-border); color: var(--text-light); font-weight: 600; padding: 0.7rem 1.5rem; border-radius: 8px; transition: 0.2s; text-decoration: none; }
+    .btn-outline-custom:hover { background-color: rgba(255,255,255,0.05); color: var(--text-white); }
 </style>
 
-<div class="container-fluid px-3 px-xl-5 erp-container mb-5">
+<div class="container-fluid px-3 px-xl-5 mb-5" style="margin-top: 90px; max-width: {% if editando %}1400px{% else %}900px{% endif %}; transition: max-width 0.3s ease;">
 
-    <div class="d-flex align-items-center gap-3 mb-4 border-bottom pb-3" style="border-color: var(--pm-border) !important;">
-        <a href="{% url 'inventario_actual' %}" class="btn btn-outline-secondary-custom btn-minimal px-3">
-            <i class="bi bi-arrow-left"></i> Volver
-        </a>
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4 border-bottom pb-3" style="border-color: var(--dark-border) !important;">
         <div>
-            <h3 class="title-erp mb-0">Catálogo <span>Maestro</span></h3>
-            <p class="mb-0 text-muted small">
+            <a href="{% url 'inventario_actual' %}" class="text-decoration-none d-inline-block fw-bold mb-2" style="color: var(--text-light); font-size: 0.9rem;">
+                <i class="bi bi-arrow-left me-1"></i> Volver al Inventario
+            </a>
+            <h2 class="fw-bold text-white mb-0" style="font-size: 2rem; letter-spacing: -0.5px;">
+                {% if editando %}Ficha Técnica de Material{% else %}Nuevo Material al Catálogo{% endif %}
+            </h2>
+            <p class="mb-0 mt-1" style="color: var(--text-light);">
                 <i class="bi bi-shield-lock-fill text-warning me-1"></i> 
-                {% if editando %}Actualización de Ficha Técnica y Trazabilidad{% else %}Creación de Identidad Técnica{% endif %} 
-                <strong class="text-white">(Solo Administrador)</strong>
+                Acceso Exclusivo de Administrador
             </p>
         </div>
     </div>
 
     <div class="row g-4">
         <div class="col-12 {% if editando %}col-lg-7{% endif %}">
-            <div class="card card-minimal h-100">
-                <div class="card-header-custom">
-                    <h5 class="title-erp mb-0 text-white">
-                        <i class="bi bi-box-seam me-2" style="color: var(--pm-amber);"></i> 
-                        {% if editando %}Editar Datos: {{ material.sku }}{% else %}Datos del Nuevo Ítem{% endif %}
+            <div class="card-elegant h-100">
+                <div class="card-header-elegant">
+                    <h5 class="fw-bold text-white mb-0 d-flex align-items-center">
+                        <i class="bi bi-box-seam me-2" style="color: var(--blue-primary); font-size: 1.2rem;"></i> 
+                        {% if editando %}Actualizando SKU: <span class="ms-2 badge bg-dark border border-secondary text-light">{{ material.sku }}</span>{% else %}Datos del Producto{% endif %}
                     </h5>
                 </div>
-                <div class="card-body p-4 p-md-5">
-                    <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+                
+                <div class="p-4 p-md-5">
+                    <form method="POST" enctype="multipart/form-data" novalidate>
                         {% csrf_token %}
                         
-                        <!-- SECCIÓN 1: SKU Y CATEGORÍA -->
-                        <div class="row g-4 mb-4">
-                            <!-- SKU: Solo lectura si estamos editando -->
-                            <div class="col-md-6">
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label">{{ form.tipo.label }} <span class="text-danger">*</span></label>
+                                {{ form.tipo }}
+                                {% if form.tipo.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.tipo.errors|join:", " }}</div>{% endif %}
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">{{ form.categoria.label }} <span class="text-danger">*</span></label>
+                                {{ form.categoria }}
+                                {% if form.categoria.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.categoria.errors|join:", " }}</div>{% endif %}
+                            </div>
+
+                            <div class="col-md-4">
                                 <label class="form-label">
-                                    <i class="bi bi-tag me-2" style="color: var(--pm-amber);"></i>
                                     Código SKU
                                 </label>
                                 {% if editando %}
-                                    <input type="text" class="form-control" value="{{ material.sku }}" readonly disabled style="background: var(--pm-bg); opacity: 0.6;">
-                                    <small class="text-muted d-block mt-2"><i class="bi bi-info-circle"></i> El código SKU se genera automáticamente y no puede modificarse.</small>
+                                    <input type="text" class="form-control" value="{{ material.sku }}" disabled style="opacity: 0.6; cursor: not-allowed;">
                                 {% else %}
-                                    <input type="text" class="form-control" placeholder="Se genera automáticamente al guardar" disabled style="background: var(--pm-bg);">
-                                    <small class="text-muted d-block mt-2"><i class="bi bi-lightbulb"></i> Basado en la categoría seleccionada.</small>
+                                    <input type="text" class="form-control" placeholder="Autogenerado" disabled style="opacity: 0.6; cursor: not-allowed;">
                                 {% endif %}
-                            </div>
-                            <!-- CATEGORÍA: Requerida -->
-                            <div class="col-md-6">
-                                <label class="form-label">{{ form.categoria.label }} <span class="text-danger">*</span></label>
-                                {{ form.categoria }}
-                                {% if form.categoria.errors %}<div class="text-danger small mt-1 fw-bold"><i class="bi bi-exclamation-triangle"></i> {{ form.categoria.errors|join:", " }}</div>{% endif %}
                             </div>
                         </div>
 
-                        <!-- SECCIÓN 2: NOMBRE Y DESCRIPCIÓN -->
                         <div class="mb-4">
                             <label class="form-label">{{ form.nombre.label }} <span class="text-danger">*</span></label>
                             {{ form.nombre }}
-                            <div class="form-text"><i class="bi bi-info-circle me-1"></i>Norma Técnica y Nombre Comercial (ej: Varilla Corrugada Ø12mm).</div>
-                            {% if form.nombre.errors %}<div class="text-danger small mt-1 fw-bold"><i class="bi bi-exclamation-triangle"></i> {{ form.nombre.errors|join:", " }}</div>{% endif %}
+                            <div class="form-text"><i class="bi bi-info-circle me-1"></i>Incluye norma técnica y nombre comercial (ej: Varilla Corrugada Ø12mm).</div>
+                            {% if form.nombre.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.nombre.errors|join:", " }}</div>{% endif %}
                         </div>
 
                         <div class="mb-4">
                             <label class="form-label">{{ form.descripcion.label }}</label>
                             {{ form.descripcion }}
-                            <div class="form-text">Especificaciones técnicas, normas, procedencia, etc.</div>
+                            <div class="form-text">Especificaciones técnicas, usos comunes o procedencia.</div>
+                            {% if form.descripcion.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.descripcion.errors|join:", " }}</div>{% endif %}
                         </div>
 
-                        <!-- SECCIÓN 3: INVENTARIO Y PRECIOS -->
-                        <div class="row g-4 mb-4">
-                            <div class="col-md-6">
-                                <label class="form-label text-warning">
-                                    <i class="bi bi-exclamation-triangle"></i> 
-                                    {{ form.stock_minimo.label }}
-                                    <span class="text-danger">*</span>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label text-warning d-flex align-items-center gap-1">
+                                    <i class="bi bi-exclamation-triangle"></i> {{ form.stock_minimo.label }} <span class="text-danger">*</span>
                                 </label>
                                 {{ form.stock_minimo }}
-                                <small class="text-muted d-block mt-2">Cantidad que activa alertas de reabastecimiento.</small>
-                                {% if form.stock_minimo.errors %}<div class="text-danger small mt-1 fw-bold"><i class="bi bi-exclamation-triangle"></i> {{ form.stock_minimo.errors|join:", " }}</div>{% endif %}
+                                <div class="form-text">Nivel para alertas.</div>
+                                {% if form.stock_minimo.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.stock_minimo.errors|join:", " }}</div>{% endif %}
                             </div>
-                            <div class="col-md-6">
+
+                            <div class="col-md-4">
                                 <label class="form-label">{{ form.precio_base.label }}</label>
-                                {{ form.precio_base }}
-                                <small class="text-muted d-block mt-2">Precio unitario base (sin impuesto).</small>
-                                {% if form.precio_base.errors %}<div class="text-danger small mt-1 fw-bold"><i class="bi bi-exclamation-triangle"></i> {{ form.precio_base.errors|join:", " }}</div>{% endif %}
+                                <div class="input-group">
+                                    <span class="input-group-text bg-dark border-secondary text-light">$</span>
+                                    {{ form.precio_base }}
+                                </div>
+                                <div class="form-text">Sin impuestos.</div>
+                                {% if form.precio_base.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.precio_base.errors|join:", " }}</div>{% endif %}
                             </div>
-                        </div>
 
-                        <!-- SECCIÓN 4: IMPUESTOS Y ESTADO -->
-                        <div class="row g-4 mb-5">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label">{{ form.impuesto_porcentaje.label }}</label>
-                                {{ form.impuesto_porcentaje }}
-                                <small class="text-muted d-block mt-2">Porcentaje de IVA u otro impuesto aplicable (0-100%).</small>
-                                {% if form.impuesto_porcentaje.errors %}<div class="text-danger small mt-1 fw-bold"><i class="bi bi-exclamation-triangle"></i> {{ form.impuesto_porcentaje.errors|join:", " }}</div>{% endif %}
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label d-flex align-items-center gap-2">
-                                    {{ form.is_active }} <span>{{ form.is_active.label }}</span>
-                                </label>
-                                <small class="text-muted d-block mt-2">
-                                    {% if editando %}
-                                        Desmarcar para desactivar sin eliminar de histórico.
-                                    {% else %}
-                                        Mantener marcado para que sea visible en sistemas.
-                                    {% endif %}
-                                </small>
+                                <div class="input-group">
+                                    {{ form.impuesto_porcentaje }}
+                                    <span class="input-group-text bg-dark border-secondary text-light">%</span>
+                                </div>
+                                <div class="form-text">IVA (ej: 15).</div>
+                                {% if form.impuesto_porcentaje.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.impuesto_porcentaje.errors|join:", " }}</div>{% endif %}
                             </div>
                         </div>
 
-                        <!-- BOTONES DE ACCIÓN -->
-                        <div class="d-flex flex-column flex-md-row gap-3 pt-3 border-top" style="border-color: var(--pm-border) !important;">
-                            <button type="submit" class="btn-amber btn-minimal w-100 w-md-auto justify-content-center">
-                                <i class="bi bi-save2"></i> 
-                                {% if editando %}Actualizar Ficha{% else %}Guardar en Catálogo{% endif %}
+                        <div class="p-3 mb-5 rounded-3" style="background-color: rgba(255,255,255,0.03); border: 1px solid var(--dark-border);">
+                            <div class="form-check form-switch d-flex align-items-center m-0">
+                                {{ form.is_active }}
+                                <label class="form-check-label ms-2 fw-bold text-white mt-1" for="{{ form.is_active.id_for_label }}">
+                                    Material Activo en el Catálogo
+                                </label>
+                            </div>
+                            <div class="text-muted small mt-2 ms-5">
+                                Si desactivas el material, no podrá ser comprado ni despachado, pero su historial de auditoría se conservará intacto.
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-column flex-sm-row gap-3 pt-4 border-top" style="border-color: var(--dark-border) !important;">
+                            <button type="submit" class="btn-primary-custom d-flex align-items-center justify-content-center gap-2">
+                                <i class="bi bi-save-fill"></i> 
+                                {% if editando %}Actualizar Ficha Técnica{% else %}Registrar Material{% endif %}
                             </button>
-                            <a href="{% url 'inventario_actual' %}" class="btn-outline-secondary-custom btn-minimal w-100 w-md-auto justify-content-center">
-                                <i class="bi bi-arrow-left"></i> Cancelar
+                            <a href="{% url 'inventario_actual' %}" class="btn-outline-custom d-flex align-items-center justify-content-center">
+                                Cancelar
                             </a>
                         </div>
                     </form>
@@ -215,44 +208,46 @@
 
         {% if editando %}
         <div class="col-12 col-lg-5">
-            <div class="card card-minimal h-100" style="border-left: 3px solid #58a6ff;">
-                <div class="card-header-custom" style="background: rgba(88,166,255,0.05); border-bottom: 1px solid var(--pm-border);">
-                    <h5 class="title-erp mb-0 text-white" style="font-size: 1.1rem;">
-                        <i class="bi bi-file-earmark-medical me-2" style="color: #58a6ff;"></i> Trazabilidad de Certificados
-                    </h5>
+            <div class="card-elegant h-100" style="border-top: 3px solid var(--blue-primary);">
+                <div class="card-header-elegant d-flex align-items-center">
+                    <i class="bi bi-file-earmark-check-fill fs-5 me-2" style="color: var(--blue-primary);"></i>
+                    <h6 class="fw-bold text-white mb-0">Certificados de Calidad Históricos</h6>
                 </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-                        <table class="table table-dark table-hover mb-0 align-middle">
-                            <thead style="background: var(--pm-bg); font-family: var(--font-display); font-size: 0.85rem; letter-spacing: 1px; color: var(--pm-text-muted); text-transform: uppercase; position: sticky; top: 0; z-index: 1;">
+                
+                <div class="p-0">
+                    <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                        <table class="table mb-0" style="color: var(--text-white); font-size: 0.85rem;">
+                            <thead style="position: sticky; top: 0; background-color: var(--dark-surface); border-bottom: 2px solid var(--dark-border); z-index: 10;">
                                 <tr>
-                                    <th class="ps-4 py-3">Ingreso</th>
-                                    <th class="py-3">Origen (O.C.)</th>
-                                    <th class="text-end pe-4 py-3">Documento</th>
+                                    <th class="py-3 ps-4" style="color: var(--text-light); text-transform: uppercase; font-weight: 700; font-size: 0.75rem;">Fecha de Ingreso</th>
+                                    <th class="py-3" style="color: var(--text-light); text-transform: uppercase; font-weight: 700; font-size: 0.75rem;">Origen</th>
+                                    <th class="py-3 pe-4 text-end" style="color: var(--text-light); text-transform: uppercase; font-weight: 700; font-size: 0.75rem;">Descarga</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for mov in material.movimientos.all %}
                                     {% if mov.tipo == 'INGRESO' %}
-                                    <tr>
-                                        <td class="ps-4">
-                                            <div class="fw-bold text-white">{{ mov.fecha_hora|date:"d M Y" }}</div>
-                                            <div class="text-muted" style="font-size: 0.7rem;">+{{ mov.cantidad }} uds</div>
+                                    <tr style="border-bottom: 1px solid var(--dark-border);">
+                                        <td class="py-3 ps-4 align-middle">
+                                            <div class="fw-bold">{{ mov.fecha_hora|date:"d/M/Y" }}</div>
+                                            <div class="text-muted" style="font-size: 0.75rem;">+{{ mov.cantidad|floatformat:"0" }} {{ material.unidad_medida }}</div>
                                         </td>
-                                        <td>
+                                        <td class="py-3 align-middle">
                                             {% if mov.orden_compra_asociada %}
-                                                <span class="badge bg-secondary">{{ mov.orden_compra_asociada.folio }}</span>
+                                                <span class="badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-50">
+                                                    {{ mov.orden_compra_asociada.folio }}
+                                                </span>
                                             {% else %}
-                                                <span class="badge bg-dark border border-secondary text-muted">Carga Inicial</span>
+                                                <span class="badge bg-secondary bg-opacity-25 text-light border border-secondary border-opacity-50">Carga Inicial / Ajuste</span>
                                             {% endif %}
                                         </td>
-                                        <td class="text-end pe-4">
+                                        <td class="py-3 pe-4 text-end align-middle">
                                             {% if mov.certificado_calidad %}
-                                                <a href="{{ mov.certificado_calidad.url }}" target="_blank" class="btn btn-sm btn-outline-info px-2 py-1" style="border-radius: 4px; font-size: 0.75rem;">
-                                                    <i class="bi bi-file-pdf-fill me-1"></i> Descargar
+                                                <a href="{{ mov.certificado_calidad.url }}" target="_blank" class="btn btn-sm" style="background: rgba(59, 130, 246, 0.1); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.3); font-weight: 600;">
+                                                    <i class="bi bi-file-pdf-fill me-1"></i> PDF
                                                 </a>
                                             {% else %}
-                                                <span class="badge bg-dark text-muted border border-secondary" style="font-size: 0.7rem;"><i class="bi bi-exclamation-circle me-1"></i>Sin Archivo</span>
+                                                <span class="text-muted" style="font-size: 0.75rem;"><i class="bi bi-x-circle me-1"></i>N/A</span>
                                             {% endif %}
                                         </td>
                                     </tr>
@@ -262,9 +257,9 @@
                         </table>
                         
                         {% if not material.movimientos.exists %}
-                        <div class="text-center py-5 text-muted px-3">
-                            <i class="bi bi-folder-x" style="font-size: 3rem; color: #30363d;"></i>
-                            <p class="mt-3 mb-0" style="font-family: var(--font-display); letter-spacing: 0.5px;">Aún no se registran ingresos a bodega para este material.</p>
+                        <div class="text-center py-5 px-3">
+                            <i class="bi bi-folder-x mb-2" style="font-size: 2.5rem; color: #374151;"></i>
+                            <p class="mb-0 text-muted" style="font-size: 0.85rem;">No hay ingresos documentados para este ítem.</p>
                         </div>
                         {% endif %}
                     </div>
@@ -275,4 +270,21 @@
     </div>
 
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const inputs = document.querySelectorAll('input[type="text"], input[type="number"], textarea');
+        inputs.forEach(input => input.classList.add('form-control'));
+        
+        const selects = document.querySelectorAll('select');
+        selects.forEach(select => select.classList.add('form-select'));
+
+        const checkbox = document.querySelector('input[type="checkbox"]');
+        if(checkbox) {
+            checkbox.classList.add('form-check-input');
+            checkbox.style.width = "40px";
+            checkbox.style.height = "20px";
+        }
+    });
+</script>
 {% endblock %}

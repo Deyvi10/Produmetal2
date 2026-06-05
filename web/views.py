@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.contrib.auth.models import User, Group
-from django.db.models import F
+from django.db.models import F, Q
 from axes.models import AccessAttempt
 from django.db import transaction
 from django.core.paginator import Paginator
@@ -14,7 +14,7 @@ from decimal import Decimal
 from .models import (
     Requerimiento, DetalleRequerimiento, Material, Proyecto, MovimientoInventario, 
     OrdenCompra, DetalleOrdenCompra, SolicitudCompra, CotizacionItem, Bodega, StockBodega,
-    Categoria
+    Categoria, PerfilEmpleado
     )
 from .forms import (
     RequerimientoForm, DetalleRequerimientoForm, RegistroEmpleadoForm, 
@@ -299,69 +299,96 @@ def procesar_ticket(request, req_id, accion):
 def despachar_requerimiento(request, req_id):
     ticket = get_object_or_404(Requerimiento, id=req_id)
     
-    # Solo podemos despachar si está aprobado o parcialmente despachado
+    # Solo podemos despachar si el ticket está aprobado o parcialmente despachado
     if ticket.estado not in ['APROBADO', 'PARCIALMENTE_DESPACHADO']:
         messages.error(request, "Este ticket no está listo para despacho.")
         return redirect('dashboard_erp')
 
+    # Lógica de seguridad: El Administrador ve todas las bodegas. 
+    # El Bodeguero SOLO ve la bodega a la que está asignado.
+    if request.user.is_superuser:
+        bodegas_permitidas = Bodega.objects.all()
+    else:
+        if hasattr(request.user, 'perfil') and request.user.perfil.bodega_asignada:
+            bodegas_permitidas = Bodega.objects.filter(id=request.user.perfil.bodega_asignada.id)
+        else:
+            bodegas_permitidas = Bodega.objects.none()
+
     if request.method == 'POST':
         bodega_origen_id = request.POST.get('bodega_origen')
-        bodega_origen = get_object_or_404(Bodega, id=bodega_origen_id) if bodega_origen_id else Bodega.objects.filter(is_principal=True).first()
+        
+        # Validar que la bodega seleccionada exista y el usuario tenga acceso a ella
+        bodega_origen = bodegas_permitidas.filter(id=bodega_origen_id).first() if bodega_origen_id else bodegas_permitidas.filter(is_principal=True).first()
+        
+        if not bodega_origen:
+            messages.error(request, "Acceso denegado. No tienes permisos sobre la bodega seleccionada.")
+            return redirect('despachar_requerimiento', req_id=ticket.id)
         
         items_a_despachar = ticket.detalles.filter(estado_item='APROBADO_BODEGA')
         
+        if not items_a_despachar.exists():
+            messages.warning(request, "No hay ítems aprobados listos para despachar en este ticket.")
+            return redirect('dashboard_erp')
+
         for item in items_a_despachar:
-            cantidad_a_entregar = item.cantidad_solicitada - item.cantidad_despachada
+            # Blindaje Decimal: Conversión de cantidades
+            cant_solicitada = Decimal(str(item.cantidad_solicitada))
+            cant_despachada = Decimal(str(item.cantidad_despachada))
+            cantidad_a_entregar = cant_solicitada - cant_despachada
             
             if cantidad_a_entregar > 0:
-                # 1. Bloqueo de concurrencia y resta de stock general
+                # 1. Bloqueo de concurrencia
                 material = Material.objects.select_for_update().get(id=item.material.id)
                 
-                # Validar que haya stock real en ese momento
+                # Obtener el stock real de la bodega de origen
                 stock_bodega = StockBodega.objects.select_for_update().filter(bodega=bodega_origen, material=material).first()
+                cant_en_bodega = Decimal(str(stock_bodega.cantidad)) if stock_bodega and stock_bodega.cantidad else Decimal('0.0')
                 
-                if not stock_bodega or stock_bodega.cantidad < cantidad_a_entregar:
-                    messages.error(request, f"Error: Stock insuficiente de {material.nombre} en la bodega seleccionada al momento de despachar.")
-                    return redirect('dashboard_erp')
+                # Validar disponibilidad estricta
+                if cant_en_bodega < cantidad_a_entregar:
+                    messages.error(request, f"Error de stock: Se requieren {cantidad_a_entregar} de {material.nombre}, pero solo tienes {cant_en_bodega} en {bodega_origen.nombre}.")
+                    return redirect('despachar_requerimiento', req_id=ticket.id)
 
-                # Restar stock
-                material.stock_actual -= cantidad_a_entregar
-                material.save()
-                
-                stock_bodega.cantidad -= cantidad_a_entregar
+                # 2. RESTAR DE LA BODEGA ESPECÍFICA Y GUARDAR PRIMERO
+                stock_bodega.cantidad = cant_en_bodega - cantidad_a_entregar
                 stock_bodega.save()
 
-                # 2. Registrar movimiento de SALIDA hacia el proyecto
+                # 3. GUARDAR EL MATERIAL LUEGO (El modelo suma todas las bodegas y recalcula el stock_actual solo)
+                material.save()
+
+                # 4. Registrar el movimiento de SALIDA hacia el proyecto
                 MovimientoInventario.objects.create(
                     material=material, 
                     tipo='SALIDA', 
                     cantidad=cantidad_a_entregar, 
                     bodega_origen=bodega_origen,
-                    bodega_destino=ticket.proyecto.bodega_proyecto, # Se mueve a la bodega de la obra
                     responsable=request.user, 
                     requerimiento_asociado=ticket,
-                    observaciones=f"Despacho de ticket {ticket.folio} para {ticket.proyecto.nombre}"
+                    proyecto_asociado=ticket.proyecto, # Dejamos asentado en auditoría a qué obra se fue
+                    observaciones=f"Despacho del ticket {ticket.folio} para el proyecto {ticket.proyecto.centro_costos}"
                 )
 
-                # 3. Actualizar el detalle del requerimiento
-                item.cantidad_despachada += cantidad_a_entregar
-                item.estado_item = 'DESPACHADO' # Nuevo estado interno
+                # 5. Actualizar el detalle del requerimiento
+                item.cantidad_despachada = cant_despachada + cantidad_a_entregar
+                item.estado_item = 'DESPACHADO'
                 item.save()
 
-        # 4. Actualizar estado maestro del ticket
-        estados_restantes = ticket.detalles.exclude(estado_item__in=['DESPACHADO', 'RECHAZADO']).values_list('estado_item', flat=True)
+        # 6. Actualizar el estado maestro del ticket
+        estados_restantes = list(ticket.detalles.exclude(estado_item__in=['DESPACHADO', 'RECHAZADO']).values_list('estado_item', flat=True))
+        
         if not estados_restantes:
+            # Si ya no le falta ningún ítem por despachar o comprar
             ticket.estado = 'DESPACHADO'
         
         ticket.save()
-        messages.success(request, f"¡Materiales del ticket {ticket.folio} despachados con éxito!")
+        messages.success(request, f"✅ Despacho exitoso. Los materiales del ticket {ticket.folio} han salido de {bodega_origen.nombre}.")
         return redirect('dashboard_erp')
 
-    # Si es GET, mostramos un pequeño formulario de confirmación (puedes usar un modal en el dashboard)
+    # Si es GET, mostramos el formulario
     return render(request, 'web/erp/confirmar_despacho.html', {
         'ticket': ticket,
         'items': ticket.detalles.filter(estado_item='APROBADO_BODEGA'),
-        'bodegas': Bodega.objects.all()
+        'bodegas': bodegas_permitidas # Solo mandamos al HTML las bodegas a las que tiene acceso
     })
 
 # =======================================================
@@ -610,6 +637,8 @@ def recibir_orden_compra(request, oc_id):
                 
                 # Prevenir error si la cantidad de la bodega viene vacía o nula
                 cant_bodega = Decimal(str(stock_b.cantidad)) if stock_b.cantidad else Decimal('0.0')
+                
+                # CORRECCIÓN APLICADA: Sumamos la variable correcta de esta vista
                 stock_b.cantidad = cant_bodega + ingresado
                 stock_b.save() # <-- Se guarda la bodega primero
 
@@ -720,23 +749,49 @@ def venta_material(request):
 
 
 @login_required(login_url='login')
-@user_passes_test(lambda u: es_bodeguero(u) or es_admin(u), login_url='dashboard_erp')
 def inventario_actual(request):
-    materiales = Material.objects.filter(is_active=True).order_by('categoria', 'nombre')
-    alertas = Material.objects.filter(is_active=True, stock_actual__lte=F('stock_minimo'))
+    # 1. SEGURIDAD LOGÍSTICA: Qué ve cada usuario
+    if request.user.is_superuser:
+        materiales_list = Material.objects.all().order_by('nombre')
+    else:
+        # El Bodeguero solo ve los materiales que tengan stock físico en su bodega asignada
+        if hasattr(request.user, 'perfil') and request.user.perfil.bodega_asignada:
+            bodega_empleado = request.user.perfil.bodega_asignada
+            materiales_list = Material.objects.filter(
+                stocks_bodegas__bodega=bodega_empleado,
+                stocks_bodegas__cantidad__gt=0
+            ).distinct().order_by('nombre')
+        else:
+            materiales_list = Material.objects.none()
 
-    alerta_filtro = request.GET.get('alerta')
-    if alerta_filtro == '1':
-        materiales = materiales.filter(stock_actual__lte=F('stock_minimo'))
+    # 2. BÚSQUEDA DINÁMICA POR CATEGORÍA
+    # En lugar de buscar por "tipo", buscaremos por las categorías reales creadas en el ERP
+    categorias = Categoria.objects.filter(is_active=True)
+    categoria_id = request.GET.get('categoria')
+    if categoria_id:
+        materiales_list = materiales_list.filter(categoria_id=categoria_id)
 
-    rol_actual = 'Administrador' if es_admin(request.user) else 'Bodeguero'
+    # 3. BÚSQUEDA POR TEXTO (Servidor)
+    query = request.GET.get('q', '').strip()
+    if query:
+        materiales_list = materiales_list.filter(
+            Q(nombre__icontains=query) | Q(sku__icontains=query)
+        )
+
+    # Alertas Globales de Stock
+    alertas = Material.objects.filter(stock_actual__lte=F('stock_minimo'))
+
+    # 4. PAGINACIÓN (Evita que el servidor colapse)
+    paginator = Paginator(materiales_list, 20) # 20 materiales por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
 
     return render(request, 'web/erp/inventario.html', {
-        'materiales': materiales,
+        'page_obj': page_obj, # El HTML debe usar page_obj ahora
+        'categorias': categorias,
         'alertas': alertas,
-        'rol': rol_actual,
+        'rol': 'Administrador' if request.user.is_superuser else 'Bodeguero'
     })
-
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
 def crear_material(request):
@@ -865,28 +920,51 @@ def editar_material(request, material_id):
 @user_passes_test(es_admin, login_url='dashboard_erp')
 def realizar_ajuste(request, material_id):
     material = get_object_or_404(Material, id=material_id)
+    
     if request.method == 'POST':
         form = AjusteInventarioForm(request.POST)
         if form.is_valid():
-            cantidad_ajuste = form.cleaned_data['cantidad_ajuste']
-            bodega = form.cleaned_data['bodega']
-            observaciones = form.cleaned_data['observaciones']
+            bodega_seleccionada = form.cleaned_data['bodega']
             
+            # 1. Extraemos el número y lo BLINDAMOS convirtiéndolo a Decimal (Evita errores de Float)
+            ajuste_crudo = form.cleaned_data['cantidad_ajuste']
+            cantidad_ajuste = Decimal(str(ajuste_crudo))
+            
+            observaciones = form.cleaned_data['observaciones']
+
             with transaction.atomic():
-                # BLOQUEO DE CONCURRENCIA PARA AJUSTES
-                mat_locked = Material.objects.select_for_update().get(id=material.id)
-                mat_locked.stock_actual += cantidad_ajuste
-                mat_locked.save()
+                # Bloqueo para evitar colisiones (Concurrencia)
+                material_bloqueado = Material.objects.select_for_update().get(id=material.id)
                 
-                stock_b, _ = StockBodega.objects.select_for_update().get_or_create(bodega=bodega, material=mat_locked)
-                stock_b.cantidad += cantidad_ajuste
-                stock_b.save()
-                
-                MovimientoInventario.objects.create(
-                    material=mat_locked, tipo='AJUSTE', cantidad=cantidad_ajuste, bodega_origen=bodega,
-                    responsable=request.user, observaciones=observaciones
+                # Buscamos el stock de esa bodega en específico
+                stock_b, _ = StockBodega.objects.select_for_update().get_or_create(
+                    bodega=bodega_seleccionada, 
+                    material=material_bloqueado
                 )
-            messages.success(request, f'¡Ajuste de {cantidad_ajuste} aplicado a {mat_locked.sku} en {bodega.nombre}!')
+
+                # 2. Blindamos la cantidad actual de la bodega (por si estaba nula/vacía)
+                cant_actual = Decimal(str(stock_b.cantidad)) if stock_b.cantidad else Decimal('0.0')
+
+                # 3. GUARDAMOS PRIMERO LA BODEGA (Suma segura: Decimal + Decimal)
+                stock_b.cantidad = cant_actual + cantidad_ajuste
+                stock_b.save() 
+
+                # 4. LUEGO GUARDAMOS EL MATERIAL (Dispara el recálculo automático del total global)
+                material_bloqueado.save()
+
+                # 5. Registramos en la auditoría separando si fue entrada o salida
+                tipo_mov = 'AJUSTE_INGRESO' if cantidad_ajuste > 0 else 'AJUSTE_SALIDA'
+                MovimientoInventario.objects.create(
+                    material=material_bloqueado,
+                    tipo=tipo_mov,
+                    cantidad=abs(cantidad_ajuste), # En auditoría siempre se guarda el valor en positivo
+                    bodega_origen=bodega_seleccionada if cantidad_ajuste < 0 else None,
+                    bodega_destino=bodega_seleccionada if cantidad_ajuste > 0 else None,
+                    responsable=request.user,
+                    observaciones=f"Ajuste manual: {observaciones}"
+                )
+
+            messages.success(request, f"¡Ajuste aplicado correctamente a {material_bloqueado.sku} en {bodega_seleccionada.nombre}!")
             return redirect('inventario_actual')
     else:
         form = AjusteInventarioForm()
@@ -1118,24 +1196,52 @@ def imprimir_pdf_auditoria(request):
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
 def gestionar_empleados(request):
-    Group.objects.get_or_create(name='Bodeguero')
-    Group.objects.get_or_create(name='Solicitante')
-    Group.objects.get_or_create(name='Compras')
+    empleados = User.objects.all().order_by('-date_joined')
+    grupos = Group.objects.all()
+    bodegas = Bodega.objects.all() # Traemos las bodegas para el modal de asignación
     
-    empleados = User.objects.filter(is_superuser=False).order_by('-date_joined')
-
     if request.method == 'POST':
+        # 1. LÓGICA PARA ASIGNAR BODEGA AL BODEGUERO
+        if 'asignar_bodega' in request.POST:
+            user_id = request.POST.get('user_id')
+            bodega_id = request.POST.get('bodega_id')
+            
+            usuario_mod = get_object_or_404(User, id=user_id)
+            # Obtenemos o creamos el perfil para que no dé error si es un usuario antiguo
+            perfil, created = PerfilEmpleado.objects.get_or_create(usuario=usuario_mod)
+            
+            if bodega_id:
+                bodega_seleccionada = get_object_or_404(Bodega, id=bodega_id)
+                perfil.bodega_asignada = bodega_seleccionada
+                messages.success(request, f"✅ Bodega '{bodega_seleccionada.nombre}' asignada a {usuario_mod.username}.")
+            else:
+                perfil.bodega_asignada = None
+                messages.success(request, f"✅ Se quitó la asignación de bodega para {usuario_mod.username}.")
+                
+            perfil.save()
+            return redirect('gestionar_empleados')
+
+        # 2. LÓGICA ORIGINAL PARA CREAR UN NUEVO EMPLEADO
         form = RegistroEmpleadoForm(request.POST)
         if form.is_valid():
-            form.save()
-            messages.success(request, 'Empleado registrado y rol asignado correctamente.')
+            user = form.save()
+            grupo_id = request.POST.get('grupo')
+            if grupo_id:
+                grupo = Group.objects.get(id=grupo_id)
+                user.groups.add(grupo)
+            messages.success(request, f"✅ Empleado {user.username} creado y asignado al grupo con éxito.")
             return redirect('gestionar_empleados')
         else:
-            messages.error(request, 'Hubo un error. Revisa que el usuario no exista ya.')
+            messages.error(request, "❌ Error al crear el usuario. Revisa los datos e intenta de nuevo.")
     else:
         form = RegistroEmpleadoForm()
 
-    return render(request, 'web/erp/gestionar_empleados.html', {'form': form, 'empleados': empleados})
+    return render(request, 'web/erp/gestionar_empleados.html', {
+        'empleados': empleados,
+        'grupos': grupos,
+        'bodegas': bodegas,
+        'form': form
+    })
 
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
@@ -1331,3 +1437,56 @@ def trazabilidad_requerimientos(request):
         'requerimientos': requerimientos,
         'estado_actual': estado_filtro
     })
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: es_bodeguero(u) or es_admin(u), login_url='dashboard_erp')
+@transaction.atomic
+def trasladar_material(request, material_id):
+    material = get_object_or_404(Material, id=material_id)
+    bodegas = Bodega.objects.all()
+
+    if request.method == 'POST':
+        origen_id = request.POST.get('bodega_origen')
+        destino_id = request.POST.get('bodega_destino')
+        try:
+            cantidad = Decimal(request.POST.get('cantidad', '0').replace(',', '.'))
+        except:
+            cantidad = Decimal('0')
+            
+        if cantidad > 0 and origen_id and destino_id and origen_id != destino_id:
+            bod_origen = get_object_or_404(Bodega, id=origen_id)
+            bod_destino = get_object_or_404(Bodega, id=destino_id)
+            
+            # Bloqueo de concurrencia
+            mat_lock = Material.objects.select_for_update().get(id=material.id)
+            stock_origen = StockBodega.objects.select_for_update().filter(bodega=bod_origen, material=mat_lock).first()
+            cant_origen = Decimal(str(stock_origen.cantidad)) if stock_origen else Decimal('0')
+            
+            if cant_origen < cantidad:
+                messages.error(request, f"No puedes trasladar {cantidad}. Solo hay {cant_origen} en {bod_origen.nombre}.")
+            else:
+                # 1. Restamos del origen
+                stock_origen.cantidad = cant_origen - cantidad
+                stock_origen.save()
+                
+                # 2. Sumamos al destino
+                stock_dest, _ = StockBodega.objects.select_for_update().get_or_create(bodega=bod_destino, material=mat_lock)
+                cant_dest = Decimal(str(stock_dest.cantidad)) if stock_dest.cantidad else Decimal('0')
+                stock_dest.cantidad = cant_dest + cantidad
+                stock_dest.save()
+                
+                # 3. Guardar material (El total general no cambia, pero se sincroniza)
+                mat_lock.save() 
+                
+                # 4. Registrar en la auditoría como TRASLADO
+                MovimientoInventario.objects.create(
+                    material=mat_lock, tipo='TRASLADO', cantidad=cantidad, 
+                    bodega_origen=bod_origen, bodega_destino=bod_destino,
+                    responsable=request.user, observaciones=request.POST.get('observaciones', 'Traslado logístico')
+                )
+                messages.success(request, f"🚚 Traslado Exitoso: Se movieron {cantidad} ítems a {bod_destino.nombre}.")
+                return redirect('inventario_actual')
+        else:
+            messages.error(request, "Datos inválidos. Asegúrate de que el origen y destino sean distintos.")
+
+    return render(request, 'web/erp/traslado_bodegas.html', {'material': material, 'bodegas': bodegas})

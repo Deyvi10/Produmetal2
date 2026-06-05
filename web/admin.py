@@ -3,6 +3,9 @@ from .models import (
     Proyecto, Material, Requerimiento, DetalleRequerimiento, 
     MovimientoInventario, OrdenCompra, DetalleOrdenCompra
 )
+from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.models import User
+from .models import PerfilEmpleado
 
 # =====================================================================
 # 1. PROYECTOS
@@ -64,3 +67,16 @@ class OrdenCompraAdmin(admin.ModelAdmin):
     search_fields = ('folio', 'proveedor', 'creado_por__username')
     inlines = [DetalleOrdenCompraInline]
     readonly_fields = ('folio',)
+
+class PerfilEmpleadoInline(admin.StackedInline):
+    model = PerfilEmpleado
+    can_delete = False
+    verbose_name_plural = 'Asignación de Bodega (Solo para Bodegueros)'
+    fk_name = 'usuario'
+
+class CustomUserAdmin(UserAdmin):
+    inlines = (PerfilEmpleadoInline, )
+
+# Re-registramos el modelo User con nuestra nueva configuración
+admin.site.unregister(User)
+admin.site.register(User, CustomUserAdmin)

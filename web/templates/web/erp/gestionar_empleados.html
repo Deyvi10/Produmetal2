@@ -1,237 +1,344 @@
 {% extends 'web/base.html' %}
-{% load static %}
-
-{% block extra_head %}
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
-{% endblock %}
 
 {% block content %}
 <style>
     /* =========================================
-       GESTIÓN DE PERSONAL - PREMIUM & MOBILE
+       TRUE DARK MODE - ELEGANTE Y ALTO CONTRASTE
        ========================================= */
     :root {
-        --pm-bg: #0d1117;
-        --pm-surface: #000000;
-        --pm-border: #30363d;
-        --pm-text: #ffffff;
-        --pm-text-muted: #aab6c4;
-        --pm-amber: #e6a817; 
-        --pm-blue: #58a6ff;
-        --pm-green: #3fb950;
-        --pm-red: #f85149;
-        --font-display: 'Barlow Condensed', sans-serif;
-        --font-body: 'Barlow', sans-serif;
+        --dark-bg: #121212;         /* Fondo negro elegante */
+        --dark-surface: #1e1e1e;    /* Tarjetas ligeramente elevadas */
+        --dark-hover: #2a2a2a;      /* Color al pasar el mouse */
+        --dark-border: #333333;     /* Bordes sutiles pero visibles */
+        
+        --text-white: #ffffff;      /* Blanco puro para leer sin esfuerzo */
+        --text-light: #cccccc;      /* Gris claro para subtítulos (NO oscuro) */
+        
+        --blue-primary: #0d6efd;    /* Azul vibrante y profesional */
+        --blue-hover: #0b5ed7;
+        --green-success: #198754;
+        --red-danger: #dc3545;
+        --yellow-warning: #ffc107;
     }
 
-    body { background-color: var(--pm-bg) !important; color: var(--pm-text) !important; font-family: var(--font-body); }
-    .erp-container { margin-top: 30px; max-width: 1300px; }
+    body {
+        background-color: var(--dark-bg) !important;
+        color: var(--text-white) !important;
+    }
+
+    /* TARJETAS Y CONTENEDORES */
+    .card-elegant {
+        background-color: var(--dark-surface);
+        border: 1px solid var(--dark-border);
+        border-radius: 12px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+        overflow: hidden;
+    }
+
+    /* TABLA LIMPIA Y ORDENADA */
+    .table-elegant { width: 100%; margin: 0; color: var(--text-white); }
+    .table-elegant th {
+        background-color: #171717;
+        color: var(--text-light);
+        font-size: 0.85rem;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        padding: 1rem 1.5rem;
+        border-bottom: 2px solid var(--dark-border);
+    }
+    .table-elegant td {
+        padding: 1rem 1.5rem;
+        vertical-align: middle;
+        border-bottom: 1px solid var(--dark-border);
+        color: var(--text-white);
+    }
+    .table-elegant tbody tr:hover td {
+        background-color: var(--dark-hover);
+    }
+
+    /* INSIGNIAS (BADGES) CLARAS */
+    .badge-custom {
+        padding: 0.5rem 1rem;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 0.8rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .bg-blue-custom { background-color: rgba(13, 110, 253, 0.15); color: #6ea8fe; border: 1px solid #0d6efd; }
+    .bg-green-custom { background-color: rgba(25, 135, 84, 0.15); color: #75b798; border: 1px solid #198754; }
+    .bg-red-custom { background-color: rgba(220, 53, 69, 0.15); color: #ea868f; border: 1px solid #dc3545; }
+    .bg-gray-custom { background-color: rgba(255, 255, 255, 0.1); color: var(--text-light); border: 1px solid var(--dark-border); }
+
+    /* FORMULARIOS TOTALMENTE LEGIBLES */
+    .form-control-dark, .form-select-dark {
+        background-color: var(--dark-bg) !important;
+        border: 1px solid var(--dark-border) !important;
+        color: var(--text-white) !important;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+    }
+    .form-control-dark:focus, .form-select-dark:focus {
+        border-color: var(--blue-primary) !important;
+        box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25) !important;
+        outline: none;
+    }
+    ::placeholder { color: #888888 !important; }
+
+    /* MODALES */
+    .modal-content {
+        background-color: var(--dark-surface);
+        border: 1px solid var(--dark-border);
+        border-radius: 12px;
+    }
+    .modal-header { border-bottom: 1px solid var(--dark-border); }
+    .modal-footer { border-top: 1px solid var(--dark-border); }
     
-    @media (max-width: 768px) {
-        .erp-container { margin-top: 15px; padding-left: 10px !important; padding-right: 10px !important; }
-        .card-body { padding: 1.2rem !important; }
-        .hide-mobile { display: none !important; }
-    }
+    .text-title { color: var(--text-white); font-weight: bold; }
+    .text-subtitle { color: var(--text-light); font-size: 0.9rem; }
+    .form-label { color: var(--text-light); font-weight: bold; font-size: 0.85rem; text-transform: uppercase; margin-bottom: 0.5rem; }
 
-    .title-erp { font-family: var(--font-display); font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; }
-    .title-erp span { color: var(--pm-amber); }
-
-    /* Tarjetas Estilo App */
-    .card-minimal { 
-        background: var(--pm-surface); border: 1px solid var(--pm-border); 
-        border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); overflow: hidden; 
+    /* BOTONES */
+    .btn-blue {
+        background-color: var(--blue-primary);
+        color: #ffffff;
+        font-weight: bold;
+        border-radius: 8px;
+        padding: 0.6rem 1.5rem;
+        border: none;
+        transition: 0.2s;
     }
-    .card-header-custom { 
-        background: rgba(230,168,23,0.03); border-bottom: 1px solid var(--pm-border); 
-        padding: 1.2rem 1.5rem; 
-    }
-
-    /* Formulario Minimalista */
-    .form-control, .form-select {
-        background-color: var(--pm-bg) !important; border: 1px solid var(--pm-border) !important; 
-        color: var(--pm-text) !important; border-radius: 8px; transition: all 0.3s; padding: 0.7rem 1rem;
-        font-size: 0.95rem;
-    }
-    .form-control:focus, .form-select:focus { 
-        border-color: var(--pm-amber) !important; box-shadow: 0 0 0 2px rgba(230, 168, 23, 0.15) !important; 
-    }
-    .form-label { font-family: var(--font-display); font-weight: 600; color: var(--pm-text-muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.3rem;}
+    .btn-blue:hover { background-color: var(--blue-hover); color: #ffffff; }
     
-    .form-select { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23aab6c4' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important; }
-
-    /* Botones */
-    .btn-minimal { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; border-radius: 8px; padding: 0.7rem 1.5rem; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: none; text-decoration: none;}
-    .btn-amber { background: var(--pm-amber); color: #000; width: 100%; }
-    .btn-amber:hover { background: #ffd166; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(230,168,23,0.2); color: #000; }
-    .btn-outline-secondary-custom { border: 1px solid var(--pm-border); color: var(--pm-text-muted); background: transparent; }
-    .btn-outline-secondary-custom:hover { background: var(--pm-border); color: #fff; }
-
-    /* Tabla Premium */
-    .table-responsive {
-        scrollbar-width: thin; scrollbar-color: var(--pm-border) transparent;
+    .btn-icon {
+        background-color: transparent;
+        color: var(--blue-primary);
+        border: 1px solid var(--blue-primary);
+        border-radius: 8px;
+        width: 38px; height: 38px;
+        display: inline-flex; align-items: center; justify-content: center;
+        transition: 0.2s;
     }
-    .table-modern { width: 100%; margin-bottom: 0; white-space: nowrap; color: var(--pm-text); }
-    .table-modern th { background: var(--pm-bg); text-transform: uppercase; font-family: var(--font-display); font-size: 0.8rem; letter-spacing: 1px; color: var(--pm-text-muted); border-bottom: 1px solid var(--pm-border); padding: 14px 16px; border-top: none;}
-    .table-modern td { vertical-align: middle; border-bottom: 1px solid var(--pm-border); padding: 14px 16px; background: transparent; color: var(--pm-text); }
-    .table-modern tr:hover td { background: rgba(255,255,255,0.02); }
-    .table-modern tr.inactive-row td { opacity: 0.5; background: rgba(248,81,73,0.02); }
-
-    /* Avatar Circular */
-    .avatar-circle {
-        width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-        font-family: var(--font-display); font-weight: bold; font-size: 1.1rem; color: #000; background: var(--pm-amber);
-        flex-shrink: 0;
-    }
-    .avatar-admin { background: var(--pm-text-muted); color: #000; }
-
-    /* Badges Modernos */
-    .badge-role { padding: 5px 10px; font-weight: 600; font-size: 0.75rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-display); letter-spacing: 0.5px; text-transform: uppercase; border: 1px solid transparent; }
-    .role-bodega { background: rgba(88,166,255,0.1); color: var(--pm-blue); border-color: rgba(88,166,255,0.2); }
-    .role-tecnico { background: rgba(230,168,23,0.1); color: var(--pm-amber); border-color: rgba(230,168,23,0.2); }
-    .role-compras { background: rgba(63,185,80,0.1); color: var(--pm-green); border-color: rgba(63,185,80,0.2); }
-    .role-admin { background: rgba(255,255,255,0.1); color: var(--pm-text); border-color: rgba(255,255,255,0.2); }
+    .btn-icon:hover { background-color: var(--blue-primary); color: #ffffff; }
 </style>
 
-<div class="container-fluid px-3 px-xl-5 erp-container mb-5">
-
-    <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-3 mb-4 pb-3 border-bottom" style="border-color: var(--pm-border) !important;">
-        <a href="{% url 'dashboard_erp' %}" class="btn btn-outline-secondary-custom btn-minimal px-3">
-            <i class="bi bi-arrow-left"></i> <span class="hide-mobile">Volver</span>
-        </a>
+<div class="container py-5" style="margin-top: 70px; max-width: 1300px;">
+    
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
         <div>
-            <h3 class="title-erp mb-0">Gestión de <span>Personal</span></h3>
-            <p class="mb-0 text-muted small"><i class="bi bi-shield-lock-fill text-warning me-1"></i> Control de Accesos y Permisos (RBAC)</p>
+            <a href="{% url 'dashboard_erp' %}" class="text-decoration-none mb-2 d-inline-block" style="color: var(--text-light); font-weight: bold; font-size: 0.9rem;">
+                <i class="bi bi-arrow-left me-1"></i> Volver al Panel
+            </a>
+            <h2 class="text-title mb-0 fs-2">Gestión de Personal</h2>
+            <p class="text-subtitle mb-0 mt-1">Administra los usuarios, roles y accesos a bodegas del sistema.</p>
+        </div>
+        <div>
+            <button class="btn-blue d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalNuevoEmpleado">
+                <i class="bi bi-person-plus-fill fs-5"></i> Agregar Empleado
+            </button>
         </div>
     </div>
 
     {% if messages %}
         <div class="mb-4">
             {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} alert-dismissible fade show border-0 shadow-sm rounded-3 d-flex align-items-center" role="alert" style="background: var(--pm-surface); border-left: 4px solid var(--pm-amber) !important; color: var(--pm-text);">
-                    {% if message.tags == 'success' %}<i class="bi bi-check-circle-fill text-success fs-5 me-3"></i>{% endif %}
-                    {% if message.tags == 'warning' %}<i class="bi bi-exclamation-triangle-fill text-warning fs-5 me-3"></i>{% endif %}
-                    {% if message.tags == 'danger' or message.tags == 'error' %}<i class="bi bi-shield-fill-x text-danger fs-5 me-3"></i>{% endif %}
-                    <div class="flex-grow-1 fw-medium" style="font-size: 0.95rem;">{{ message }}</div>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+                <div class="alert alert-dismissible fade show d-flex align-items-center p-3 rounded-3" 
+                     style="background-color: var(--dark-surface); border: 1px solid var(--dark-border); border-left: 4px solid var(--green-success); color: var(--text-white);">
+                    <i class="bi bi-check-circle-fill me-3" style="color: var(--green-success); font-size: 1.2rem;"></i>
+                    <div class="flex-grow-1 fw-bold" style="font-size: 0.95rem;">{{ message }}</div>
+                    <button type="button" class="btn-close btn-close-white opacity-50" data-bs-dismiss="alert"></button>
                 </div>
             {% endfor %}
         </div>
     {% endif %}
 
-    <div class="row g-4">
-        <div class="col-12 col-lg-4 order-2 order-lg-1">
-            <div class="card card-minimal h-100">
-                <div class="card-header-custom d-flex align-items-center">
-                    <i class="bi bi-person-plus fs-5 me-2" style="color: var(--pm-amber);"></i>
-                    <h6 class="title-erp mb-0 text-white" style="font-size: 1rem;">Dar de alta usuario</h6>
-                </div>
-                <div class="card-body">
-                    <form method="POST">
-                        {% csrf_token %}
-                        {% for field in form %}
-                            <div class="mb-3">
-                                <label class="form-label">{{ field.label }}</label>
-                                {{ field }}
-                                {% if field.errors %}
-                                    <div class="text-danger small mt-1 fw-bold">{{ field.errors|join:", " }}</div>
-                                {% endif %}
+    <div class="card-elegant">
+        <div class="table-responsive">
+            <table class="table-elegant">
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">Usuario</th>
+                        <th style="width: 25%;">Nombres y Correo</th>
+                        <th style="width: 20%;">Rol Asignado</th>
+                        <th style="width: 20%;">Ubicación / Bodega</th>
+                        <th class="text-center" style="width: 10%;">Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for emp in empleados %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="rounded-circle d-flex justify-content-center align-items-center" 
+                                     style="width: 45px; height: 45px; background-color: var(--dark-bg); border: 2px solid var(--dark-border); color: var(--text-white); font-weight: bold; font-size: 1.2rem;">
+                                    {{ emp.username|make_list|first|upper }}
+                                </div>
+                                <div>
+                                    <div class="fw-bold fs-6">{{ emp.username }}</div>
+                                </div>
                             </div>
-                        {% endfor %}
-                        <div class="mt-4 pt-3 border-top" style="border-color: var(--pm-border) !important;">
-                            <button type="submit" class="btn-amber btn-minimal">
-                                <i class="bi bi-key-fill"></i> Crear y Asignar
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
+                        </td>
+                        
+                        <td>
+                            <div class="fw-bold" style="font-size: 0.95rem;">{{ emp.first_name }} {{ emp.last_name }}</div>
+                            <div style="color: var(--text-light); font-size: 0.85rem; margin-top: 2px;">
+                                <i class="bi bi-envelope"></i> {{ emp.email|default:"Sin correo registrado" }}
+                            </div>
+                        </td>
+                        
+                        <td>
+                            {% if emp.is_superuser %}
+                                <span class="badge-custom bg-red-custom">
+                                    <i class="bi bi-shield-lock-fill"></i> Administrador
+                                </span>
+                            {% else %}
+                                {% for group in emp.groups.all %}
+                                    <span class="badge-custom bg-blue-custom">
+                                        <i class="bi bi-person-badge"></i> {{ group.name }}
+                                    </span>
+                                {% empty %}
+                                    <span class="badge-custom bg-gray-custom">Sin Rol</span>
+                                {% endfor %}
+                            {% endif %}
+                        </td>
+                        
+                        <td>
+                            {% for group in emp.groups.all %}
+                                {% if group.name == 'Bodeguero' %}
+                                    {% if emp.perfil.bodega_asignada %}
+                                        <span class="badge-custom bg-green-custom">
+                                            <i class="bi bi-box-seam"></i> {{ emp.perfil.bodega_asignada.nombre }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-warning fw-bold small"><i class="bi bi-exclamation-triangle-fill"></i> Falta asignar bodega</span>
+                                    {% endif %}
+                                {% endif %}
+                            {% endfor %}
+                            {% if emp.is_superuser %}
+                                <span style="color: var(--text-light); font-size: 0.9rem; font-weight: bold;">Acceso Total</span>
+                            {% endif %}
+                        </td>
 
-        <div class="col-12 col-lg-8 order-1 order-lg-2">
-            <div class="card card-minimal h-100">
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-modern align-middle mb-0">
-                            <thead>
-                                <tr>
-                                    <th class="ps-4">Usuario Registrado</th>
-                                    <th>Rol Técnico</th>
-                                    <th class="text-center">Estado</th>
-                                    <th class="text-end pe-4">Acceso</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for empleado in empleados %}
-                                <tr class="{% if not empleado.is_active %}inactive-row{% endif %}">
-                                    <td class="ps-4">
-                                        <div class="d-flex align-items-center gap-3">
-                                            <div class="avatar-circle {% if empleado.is_superuser %}avatar-admin{% endif %}">
-                                                {{ empleado.username|make_list|first|upper }}
-                                            </div>
-                                            <div>
-                                                <div class="fw-bold text-white">{{ empleado.first_name }} {{ empleado.last_name }}</div>
-                                                <div class="text-muted small" style="font-size: 0.8rem;">@{{ empleado.username }}</div>
+                        <td class="text-center">
+                            {% for group in emp.groups.all %}
+                                {% if group.name == 'Bodeguero' %}
+                                    <button class="btn-icon" title="Asignar Bodega" data-bs-toggle="modal" data-bs-target="#modalBodega{{ emp.id }}">
+                                        <i class="bi bi-geo-alt-fill"></i>
+                                    </button>
+
+                                    <div class="modal fade text-start" id="modalBodega{{ emp.id }}" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-centered">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="text-title mb-0 fs-4">Asignar Bodega a {{ emp.username }}</h5>
+                                                    <button type="button" class="btn-close btn-close-white opacity-75" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <form method="POST">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="asignar_bodega" value="1">
+                                                    <input type="hidden" name="user_id" value="{{ emp.id }}">
+                                                    
+                                                    <div class="modal-body">
+                                                        <div class="mb-4">
+                                                            <label class="form-label">Selecciona la Bodega</label>
+                                                            <select name="bodega_id" class="form-select-dark w-100">
+                                                                <option value="">-- Ninguna (Quitar Asignación) --</option>
+                                                                {% for bod in bodegas %}
+                                                                    <option value="{{ bod.id }}" {% if emp.perfil.bodega_asignada.id == bod.id %}selected{% endif %}>
+                                                                        {{ bod.nombre }}
+                                                                    </option>
+                                                                {% endfor %}
+                                                            </select>
+                                                        </div>
+                                                        <div class="p-3 rounded-3" style="background-color: rgba(13, 110, 253, 0.1); border: 1px solid var(--blue-primary);">
+                                                            <p class="mb-0" style="color: var(--text-white); font-size: 0.9rem;">
+                                                                <i class="bi bi-info-circle-fill" style="color: var(--blue-primary);"></i>
+                                                                El empleado solo podrá despachar materiales ubicados en esta bodega.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn text-white fw-bold" data-bs-dismiss="modal">Cancelar</button>
+                                                        <button type="submit" class="btn-blue">Guardar Cambios</button>
+                                                    </div>
+                                                </form>
                                             </div>
                                         </div>
-                                    </td>
-                                    
-                                    <td>
-                                        {% if empleado.is_superuser %}
-                                            <span class="badge-role role-admin"><i class="bi bi-star-fill"></i> Administrador</span>
-                                        {% else %}
-                                            {% for grupo in empleado.groups.all %}
-                                                {% if grupo.name == 'Bodeguero' %}
-                                                    <span class="badge-role role-bodega"><i class="bi bi-box-seam"></i> Bodega</span>
-                                                {% elif grupo.name == 'Solicitante' %}
-                                                    <span class="badge-role role-tecnico"><i class="bi bi-tools"></i> Técnico</span>
-                                                {% elif grupo.name == 'Compras' %}
-                                                    <span class="badge-role role-compras"><i class="bi bi-cash-coin"></i> Compras</span>
-                                                {% else %}
-                                                    <span class="badge-role" style="border: 1px solid var(--pm-border);">{{ grupo.name }}</span>
-                                                {% endif %}
-                                            {% empty %}
-                                                <span class="text-muted small"><i class="bi bi-dash-circle me-1"></i>Sin Asignar</span>
-                                            {% endfor %}
-                                        {% endif %}
-                                    </td>
-
-                                    <td class="text-center">
-                                        {% if empleado.is_active %}
-                                            <span class="text-success small fw-bold"><i class="bi bi-circle-fill me-1" style="font-size: 0.5rem; vertical-align: middle;"></i> Activo</span>
-                                        {% else %}
-                                            <span class="text-danger small fw-bold"><i class="bi bi-circle-fill me-1" style="font-size: 0.5rem; vertical-align: middle;"></i> Suspendido</span>
-                                        {% endif %}
-                                    </td>
-
-                                    <td class="text-end pe-4">
-                                        {% if not empleado.is_superuser %}
-                                            <a href="{% url 'alternar_estado_empleado' empleado.id %}" 
-                                               class="btn btn-sm btn-minimal px-3 py-1 {% if empleado.is_active %}btn-outline-secondary-custom{% else %}btn-outline-secondary-custom text-success border-success{% endif %}" 
-                                               title="{% if empleado.is_active %}Suspender Acceso{% else %}Restaurar Acceso{% endif %}" 
-                                               onclick="return confirm('¿Estás seguro de {% if empleado.is_active %}suspender{% else %}restaurar{% endif %} a {{ empleado.username }}?');">
-                                                <i class="bi {% if empleado.is_active %}bi-person-slash text-danger{% else %}bi-person-check-fill{% endif %}"></i>
-                                                <span class="d-none d-md-inline ms-1" style="font-size: 0.75rem;">{% if empleado.is_active %}Bloquear{% else %}Activar{% endif %}</span>
-                                            </a>
-                                        {% else %}
-                                            <span class="text-muted small border px-2 py-1 rounded-3" style="border-color: var(--pm-border) !important; font-size: 0.75rem;">Protegido</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="4" class="text-center py-5">
-                                        <i class="bi bi-people text-muted" style="font-size: 3rem;"></i>
-                                        <h6 class="mt-3 title-erp text-white">Directorio Vacío</h6>
-                                        <p class="text-muted small mb-0">No hay empleados registrados, a excepción del Administrador actual.</p>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+                                    </div>
+                                    {% endif %}
+                            {% endfor %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5">
+                            <i class="bi bi-people text-muted" style="font-size: 3rem;"></i>
+                            <h5 class="mt-3 text-white fw-bold">No hay empleados registrados</h5>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="modalNuevoEmpleado" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="text-title mb-0 fs-4">Registrar Nuevo Empleado</h5>
+                <button type="button" class="btn-close btn-close-white opacity-75" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="row g-4">
+                        {% for field in form %}
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.help_text %}
+                                <div style="color: #888888; font-size: 0.8rem; margin-top: 5px;">{{ field.help_text|striptags }}</div>
+                            {% endif %}
+                            {% if field.errors %}
+                                <div class="text-danger small mt-1 fw-bold">{{ field.errors|striptags }}</div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+
+                        <div class="col-12 mt-2 border-top pt-4" style="border-color: var(--dark-border)!important;">
+                            <label class="form-label text-white fs-6">Asignación de Rol</label>
+                            <select name="grupo" class="form-select-dark w-100" required>
+                                <option value="" disabled selected>Seleccione el perfil de acceso...</option>
+                                {% for g in grupos %}
+                                    <option value="{{ g.id }}">{{ g.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn text-white fw-bold" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn-blue">Crear Usuario</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const modalInputs = document.querySelectorAll('#modalNuevoEmpleado input');
+        modalInputs.forEach(input => {
+            input.classList.add('form-control-dark', 'w-100');
+            if (input.type === 'password' || input.type === 'text' || input.type === 'email') {
+                input.placeholder = "Escribe aquí...";
+            }
+        });
+    });
+</script>
 {% endblock %}

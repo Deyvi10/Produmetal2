@@ -401,3 +401,10 @@ class MovimientoInventario(models.Model):
 
     def __str__(self):
         return f"{self.tipo} - {self.cantidad} de {self.material.sku}"
+    
+class PerfilEmpleado(models.Model):
+    usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='perfil')
+    bodega_asignada = models.ForeignKey(Bodega, on_delete=models.SET_NULL, null=True, blank=True, help_text="Bodega sobre la cual el usuario tiene control logístico.")
+    
+    def __str__(self):
+        return f"Perfil de {self.usuario.username}"
