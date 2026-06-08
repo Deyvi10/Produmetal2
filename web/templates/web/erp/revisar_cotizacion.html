@@ -1,123 +1,158 @@
 {% extends 'web/base.html' %}
+{% load static %}
 
 {% block content %}
-<div class="container my-3 my-md-4 px-2 px-md-3">
+<div class="container py-4">
     
-    <div class="card border-0 shadow-sm mb-4 bg-primary text-white rounded-3">
-        <div class="card-body p-3 p-md-4">
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
-                <div>
-                    <h5 class="card-title mb-1 text-uppercase fw-bold text-warning" style="font-size: 1.2rem;">
-                        <i class="bi bi-shield-check me-1"></i> Revisión y Aprobación Gerencial
-                    </h5>
-                    <p class="card-text small mb-0 opacity-90">
-                        Solicitud: <span class="fw-bold text-white fs-6">{{ solicitud.folio }}</span> 
-                        | Proyecto: {{ solicitud.requerimiento_origen.proyecto.nombre|default:"Stock General" }}
-                    </p>
-                </div>
-                <span class="badge bg-light text-primary px-3 py-2 fw-bold shadow-sm">
-                    {{ solicitud.get_estado_display }}
-                </span>
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div class="d-flex align-items-center">
+            <a href="{% url 'dashboard_erp' %}" class="btn btn-outline-secondary rounded-circle me-3" style="width: 45px; height: 45px; display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <div>
+                <h4 class="mb-0 fw-bold">Consolidación de Compra</h4>
+                <p class="text-muted mb-0 small">Folio: <span class="text-primary fw-bold">{{ solicitud.folio }}</span></p>
             </div>
         </div>
+        
+        <a href="{% url 'inventario_actual' %}" class="btn btn-light btn-sm rounded-3 border d-none d-sm-inline-block">
+            <i class="fas fa-boxes me-1"></i> Ver Catálogo
+        </a>
     </div>
 
-    <form method="POST" class="needs-validation" novalidate>
+    <form method="POST" action="{% url 'revisar_cotizacion' solicitud.id %}">
         {% csrf_token %}
+
+        <h5 class="fw-bold mb-3 text-secondary"><i class="fas fa-list-check me-2"></i>Materiales a Validar</h5>
         
-        <div class="row">
-            {% for item in items %}
-            <div class="col-12 col-xl-6 mb-4">
-                <div class="card border-0 shadow-sm rounded-3 h-100 border-start border-4 {% if item.estado_aprobacion == 'APROBADO' %}border-success{% elif item.estado_aprobacion == 'RECHAZADO' %}border-danger{% else %}border-warning{% endif %}">
+        {% for item in items %}
+        <div class="card shadow-sm border-0 rounded-4 mb-3 position-relative overflow-hidden">
+            <div class="position-absolute top-0 start-0 h-100 bg-primary" style="width: 5px;"></div>
+            
+            <div class="card-body p-3 ps-4">
+                <div class="row align-items-center g-3">
                     
-                    <div class="card-header bg-white d-flex justify-content-between align-items-start py-3">
-                        <div>
-                            <h6 class="mb-0 fw-bold text-dark">{{ item.material.nombre }}</h6>
-                            <small class="text-muted">Cant. Requerida: <strong class="text-dark">{{ item.cantidad_requerida }}</strong></small>
-                        </div>
-                        
-                        {% if item.archivo_cotizacion %}
-                        <a href="{{ item.archivo_cotizacion.url }}" target="_blank" class="btn btn-sm btn-outline-primary fw-bold px-2 py-1" style="font-size: 0.7rem;">
-                            <i class="bi bi-file-earmark-pdf-fill text-danger"></i> Ver PDF
-                        </a>
-                        {% else %}
-                        <span class="badge bg-light text-muted border" style="font-size: 0.7rem;">Sin PDF</span>
-                        {% endif %}
+                    <div class="col-12 col-md-4">
+                        <span class="badge bg-light text-dark border mb-1">SKU: {{ item.material.sku }}</span>
+                        <h6 class="mb-1 fw-bold text-dark">{{ item.material.nombre }}</h6>
+                        <p class="text-muted small mb-0">Proveedor Cotizado: <strong class="text-secondary">{{ item.proveedor_cotizado|default:"Por asignar" }}</strong></p>
                     </div>
-                    
-                    <div class="card-body bg-light">
-                        <div class="row g-2 mb-3 small">
-                            <div class="col-6">
-                                <span class="text-muted fw-bold d-block" style="font-size: 0.7rem; text-transform: uppercase;">Proveedor</span>
-                                <span class="fw-bold text-dark text-truncate d-block" title="{{ item.proveedor_cotizado }}">{{ item.proveedor_cotizado|default:"No asignado" }}</span>
-                            </div>
-                            <div class="col-6 text-end">
-                                <span class="text-muted fw-bold d-block" style="font-size: 0.7rem; text-transform: uppercase;">Entrega</span>
-                                <span class="fw-bold text-dark">{{ item.tiempo_entrega_dias }} días hábiles</span>
-                            </div>
-                            <div class="col-6 mt-2">
-                                <span class="text-muted fw-bold d-block" style="font-size: 0.7rem; text-transform: uppercase;">Precio Unit.</span>
-                                <span class="fw-bold text-primary fs-6">${{ item.precio_unitario|default:"0.00" }}</span>
-                            </div>
-                            <div class="col-6 mt-2 text-end">
-                                <span class="text-muted fw-bold d-block" style="font-size: 0.7rem; text-transform: uppercase;">Total Estimado</span>
-                                <span class="fw-bold text-success fs-6">${{ item.total_estimado }}</span>
-                            </div>
+
+                    <div class="col-6 col-md-3">
+                        <label class="form-label small fw-semibold text-muted mb-1">Cantidad a Comprar:</label>
+                        <div class="input-group input-group-sm shadow-sm" style="max-width: 160px;">
+                            <input type="number" step="0.01" class="form-control text-center fw-bold text-primary" 
+                                   name="cantidad_final_{{ item.id }}" 
+                                   value="{{ item.cantidad_requerida }}" 
+                                   inputmode="decimal" required>
+                            <span class="input-group-text bg-light small">U</span>
                         </div>
+                        <small class="text-muted d-block mt-1">Orig: {{ item.cantidad_requerida }} U</small>
+                    </div>
 
-                        {% if item.especificaciones_tecnicas %}
-                        <div class="mb-3 p-2 bg-white rounded border border-light small text-muted fst-italic">
-                            "{{ item.especificaciones_tecnicas }}"
+                    <div class="col-6 col-md-2 text-end text-md-start">
+                        <label class="form-label small fw-semibold text-muted mb-1">P. Unitario Est:</label>
+                        <h6 class="fw-bold text-success mb-0">${{ item.precio_unitario|default:"0.00" }}</h6>
+                    </div>
+
+                    <div class="col-12 col-md-3 text-md-end">
+                        <div class="btn-group w-100 shadow-sm" role="group">
+                            <input type="radio" class="btn-check" name="estado_{{ item.id }}" id="aprobar_{{ item.id }}" value="APROBADO" checked>
+                            <label class="btn btn-outline-success py-2" for="aprobar_{{ item.id }}">
+                                <i class="fas fa-check me-1"></i> Pedir
+                            </label>
+
+                            <input type="radio" class="btn-check" name="estado_{{ item.id }}" id="rechazar_{{ item.id }}" value="RECHAZADO">
+                            <label class="btn btn-outline-danger py-2" for="rechazar_{{ item.id }}">
+                                <i class="fas fa-times me-1"></i> Quitar
+                            </label>
                         </div>
-                        {% endif %}
+                    </div>
 
-                        <hr class="text-secondary opacity-25 my-2">
-
-                        <label class="form-label small fw-bold text-secondary mb-2">Decisión Gerencial:</label>
-                        <div class="btn-group w-100 mb-2 shadow-sm" role="group">
-                            <input type="radio" class="btn-check" name="estado_{{ item.id }}" id="aprobar_{{ item.id }}" value="APROBADO" autocomplete="off" {% if item.estado_aprobacion == 'APROBADO' %}checked{% endif %}>
-                            <label class="btn btn-outline-success fw-bold" for="aprobar_{{ item.id }}" style="font-size: 0.85rem;"><i class="bi bi-check-lg"></i> Aprobar</label>
-
-                            <input type="radio" class="btn-check" name="estado_{{ item.id }}" id="pendiente_{{ item.id }}" value="PENDIENTE" autocomplete="off" {% if item.estado_aprobacion == 'PENDIENTE' %}checked{% endif %}>
-                            <label class="btn btn-outline-secondary fw-bold" for="pendiente_{{ item.id }}" style="font-size: 0.85rem;">Espera</label>
-
-                            <input type="radio" class="btn-check" name="estado_{{ item.id }}" id="rechazar_{{ item.id }}" value="RECHAZADO" autocomplete="off" {% if item.estado_aprobacion == 'RECHAZADO' %}checked{% endif %}>
-                            <label class="btn btn-outline-danger fw-bold" for="rechazar_{{ item.id }}" style="font-size: 0.85rem;"><i class="bi bi-x-lg"></i> Rechazar</label>
-                        </div>
-
-                        <div class="mt-2">
-                            <input type="text" name="motivo_{{ item.id }}" value="{{ item.motivo_rechazo }}" class="form-control form-control-sm border-secondary-subtle" placeholder="Si rechaza, escriba el motivo aquí...">
-                        </div>
-
+                    <div class="col-12 mt-2 d-none" id="box_motivo_{{ item.id }}">
+                        <input type="text" class="form-control form-control-sm" name="motivo_{{ item.id }}" placeholder="Escribe el motivo del por qué no se comprará...">
                     </div>
                 </div>
             </div>
-            {% empty %}
-            <div class="col-12 text-center py-5 text-muted">
-                <i class="bi bi-inbox fs-1 d-block mb-3"></i>
-                <p>No hay cotizaciones para revisar.</p>
+        </div>
+        {% endfor %}
+
+        <div class="card shadow-sm border-0 bg-light rounded-4 my-4">
+            <div class="card-body p-4">
+                <h6 class="fw-bold text-dark mb-2">
+                    <i class="fas fa-plus-circle text-primary me-2"></i>¿Aprovechar flete o compra masiva? Añade stock extra:
+                </h6>
+                <p class="text-muted small">Puedes inyectar un material del catálogo directamente a esta orden de compra sin que provenga de un ticket previo.</p>
+                
+                <div class="row g-2 align-items-end">
+                    <div class="col-12 col-sm-6">
+                        <label class="form-label small fw-semibold">Seleccionar Material del Catálogo:</label>
+                        <select class="form-select shadow-none" name="agregar_material_id">
+                            <option value="" selected disabled>-- Buscar material activo --</option>
+                            {% for mat in materiales_catalogo %}
+                                <option value="{{ mat.id }}">[{{ mat.sku }}] {{ mat.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-7 col-sm-3">
+                        <label class="form-label small fw-semibold">Cantidad Extra:</label>
+                        <input type="number" step="0.01" class="form-control" name="agregar_cantidad_extra" placeholder="0.00" inputmode="decimal">
+                    </div>
+                    <div class="col-5 col-sm-3 d-grid">
+                        <button type="submit" class="btn btn-secondary fw-bold" name="btn_agregar_item">
+                            <i class="fas fa-plus"></i> Insertar
+                        </button>
+                    </div>
+                </div>
             </div>
-            {% endfor %}
         </div>
 
-        {% if items %}
-        <div class="card border-0 shadow-sm mt-2 mb-5">
-            <div class="card-body p-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 bg-light rounded-3">
-                <div class="small text-muted">
-                    <i class="bi bi-info-circle text-primary me-1"></i>
-                    Las O.C. (Órdenes de Compra) se generarán automáticamente por cada proveedor aprobado.
-                </div>
-                <div class="d-flex flex-column flex-md-row gap-2">
-                    <a href="{% url 'dashboard_erp' %}" class="btn btn-secondary fw-bold order-2 order-md-1 py-2 px-4">Volver al Panel</a>
-                    <button type="submit" class="btn btn-success fw-bold order-1 order-md-2 py-2 px-4 shadow-sm">
-                        <i class="bi bi-send-check"></i> Procesar y Generar Órdenes
-                    </button>
-                </div>
-            </div>
+        <div class="d-grid gap-2 mt-4 mb-5">
+            <button type="submit" class="btn btn-primary btn-lg rounded-3 fw-bold shadow py-3">
+                <i class="fas fa-file-invoice-dollar me-2"></i> Procesar y Generar Órdenes de Compra
+            </button>
+            <a href="{% url 'dashboard_erp' %}" class="btn btn-link text-muted btn-sm">Cancelar y volver al menú principal</a>
         </div>
-        {% endif %}
     </form>
 </div>
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        {% for item in items %}
+            const radioRechazar = document.getElementById("rechazar_{{ item.id }}");
+            const radioAprobar = document.getElementById("aprobar_{{ item.id }}");
+            const boxMotivo = document.getElementById("box_motivo_{{ item.id }}");
+
+            radioRechazar.addEventListener("change", function() {
+                if (this.checked) boxMotivo.classList.remove("d-none");
+            });
+            radioAprobar.addEventListener("change", function() {
+                if (this.checked) boxMotivo.classList.add("d-none");
+            });
+        {% endfor %}
+    });
+</script>
+
+<style>
+    /* Optimización de tamaño de fuentes táctiles en celulares */
+    @media (max-width: 576px) {
+        .card-body {
+            padding: 1rem !important;
+        }
+        .btn-group .btn {
+            font-size: 0.9rem;
+            padding-top: 10px;
+            padding-bottom: 10px;
+        }
+        input[type="number"] {
+            font-size: 1.1rem !important;
+            height: 40px;
+        }
+    }
+    
+    /* Prevenir que iOS agrande la pantalla al enfocar cajas de texto */
+    input, select, textarea {
+        font-size: 16px !important;
+    }
+</style>
 {% endblock %}

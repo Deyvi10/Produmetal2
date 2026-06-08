@@ -6,15 +6,15 @@
        TRUE DARK MODE - ELEGANTE Y ALTO CONTRASTE
        ========================================= */
     :root {
-        --dark-bg: #121212;         /* Fondo negro elegante */
-        --dark-surface: #1e1e1e;    /* Tarjetas ligeramente elevadas */
-        --dark-hover: #2a2a2a;      /* Color al pasar el mouse */
-        --dark-border: #333333;     /* Bordes sutiles pero visibles */
+        --dark-bg: #121212;         
+        --dark-surface: #1e1e1e;    
+        --dark-hover: #2a2a2a;      
+        --dark-border: #333333;     
         
-        --text-white: #ffffff;      /* Blanco puro para leer sin esfuerzo */
-        --text-light: #cccccc;      /* Gris claro para subtítulos (NO oscuro) */
+        --text-white: #ffffff;      
+        --text-light: #cccccc;      
         
-        --blue-primary: #0d6efd;    /* Azul vibrante y profesional */
+        --blue-primary: #0d6efd;    
         --blue-hover: #0b5ed7;
         --green-success: #198754;
         --red-danger: #dc3545;
@@ -26,7 +26,6 @@
         color: var(--text-white) !important;
     }
 
-    /* TARJETAS Y CONTENEDORES */
     .card-elegant {
         background-color: var(--dark-surface);
         border: 1px solid var(--dark-border);
@@ -35,7 +34,6 @@
         overflow: hidden;
     }
 
-    /* TABLA LIMPIA Y ORDENADA */
     .table-elegant { width: 100%; margin: 0; color: var(--text-white); }
     .table-elegant th {
         background-color: #171717;
@@ -57,7 +55,6 @@
         background-color: var(--dark-hover);
     }
 
-    /* INSIGNIAS (BADGES) CLARAS */
     .badge-custom {
         padding: 0.5rem 1rem;
         border-radius: 50px;
@@ -71,8 +68,8 @@
     .bg-green-custom { background-color: rgba(25, 135, 84, 0.15); color: #75b798; border: 1px solid #198754; }
     .bg-red-custom { background-color: rgba(220, 53, 69, 0.15); color: #ea868f; border: 1px solid #dc3545; }
     .bg-gray-custom { background-color: rgba(255, 255, 255, 0.1); color: var(--text-light); border: 1px solid var(--dark-border); }
+    .bg-warning-custom { background-color: rgba(255, 193, 7, 0.15); color: #ffda6a; border: 1px solid #ffc107; }
 
-    /* FORMULARIOS TOTALMENTE LEGIBLES */
     .form-control-dark, .form-select-dark {
         background-color: var(--dark-bg) !important;
         border: 1px solid var(--dark-border) !important;
@@ -86,9 +83,7 @@
         box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25) !important;
         outline: none;
     }
-    ::placeholder { color: #888888 !important; }
 
-    /* MODALES */
     .modal-content {
         background-color: var(--dark-surface);
         border: 1px solid var(--dark-border);
@@ -101,7 +96,6 @@
     .text-subtitle { color: var(--text-light); font-size: 0.9rem; }
     .form-label { color: var(--text-light); font-weight: bold; font-size: 0.85rem; text-transform: uppercase; margin-bottom: 0.5rem; }
 
-    /* BOTONES */
     .btn-blue {
         background-color: var(--blue-primary);
         color: #ffffff;
@@ -123,6 +117,17 @@
         transition: 0.2s;
     }
     .btn-icon:hover { background-color: var(--blue-primary); color: #ffffff; }
+    
+    .btn-icon-danger {
+        background-color: transparent;
+        color: #ea868f;
+        border: 1px solid #dc3545;
+        border-radius: 8px;
+        width: 38px; height: 38px;
+        display: inline-flex; align-items: center; justify-content: center;
+        transition: 0.2s;
+    }
+    .btn-icon-danger:hover { background-color: rgba(220, 53, 69, 0.15); color: #ffb3b8; }
 </style>
 
 <div class="container py-5" style="margin-top: 70px; max-width: 1300px;">
@@ -132,8 +137,8 @@
             <a href="{% url 'dashboard_erp' %}" class="text-decoration-none mb-2 d-inline-block" style="color: var(--text-light); font-weight: bold; font-size: 0.9rem;">
                 <i class="bi bi-arrow-left me-1"></i> Volver al Panel
             </a>
-            <h2 class="text-title mb-0 fs-2">Gestión de Personal</h2>
-            <p class="text-subtitle mb-0 mt-1">Administra los usuarios, roles y accesos a bodegas del sistema.</p>
+            <h2 class="text-title mb-0 fs-2">Gestión de Personal y Seguridad</h2>
+            <p class="text-subtitle mb-0 mt-1">Administra accesos, roles y audita intentos de intrusión por usuario.</p>
         </div>
         <div>
             <button class="btn-blue d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalNuevoEmpleado">
@@ -146,8 +151,14 @@
         <div class="mb-4">
             {% for message in messages %}
                 <div class="alert alert-dismissible fade show d-flex align-items-center p-3 rounded-3" 
-                     style="background-color: var(--dark-surface); border: 1px solid var(--dark-border); border-left: 4px solid var(--green-success); color: var(--text-white);">
-                    <i class="bi bi-check-circle-fill me-3" style="color: var(--green-success); font-size: 1.2rem;"></i>
+                     style="background-color: var(--dark-surface); border: 1px solid var(--dark-border); border-left: 4px solid {% if message.tags == 'error' %}var(--red-danger){% elif message.tags == 'warning' %}var(--yellow-warning){% else %}var(--green-success){% endif %}; color: var(--text-white);">
+                    {% if message.tags == 'error' %}
+                        <i class="bi bi-x-circle-fill me-3" style="color: var(--red-danger); font-size: 1.2rem;"></i>
+                    {% elif message.tags == 'warning' %}
+                        <i class="bi bi-exclamation-triangle-fill me-3" style="color: var(--yellow-warning); font-size: 1.2rem;"></i>
+                    {% else %}
+                        <i class="bi bi-check-circle-fill me-3" style="color: var(--green-success); font-size: 1.2rem;"></i>
+                    {% endif %}
                     <div class="flex-grow-1 fw-bold" style="font-size: 0.95rem;">{{ message }}</div>
                     <button type="button" class="btn-close btn-close-white opacity-50" data-bs-dismiss="alert"></button>
                 </div>
@@ -160,24 +171,40 @@
             <table class="table-elegant">
                 <thead>
                     <tr>
-                        <th style="width: 25%;">Usuario</th>
+                        <th style="width: 30%;">Usuario e Información de Seguridad</th>
                         <th style="width: 25%;">Nombres y Correo</th>
-                        <th style="width: 20%;">Rol Asignado</th>
+                        <th style="width: 15%;">Rol Asignado</th>
                         <th style="width: 20%;">Ubicación / Bodega</th>
-                        <th class="text-center" style="width: 10%;">Acción</th>
+                        <th class="text-center" style="width: 10%;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for emp in empleados %}
                     <tr>
                         <td>
-                            <div class="d-flex align-items-center gap-3">
-                                <div class="rounded-circle d-flex justify-content-center align-items-center" 
-                                     style="width: 45px; height: 45px; background-color: var(--dark-bg); border: 2px solid var(--dark-border); color: var(--text-white); font-weight: bold; font-size: 1.2rem;">
+                            <div class="d-flex align-items-start gap-3">
+                                <div class="rounded-circle d-flex justify-content-center align-items-center mt-1" 
+                                     style="width: 45px; height: 45px; background-color: var(--dark-bg); border: 2px solid {% if emp.esta_bloqueado %}var(--red-danger){% else %}var(--dark-border){% endif %}; color: var(--text-white); font-weight: bold; font-size: 1.2rem;">
                                     {{ emp.username|make_list|first|upper }}
                                 </div>
                                 <div>
                                     <div class="fw-bold fs-6">{{ emp.username }}</div>
+                                    
+                                    {% if emp.esta_bloqueado %}
+                                        <div class="mt-2 p-2 rounded" style="background-color: rgba(220, 53, 69, 0.05); border: 1px solid rgba(220, 53, 69, 0.2);">
+                                            <span class="badge-custom bg-red-custom mb-1" style="font-size: 0.7rem; padding: 0.2rem 0.5rem;">
+                                                <i class="bi bi-shield-lock-fill"></i> BLOQUEADO: {{ emp.datos_bloqueo.failures_since_start }} FALLOS
+                                            </span>
+                                            <div style="font-size: 0.75rem; color: #ea868f;">
+                                                <i class="bi bi-router"></i> IP Origen: <strong>{{ emp.datos_bloqueo.ip_address }}</strong><br>
+                                                <i class="bi bi-clock"></i> Último intento: {{ emp.datos_bloqueo.attempt_time|date:"d/m/Y H:i" }}
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        <span class="badge-custom bg-gray-custom mt-1" style="font-size: 0.7rem; padding: 0.2rem 0.5rem;">
+                                            <i class="bi bi-shield-check"></i> Seguro
+                                        </span>
+                                    {% endif %}
                                 </div>
                             </div>
                         </td>
@@ -223,53 +250,64 @@
                         </td>
 
                         <td class="text-center">
-                            {% for group in emp.groups.all %}
-                                {% if group.name == 'Bodeguero' %}
-                                    <button class="btn-icon" title="Asignar Bodega" data-bs-toggle="modal" data-bs-target="#modalBodega{{ emp.id }}">
-                                        <i class="bi bi-geo-alt-fill"></i>
-                                    </button>
+                            <div class="d-flex justify-content-center gap-2">
+                                {% for group in emp.groups.all %}
+                                    {% if group.name == 'Bodeguero' %}
+                                        <button class="btn-icon" title="Asignar Bodega" data-bs-toggle="modal" data-bs-target="#modalBodega{{ emp.id }}">
+                                            <i class="bi bi-geo-alt-fill"></i>
+                                        </button>
 
-                                    <div class="modal fade text-start" id="modalBodega{{ emp.id }}" tabindex="-1" aria-hidden="true">
-                                        <div class="modal-dialog modal-dialog-centered">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="text-title mb-0 fs-4">Asignar Bodega a {{ emp.username }}</h5>
-                                                    <button type="button" class="btn-close btn-close-white opacity-75" data-bs-dismiss="modal"></button>
+                                        <div class="modal fade text-start" id="modalBodega{{ emp.id }}" tabindex="-1" aria-hidden="true">
+                                            <div class="modal-dialog modal-dialog-centered">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="text-title mb-0 fs-4">Asignar Bodega a {{ emp.username }}</h5>
+                                                        <button type="button" class="btn-close btn-close-white opacity-75" data-bs-dismiss="modal"></button>
+                                                    </div>
+                                                    <form method="POST">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="asignar_bodega" value="1">
+                                                        <input type="hidden" name="user_id" value="{{ emp.id }}">
+                                                        
+                                                        <div class="modal-body">
+                                                            <div class="mb-4">
+                                                                <label class="form-label">Selecciona la Bodega</label>
+                                                                <select name="bodega_id" class="form-select-dark w-100">
+                                                                    <option value="">-- Ninguna (Quitar Asignación) --</option>
+                                                                    {% for bod in bodegas %}
+                                                                        <option value="{{ bod.id }}" {% if emp.perfil.bodega_asignada.id == bod.id %}selected{% endif %}>
+                                                                            {{ bod.nombre }}
+                                                                        </option>
+                                                                    {% endfor %}
+                                                                </select>
+                                                            </div>
+                                                            <div class="p-3 rounded-3" style="background-color: rgba(13, 110, 253, 0.1); border: 1px solid var(--blue-primary);">
+                                                                <p class="mb-0" style="color: var(--text-white); font-size: 0.9rem;">
+                                                                    <i class="bi bi-info-circle-fill" style="color: var(--blue-primary);"></i>
+                                                                    El empleado solo podrá despachar materiales ubicados en esta bodega.
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn text-white fw-bold" data-bs-dismiss="modal">Cancelar</button>
+                                                            <button type="submit" class="btn-blue">Guardar Cambios</button>
+                                                        </div>
+                                                    </form>
                                                 </div>
-                                                <form method="POST">
-                                                    {% csrf_token %}
-                                                    <input type="hidden" name="asignar_bodega" value="1">
-                                                    <input type="hidden" name="user_id" value="{{ emp.id }}">
-                                                    
-                                                    <div class="modal-body">
-                                                        <div class="mb-4">
-                                                            <label class="form-label">Selecciona la Bodega</label>
-                                                            <select name="bodega_id" class="form-select-dark w-100">
-                                                                <option value="">-- Ninguna (Quitar Asignación) --</option>
-                                                                {% for bod in bodegas %}
-                                                                    <option value="{{ bod.id }}" {% if emp.perfil.bodega_asignada.id == bod.id %}selected{% endif %}>
-                                                                        {{ bod.nombre }}
-                                                                    </option>
-                                                                {% endfor %}
-                                                            </select>
-                                                        </div>
-                                                        <div class="p-3 rounded-3" style="background-color: rgba(13, 110, 253, 0.1); border: 1px solid var(--blue-primary);">
-                                                            <p class="mb-0" style="color: var(--text-white); font-size: 0.9rem;">
-                                                                <i class="bi bi-info-circle-fill" style="color: var(--blue-primary);"></i>
-                                                                El empleado solo podrá despachar materiales ubicados en esta bodega.
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn text-white fw-bold" data-bs-dismiss="modal">Cancelar</button>
-                                                        <button type="submit" class="btn-blue">Guardar Cambios</button>
-                                                    </div>
-                                                </form>
                                             </div>
                                         </div>
-                                    </div>
                                     {% endif %}
-                            {% endfor %}
+                                {% endfor %}
+
+                                {% if emp.esta_bloqueado %}
+                                    <form action="{% url 'desbloquear_empleado' emp.username %}" method="POST" style="display:inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn-icon-danger" title="Desbloquear Acceso IP: {{ emp.datos_bloqueo.ip_address }}" onclick="return confirm('¿Restaurar acceso a {{ emp.username }} tras {{ emp.datos_bloqueo.failures_since_start }} intentos fallidos?');">
+                                            <i class="bi bi-unlock-fill"></i>
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% empty %}

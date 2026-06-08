@@ -2,104 +2,101 @@
 {% load static %}
 
 {% block content %}
-<style>
-    :root {
-        --pm-bg: #0d1117;
-        --pm-surface: #161b22;
-        --pm-border: #30363d;
-        --pm-text: #f0f6fc;
-        --pm-info: #388bfd;
-    }
-    body { background-color: var(--pm-bg) !important; color: var(--pm-text) !important; }
-    
-    .card-traslado {
-        background: var(--pm-surface);
-        border: 1px solid var(--pm-border);
-        border-top: 4px solid var(--pm-info);
-        border-radius: 12px;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-    }
+<div class="container py-4">
+    <div class="d-flex align-items-center mb-4">
+        <a href="{% url 'inventario_actual' %}" class="btn btn-outline-secondary rounded-circle me-3" style="width: 45px; height: 45px; display: flex; align-items: center; justify-content: center;">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        <div>
+            <h4 class="mb-0 fw-bold">Trasladar Material</h4>
+            <p class="text-muted mb-0 small">Módulo de Logística Interna</p>
+        </div>
+    </div>
 
-    .form-control, .form-select {
-        background-color: #010409 !important;
-        border: 1px solid var(--pm-border) !important;
-        color: #ffffff !important;
-        border-radius: 8px;
-        padding: 12px;
-    }
-    .form-control:focus, .form-select:focus {
-        border-color: var(--pm-info) !important;
-        box-shadow: 0 0 0 3px rgba(56, 139, 253, 0.15) !important;
-    }
-</style>
-
-<div class="container py-4 py-md-5" style="margin-top: 80px;">
-    <div class="row justify-content-center">
-        <div class="col-12 col-md-8 col-lg-5"> 
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-body p-4">
             
-            <a href="{% url 'inventario_actual' %}" class="text-decoration-none text-muted mb-3 d-inline-block fw-bold small transition-2s hover-white">
-                <i class="bi bi-arrow-left me-1"></i> Volver al Inventario
-            </a>
-
-            <div class="card card-traslado">
-                <div class="card-header border-bottom border-secondary p-4 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 text-white fw-bold"><i class="bi bi-truck text-info me-2"></i> Trasladar Material</h5>
-                </div>
-
-                <div class="card-body p-4">
-                    <!-- Info del Material -->
-                    <div class="p-3 mb-4 rounded-3 border" style="background: rgba(255,255,255,0.03); border-color: var(--pm-border)!important;">
-                        <div class="text-muted small fw-bold">ÍTEM A TRASLADAR</div>
-                        <div class="fw-bold text-white fs-5">{{ material.nombre }}</div>
-                        <div class="text-info small fw-bold">Total Global: {{ material.stock_actual|floatformat:"0" }} {{ material.unidad_medida }}</div>
-                    </div>
-
-                    <form method="POST">
-                        {% csrf_token %}
-
-                        <div class="row g-3 mb-3">
-                            <div class="col-12">
-                                <label class="text-muted small fw-bold text-uppercase mb-2">Bodega de Origen (Extraer de) <span class="text-danger">*</span></label>
-                                <select name="bodega_origen" class="form-select" required>
-                                    <option value="" disabled selected>Selecciona de dónde sale...</option>
-                                    {% for stock in material.stocks_bodegas.all %}
-                                        {% if stock.cantidad > 0 %}
-                                            <option value="{{ stock.bodega.id }}">{{ stock.bodega.nombre }} (Disponible: {{ stock.cantidad|floatformat:"0" }})</option>
-                                        {% endif %}
-                                    {% endfor %}
-                                </select>
-                            </div>
-
-                            <div class="col-12">
-                                <label class="text-muted small fw-bold text-uppercase mb-2">Bodega de Destino (Enviar a) <span class="text-danger">*</span></label>
-                                <select name="bodega_destino" class="form-select" required>
-                                    <option value="" disabled selected>Selecciona a dónde va...</option>
-                                    {% for bodega in bodegas %}
-                                        <option value="{{ bodega.id }}">{{ bodega.nombre }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="text-muted small fw-bold text-uppercase mb-2">Cantidad a Trasladar <span class="text-danger">*</span></label>
-                            <input type="number" name="cantidad" class="form-control text-center fw-bold fs-4 text-white" min="0.01" step="0.01" required placeholder="0">
-                        </div>
-
-                        <div class="mb-4">
-                            <label class="text-muted small fw-bold text-uppercase mb-2">Motivo / Transporte</label>
-                            <input type="text" name="observaciones" class="form-control" placeholder="Ej: Envío en camión placa ABC-123 a Obra Norte">
-                        </div>
-
-                        <div class="d-grid mt-2">
-                            <button type="submit" class="btn btn-info py-3 fw-bold rounded-3 text-dark shadow-sm" onclick="return confirm('¿Confirmas el traslado de este material?');">
-                                <i class="bi bi-send-check-fill me-1"></i> Confirmar Traslado
-                            </button>
-                        </div>
-                    </form>
+            <div class="alert alert-info d-flex align-items-center rounded-3 mb-4" role="alert">
+                <i class="fas fa-box-open fs-3 me-3"></i>
+                <div>
+                    <h6 class="mb-0 fw-bold">{{ material.nombre }}</h6>
+                    <span class="badge bg-secondary">SKU: {{ material.sku }}</span>
                 </div>
             </div>
+
+            <form method="POST" action="{% url 'trasladar_material' material.id %}">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    <label for="bodega_origen" class="form-label fw-semibold">
+                        <i class="fas fa-sign-out-alt text-danger me-1"></i> Sacar de (Origen):
+                    </label>
+                    <select class="form-select form-select-lg shadow-none" name="bodega_origen" id="bodega_origen" required>
+                        <option value="" selected disabled>Selecciona tu bodega...</option>
+                        {% for bodega in bodegas_origen %}
+                            <option value="{{ bodega.id }}">{{ bodega.nombre }}</option>
+                        {% empty %}
+                            <option value="" disabled>No tienes bodegas asignadas</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="text-center my-2 text-muted">
+                    <i class="fas fa-arrow-down fs-4"></i>
+                </div>
+
+                <div class="mb-4">
+                    <label for="bodega_destino" class="form-label fw-semibold">
+                        <i class="fas fa-sign-in-alt text-success me-1"></i> Enviar a (Destino):
+                    </label>
+                    <select class="form-select form-select-lg shadow-none" name="bodega_destino" id="bodega_destino" required>
+                        <option value="" selected disabled>Selecciona el destino...</option>
+                        {% for bodega in bodegas_destino %}
+                            <option value="{{ bodega.id }}">{{ bodega.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <hr class="my-4 text-muted">
+
+                <div class="mb-3">
+                    <label for="cantidad" class="form-label fw-semibold text-primary">Cantidad a Mover:</label>
+                    <div class="input-group input-group-lg shadow-sm">
+                        <input type="number" step="0.01" min="0.01" class="form-control text-end fw-bold fs-4" name="cantidad" id="cantidad" placeholder="0.00" inputmode="decimal" required>
+                        <span class="input-group-text bg-light text-muted">Unidades</span>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label for="observaciones" class="form-label fw-semibold">Observaciones <span class="text-muted fw-normal">(Opcional)</span>:</label>
+                    <textarea class="form-control" name="observaciones" id="observaciones" rows="2" placeholder="Ej: Traslado urgente para obra..."></textarea>
+                </div>
+
+                <div class="d-grid mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg rounded-3 fw-bold shadow-sm py-3" onclick="this.disabled=true; this.form.submit();">
+                        <i class="fas fa-truck me-2"></i> Confirmar Traslado
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
+
+<style>
+    /* Ajustes específicos para móviles */
+    @media (max-width: 576px) {
+        .card-body {
+            padding: 1.25rem !important;
+        }
+        .form-select-lg, .input-group-lg > .form-control, .btn-lg {
+            font-size: 1.1rem; /* Textos suficientemente grandes para tocar */
+            min-height: 55px;  /* Altura mínima para el área táctil */
+        }
+    }
+    
+    /* Prevenir zoom automático en iOS al tocar un input */
+    input[type="number"], select, textarea {
+        font-size: 16px !important;
+    }
+</style>
 {% endblock %}

@@ -35,6 +35,8 @@ urlpatterns = [
     path('erp/ticket/<int:req_id>/pdf/', views.imprimir_pdf_ticket, name='imprimir_pdf_ticket'),
     path('erp/ticket/<int:req_id>/procesar/<str:accion>/', views.procesar_ticket, name='procesar_ticket'),
     path('erp/requerimiento/revisar/<int:req_id>/', views.revisar_requerimiento_items, name='revisar_requerimiento_items'),
+    path('erp/ticket/eliminar-item/<int:item_id>/', views.eliminar_item_requerimiento, name='eliminar_item_requerimiento'),
+    path('erp/ticket/<int:req_id>/despachar/', views.despachar_requerimiento, name='despachar_requerimiento'),
 
     # ==========================================
     # ERP: GESTIÓN DE PROYECTOS Y CENTROS DE COSTO
@@ -45,10 +47,16 @@ urlpatterns = [
     path('erp/proyectos/eliminar/<int:proyecto_id>/', views.eliminar_proyecto_erp, name='eliminar_proyecto_erp'),
 
     # ==========================================
-    # ERP: ABASTECIMIENTO Y ÓRDENES DE COMPRA
+    # ERP: SOLICITUDES DE ABASTECIMIENTO INTERNO (NUEVO FLUJO BODEGUERO)
+    # ==========================================
+    path('erp/abastecimiento/iniciar/', views.iniciar_solicitud_abastecimiento, name='iniciar_solicitud_abastecimiento'),
+    path('erp/abastecimiento/<int:solicitud_id>/items/', views.añadir_items_solicitud, name='añadir_items_solicitud'),
+
+    # ==========================================
+    # ERP: ÓRDENES DE COMPRA (PROVEEDORES)
     # ==========================================
     path('erp/ordenes-compra/', views.listar_ordenes_compra, name='listar_ordenes_compra'),
-    path('erp/ordenes-compra/nueva/', views.crear_orden_compra, name='crear_orden_compra'),
+    #path('erp/ordenes-compra/nueva/', views.crear_orden_compra, name='crear_orden_compra'),
     path('erp/ordenes-compra/<int:oc_id>/items/', views.añadir_items_oc, name='añadir_items_oc'),
     path('erp/ordenes-compra/recibir/<int:oc_id>/', views.recibir_orden_compra, name='recibir_orden_compra'),
     path('erp/ordenes-compra/<int:oc_id>/pdf/', views.imprimir_pdf_oc, name='imprimir_pdf_oc'),
@@ -71,6 +79,8 @@ urlpatterns = [
     path('erp/inventario/ajustar/<int:material_id>/', views.realizar_ajuste, name='realizar_ajuste'),
     path('erp/inventario/eliminar/<int:material_id>/', views.eliminar_material, name='eliminar_material'),
     path('erp/inventario/ventas/', views.venta_material, name='venta_material'),
+    path('erp/inventario/trasladar/<int:material_id>/', views.trasladar_material, name='trasladar_material'),
+    path('erp/inventario/categoria/nueva/', views.crear_categoria, name='crear_categoria'), 
 
     # ==========================================
     # ERP: AUDITORÍA Y TRAZABILIDAD DOCUMENTAL
@@ -79,19 +89,16 @@ urlpatterns = [
     path('erp/inventario/auditoria/pdf/', views.imprimir_pdf_auditoria, name='imprimir_pdf_auditoria'),
     path('erp/inventario/auditoria/certificado/<int:movimiento_id>/', views.subir_certificado_lote, name='subir_certificado_lote'),
     path('erp/inventario/auditoria/editar/<int:movimiento_id>/', views.editar_movimiento_auditoria, name='editar_movimiento_auditoria'),
+    path('erp/auditoria/trazabilidad/', views.trazabilidad_requerimientos, name='trazabilidad_requerimientos'),
 
     # ==========================================
-    # ERP: SEGURIDAD Y PREVENCIÓN DE INTRUSIONES (AXES)
+    # ERP: SEGURIDAD, PREVENCIÓN DE INTRUSIONES Y CONFIGURACIÓN
     # ==========================================
     path('erp/seguridad/bloqueos/', views.gestionar_bloqueos, name='gestionar_bloqueos'),
     path('erp/seguridad/desbloquear/<int:intento_id>/', views.desbloquear_usuario, name='desbloquear_usuario'),
-
     path('erp/configuracion/', views.configuracion_erp, name='configuracion_erp'),
-    path('erp/ticket/<int:req_id>/despachar/', views.despachar_requerimiento, name='despachar_requerimiento'),
-
-    path('erp/inventario/categoria/nueva/', views.crear_categoria, name='crear_categoria'), # <-- AGREGA ESTA LÍNEA EXACTAMENTE AQUÍ
-    path('erp/configuracion/categoria/<int:categoria_id>/alternar/', views.alternar_estado_categoria, name='alternar_categoria'), # <-- AÑADE ESTA LÍNEA
-    path('erp/auditoria/trazabilidad/', views.trazabilidad_requerimientos, name='trazabilidad_requerimientos'),
-    path('erp/ticket/eliminar-item/<int:item_id>/', views.eliminar_item_requerimiento, name='eliminar_item_requerimiento'),
-    path('erp/inventario/trasladar/<int:material_id>/', views.trasladar_material, name='trasladar_material'),
-]
+    path('erp/configuracion/categoria/<int:categoria_id>/alternar/', views.alternar_estado_categoria, name='alternar_categoria'), 
+    path('erp/abastecimiento/item/<int:item_id>/actualizar/', views.actualizar_item_solicitud, name='actualizar_item_solicitud'),
+    path('erp/abastecimiento/item/<int:item_id>/eliminar/', views.eliminar_item_requerimiento, name='eliminar_item_requerimiento'),
+    path('erp/empleados/desbloquear/<str:username>/', views.desbloquear_empleado, name='desbloquear_empleado'),
+    ]

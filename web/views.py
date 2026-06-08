@@ -8,6 +8,8 @@ from django.db import transaction
 from django.core.paginator import Paginator
 from .forms import MaterialForm
 from decimal import Decimal
+from axes.utils import reset
+
 # =======================================================
 # IMPORTACIONES DE MODELOS Y FORMULARIOS
 # =======================================================
@@ -444,9 +446,16 @@ def desglosar_item_cotizacion(request, item_id):
     return redirect('atender_cotizacion', solicitud_id=item.solicitud.id)
 
 
+# En tu views.py
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
+@transaction.atomic
 def revisar_cotizacion(request, solicitud_id):
+    """
+    Vista de Consolidación de Compras. 
+    Aquí el admin ve la solicitud, puede aumentar las cantidades para stock, 
+    o rechazar ítems antes de convertirlos en Orden de Compra.
+    """
     solicitud = get_object_or_404(SolicitudCompra, id=solicitud_id)
     items = solicitud.items_cotizados.all()
     
@@ -454,6 +463,14 @@ def revisar_cotizacion(request, solicitud_id):
         for item in items:
             estado = request.POST.get(f'estado_{item.id}')
             motivo = request.POST.get(f'motivo_{item.id}', '')
+            
+            # EL ADMIN PUEDE MODIFICAR LA CANTIDAD A COMPRAR AQUÍ
+            nueva_cantidad = request.POST.get(f'cantidad_final_{item.id}')
+            if nueva_cantidad:
+                try:
+                    item.cantidad_requerida = Decimal(nueva_cantidad.replace(',', '.'))
+                except:
+                    pass # Manejo de error si envían texto
 
             if estado in ['APROBADO', 'RECHAZADO']:
                 item.estado_aprobacion = estado
@@ -461,9 +478,31 @@ def revisar_cotizacion(request, solicitud_id):
                     item.motivo_rechazo = motivo
                 item.save()
 
+        # Si el admin quiere agregar un ítem extra que nadie pidió pero hace falta en stock
+        nuevo_material_id = request.POST.get('agregar_material_id')
+        nueva_cantidad_extra = request.POST.get('agregar_cantidad_extra')
+        
+        if nuevo_material_id and nueva_cantidad_extra:
+            mat_extra = Material.objects.get(id=nuevo_material_id)
+            CotizacionItem.objects.create(
+                solicitud=solicitud,
+                material=mat_extra,
+                cantidad_requerida=Decimal(nueva_cantidad_extra),
+                estado_aprobacion='PENDIENTE' # Se agrega para que sea revisado
+            )
+            messages.info(request, f"Se agregó {mat_extra.nombre} a la solicitud de compras.")
+            return redirect('revisar_cotizacion', solicitud_id=solicitud.id) # Recargar página
+
+        # Si todo se procesó, vamos a la generación de OC
         return redirect('finalizar_revision_cotizacion', solicitud_id=solicitud.id)
         
-    return render(request, 'web/erp/revisar_cotizacion.html', {'solicitud': solicitud, 'items': items})
+    # Agregamos la lista de materiales por si el Admin quiere añadir cosas nuevas
+    materiales_catalogo = Material.objects.filter(is_active=True).order_by('nombre')
+    return render(request, 'web/erp/revisar_cotizacion.html', {
+        'solicitud': solicitud, 
+        'items': items,
+        'materiales_catalogo': materiales_catalogo
+    })
 
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
@@ -506,19 +545,21 @@ def finalizar_revision_cotizacion(request, solicitud_id):
 # MÓDULO DE INVENTARIO Y ABASTECIMIENTO TRADICIONAL
 # =======================================================
 
+# En views.py
 @login_required(login_url='login')
 @user_passes_test(lambda u: es_bodeguero(u) or es_admin(u), login_url='dashboard_erp')
-def crear_orden_compra(request):
+def crear_solicitud_abastecimiento(request):
+    """El bodeguero solicita material cuando ve que el stock baja"""
     if request.method == 'POST':
-        form = OrdenCompraForm(request.POST, request.FILES)
-        if form.is_valid():
-            nueva_oc = form.save(commit=False)
-            nueva_oc.creado_por = request.user
-            nueva_oc.save()
-            return redirect('añadir_items_oc', oc_id=nueva_oc.id)
-    else:
-        form = OrdenCompraForm()
-    return render(request, 'web/erp/crear_oc.html', {'form': form})
+        # Creas un Requerimiento sin Proyecto asignado (o con un proyecto por defecto de 'Inventario Interno')
+        # O creas directamente una SolicitudCompra.
+        nueva_solicitud = SolicitudCompra.objects.create(
+            estado='ENVIADO_A_COMPRAS',
+            observaciones_admin="Solicitud manual generada por bodega"
+        )
+        return redirect('añadir_items_solicitud', solicitud_id=nueva_solicitud.id)
+        
+    return render(request, 'web/erp/crear_solicitud_abastecimiento.html')
 
 @login_required(login_url='login')
 @user_passes_test(lambda u: es_bodeguero(u) or es_admin(u), login_url='dashboard_erp')
@@ -1196,10 +1237,26 @@ def imprimir_pdf_auditoria(request):
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
 def gestionar_empleados(request):
-    empleados = User.objects.all().order_by('-date_joined')
+    # Optimizamos con select_related para traer el perfil de un solo golpe de base de datos
+    empleados = User.objects.all().select_related('perfil').order_by('-date_joined')
     grupos = Group.objects.all()
     bodegas = Bodega.objects.all() # Traemos las bodegas para el modal de asignación
     
+    # 1. Obtenemos TODOS los registros de bloqueos (con detalles como IP, fallos, fecha)
+    intentos_bloqueo = AccessAttempt.objects.all()
+    
+    # 2. Creamos un diccionario rápido para cruzar datos { 'nombre_usuario': <Objeto AccessAttempt> }
+    dict_bloqueos = {intento.username: intento for intento in intentos_bloqueo}
+    
+    # 3. Inyectamos la información detallada en los usuarios
+    for emp in empleados:
+        if emp.username in dict_bloqueos:
+            emp.esta_bloqueado = True
+            emp.datos_bloqueo = dict_bloqueos[emp.username] # Contiene IP, failures_since_start, attempt_time
+        else:
+            emp.esta_bloqueado = False
+            emp.datos_bloqueo = None
+
     if request.method == 'POST':
         # 1. LÓGICA PARA ASIGNAR BODEGA AL BODEGUERO
         if 'asignar_bodega' in request.POST:
@@ -1242,6 +1299,24 @@ def gestionar_empleados(request):
         'bodegas': bodegas,
         'form': form
     })
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def desbloquear_empleado(request, username):
+    """Filtra y elimina el registro de bloqueos de un empleado real en la base de datos de Axes"""
+    # Verificación estricta de seguridad: Confirmar que es un empleado existente
+    empleado_valido = User.objects.filter(username=username).exists()
+    
+    if empleado_valido:
+        intentos_limpiados = reset(username=username)
+        if intentos_limpiados:
+            messages.success(request, f"🔒 Seguridad: El acceso para el usuario '{username}' ha sido restaurado con éxito.")
+        else:
+            messages.info(request, f"El usuario '{username}' no presentaba restricciones de acceso.")
+    else:
+        messages.error(request, "Acción rechazada: El usuario solicitado no pertenece al sistema.")
+        
+    return redirect('gestionar_empleados')
 
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
@@ -1443,18 +1518,39 @@ def trazabilidad_requerimientos(request):
 @transaction.atomic
 def trasladar_material(request, material_id):
     material = get_object_or_404(Material, id=material_id)
-    bodegas = Bodega.objects.all()
+    
+    # 1. Filtramos las bodegas de origen permitidas según el rol
+    if request.user.is_superuser:
+        bodegas_origen_permitidas = Bodega.objects.all()
+    else:
+        # El bodeguero solo puede sacar material de su bodega asignada
+        if hasattr(request.user, 'perfil') and request.user.perfil.bodega_asignada:
+            bodegas_origen_permitidas = Bodega.objects.filter(id=request.user.perfil.bodega_asignada.id)
+        else:
+            messages.error(request, "Acceso denegado: No tienes una bodega asignada para realizar traslados.")
+            return redirect('inventario_actual')
+
+    # El destino sí puede ser cualquier bodega (para recibir el material)
+    bodegas_destino = Bodega.objects.all()
 
     if request.method == 'POST':
         origen_id = request.POST.get('bodega_origen')
         destino_id = request.POST.get('bodega_destino')
+        
         try:
             cantidad = Decimal(request.POST.get('cantidad', '0').replace(',', '.'))
         except:
             cantidad = Decimal('0')
             
         if cantidad > 0 and origen_id and destino_id and origen_id != destino_id:
-            bod_origen = get_object_or_404(Bodega, id=origen_id)
+            # 2. VALIDACIÓN DE SEGURIDAD CRÍTICA
+            # Verificamos que el origen seleccionado esté dentro de las permitidas para este usuario
+            bod_origen = bodegas_origen_permitidas.filter(id=origen_id).first()
+            
+            if not bod_origen:
+                messages.error(request, "Vulnerabilidad bloqueada: No puedes extraer stock de una bodega que no administras.")
+                return redirect('trasladar_material', material_id=material.id)
+                
             bod_destino = get_object_or_404(Bodega, id=destino_id)
             
             # Bloqueo de concurrencia
@@ -1475,18 +1571,133 @@ def trasladar_material(request, material_id):
                 stock_dest.cantidad = cant_dest + cantidad
                 stock_dest.save()
                 
-                # 3. Guardar material (El total general no cambia, pero se sincroniza)
+                # 3. Guardar material (El total general no cambia, pero se sincroniza el log)
                 mat_lock.save() 
                 
                 # 4. Registrar en la auditoría como TRASLADO
                 MovimientoInventario.objects.create(
                     material=mat_lock, tipo='TRASLADO', cantidad=cantidad, 
                     bodega_origen=bod_origen, bodega_destino=bod_destino,
-                    responsable=request.user, observaciones=request.POST.get('observaciones', 'Traslado logístico')
+                    responsable=request.user, observaciones=request.POST.get('observaciones', 'Traslado logístico interno')
                 )
                 messages.success(request, f"🚚 Traslado Exitoso: Se movieron {cantidad} ítems a {bod_destino.nombre}.")
                 return redirect('inventario_actual')
         else:
-            messages.error(request, "Datos inválidos. Asegúrate de que el origen y destino sean distintos.")
+            messages.error(request, "Datos inválidos. Asegúrate de que la cantidad sea mayor a 0 y que el origen y destino sean distintos.")
 
-    return render(request, 'web/erp/traslado_bodegas.html', {'material': material, 'bodegas': bodegas})
+    return render(request, 'web/erp/traslado_bodegas.html', {
+        'material': material, 
+        'bodegas_origen': bodegas_origen_permitidas, # Mandamos solo las permitidas para el select de origen
+        'bodegas_destino': bodegas_destino           # Mandamos todas para el select de destino
+    })
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: es_bodeguero(u) or es_admin(u), login_url='dashboard_erp')
+def iniciar_solicitud_abastecimiento(request):
+    """Crea el documento 'Borrador' de la solicitud y redirige a la pantalla para añadir ítems"""
+    # Creamos una solicitud en estado inicial directamente
+    nueva_solicitud = SolicitudCompra.objects.create(
+        estado='ENVIADO_A_COMPRAS',
+        observaciones_admin="Solicitud de reabastecimiento generada desde Bodega"
+    )
+    return redirect('añadir_items_solicitud', solicitud_id=nueva_solicitud.id)
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: es_bodeguero(u) or es_admin(u), login_url='dashboard_erp')
+def añadir_items_solicitud(request, solicitud_id):
+    """Vista donde el bodeguero escanea o selecciona lo que le falta en perchas"""
+    solicitud = get_object_or_404(SolicitudCompra, id=solicitud_id)
+    
+    # IMPORTANTE: Ordenamos por ID descendente para que el último agregado salga primero
+    items_agregados = solicitud.items_cotizados.all().order_by('-id')
+    
+    # Materiales activos para el selector
+    materiales_catalogo = Material.objects.filter(is_active=True).order_by('nombre')
+
+    if request.method == 'POST':
+        # Validar si apretaron el botón de "Añadir Material"
+        if 'btn_agregar_item' in request.POST:
+            material_id = request.POST.get('material_id')
+            
+            try:
+                cantidad = Decimal(request.POST.get('cantidad', '0').replace(',', '.'))
+            except:
+                cantidad = Decimal('0')
+
+            if material_id and cantidad > 0:
+                material = get_object_or_404(Material, id=material_id)
+                
+                # Verificamos si ya lo agregó antes en esta misma solicitud para sumar la cantidad
+                item_existente = items_agregados.filter(material=material).first()
+                if item_existente:
+                    item_existente.cantidad_requerida += cantidad
+                    item_existente.save()
+                    messages.info(request, f'Se sumaron {cantidad} a {material.nombre} en la lista.')
+                else:
+                    CotizacionItem.objects.create(
+                        solicitud=solicitud,
+                        material=material,
+                        cantidad_requerida=cantidad
+                    )
+                    messages.success(request, f'{material.nombre} añadido a la solicitud.')
+            else:
+                messages.error(request, "Asegúrate de seleccionar un material y una cantidad mayor a cero.")
+            
+            return redirect('añadir_items_solicitud', solicitud_id=solicitud.id)
+            
+        # Si aprieta el botón final de "Enviar al Administrador"
+        elif 'btn_finalizar' in request.POST:
+            if not items_agregados.exists():
+                messages.error(request, "No puedes enviar una solicitud vacía.")
+                return redirect('añadir_items_solicitud', solicitud_id=solicitud.id)
+                
+            messages.success(request, f"¡Solicitud {solicitud.folio} enviada! El Administrador ya la tiene en su bandeja para consolidar la compra.")
+            return redirect('dashboard_erp')
+
+    # === LÓGICA DE PAGINACIÓN ===
+    paginator = Paginator(items_agregados, 5) # Muestra 5 materiales por página (ideal para celular)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'web/erp/solicitar_abastecimiento.html', {
+        'solicitud': solicitud,
+        'items': items_agregados, # Se manda la lista completa por si necesitas contar el total (.count)
+        'page_obj': page_obj,     # <-- ESTA ES LA VARIABLE QUE USA EL HTML PARA MOSTRAR LA TABLA Y LOS BOTONES DE PAGINACIÓN
+        'materiales': materiales_catalogo
+    })
+
+
+
+
+@login_required(login_url='login')
+@transaction.atomic
+def actualizar_item_solicitud(request, item_id):
+    """Permite al bodeguero corregir la cantidad de un ítem antes de enviarlo"""
+    if request.method == 'POST':
+        item = get_object_or_404(CotizacionItem, id=item_id)
+        try:
+            nueva_cantidad = Decimal(request.POST.get('nueva_cantidad', '0').replace(',', '.'))
+            if nueva_cantidad > 0:
+                item.cantidad_requerida = nueva_cantidad
+                item.save()
+                messages.success(request, f"Cantidad de {item.material.nombre} actualizada a {nueva_cantidad}.")
+            else:
+                messages.error(request, "La cantidad debe ser mayor a cero.")
+        except:
+            messages.error(request, "Valor inválido.")
+            
+        return redirect('añadir_items_solicitud', solicitud_id=item.solicitud.id)
+    return redirect('dashboard_erp')
+
+@login_required(login_url='login')
+@transaction.atomic
+def eliminar_item_requerimiento(request, item_id):
+    """Permite al bodeguero borrar un material que agregó por error"""
+    if request.method == 'POST':
+        item = get_object_or_404(CotizacionItem, id=item_id)
+        solicitud_id = item.solicitud.id
+        nombre_material = item.material.nombre
+        item.delete()
+        messages.warning(request, f"Se eliminó {nombre_material} de la solicitud.")
+        return redirect('añadir_items_solicitud', solicitud_id=solicitud_id)
+    return redirect('dashboard_erp')
