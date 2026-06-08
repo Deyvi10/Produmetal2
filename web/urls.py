@@ -21,22 +21,35 @@ urlpatterns = [
     path('logout/', auth_views.LogoutView.as_view(next_page='inicio'), name='logout'),
 
     # ==========================================
-    # ERP: CORE Y EMPLEADOS
+    # ERP: CORE, EMPLEADOS Y SEGURIDAD CENTRAL
     # ==========================================
     path('erp/dashboard/', views.dashboard_erp, name='dashboard_erp'),
     path('erp/empleados/', views.gestionar_empleados, name='gestionar_empleados'),
     path('erp/empleados/alternar/<int:empleado_id>/', views.alternar_estado_empleado, name='alternar_estado_empleado'),
+    # Nueva ruta integrada para desbloquear desde Recursos Humanos
+    path('erp/empleados/desbloquear/<str:username>/', views.desbloquear_empleado, name='desbloquear_empleado'),
 
     # ==========================================
-    # ERP: TICKETS Y REQUERIMIENTOS INTERNOS
+    # ERP: TICKETS Y REQUERIMIENTOS INTERNOS (SOLICITANTE DE OBRA)
     # ==========================================
     path('erp/nuevo-ticket/', views.crear_requerimiento, name='crear_requerimiento'),
     path('erp/ticket/<int:req_id>/materiales/', views.añadir_materiales, name='añadir_materiales'),
     path('erp/ticket/<int:req_id>/pdf/', views.imprimir_pdf_ticket, name='imprimir_pdf_ticket'),
     path('erp/ticket/<int:req_id>/procesar/<str:accion>/', views.procesar_ticket, name='procesar_ticket'),
     path('erp/requerimiento/revisar/<int:req_id>/', views.revisar_requerimiento_items, name='revisar_requerimiento_items'),
-    path('erp/ticket/eliminar-item/<int:item_id>/', views.eliminar_item_requerimiento, name='eliminar_item_requerimiento'),
     path('erp/ticket/<int:req_id>/despachar/', views.despachar_requerimiento, name='despachar_requerimiento'),
+    # Rutas para que el Solicitante modifique su propio ticket antes de enviarlo
+    path('erp/ticket/actualizar-item/<int:item_id>/', views.actualizar_item_ticket, name='actualizar_item_ticket'),
+    path('erp/ticket/eliminar-item/<int:item_id>/', views.eliminar_item_ticket, name='eliminar_item_ticket'),
+
+    # ==========================================
+    # ERP: SOLICITUDES DE ABASTECIMIENTO INTERNO (BODEGUERO)
+    # ==========================================
+    path('erp/abastecimiento/iniciar/', views.iniciar_solicitud_abastecimiento, name='iniciar_solicitud_abastecimiento'),
+    path('erp/abastecimiento/<int:solicitud_id>/items/', views.añadir_items_solicitud, name='añadir_items_solicitud'),
+    # Rutas para que el Bodeguero modifique su petición antes de enviar a gerencia
+    path('erp/abastecimiento/item/<int:item_id>/actualizar/', views.actualizar_item_solicitud, name='actualizar_item_solicitud'),
+    path('erp/abastecimiento/item/<int:item_id>/eliminar/', views.eliminar_item_solicitud, name='eliminar_item_solicitud'),
 
     # ==========================================
     # ERP: GESTIÓN DE PROYECTOS Y CENTROS DE COSTO
@@ -47,16 +60,9 @@ urlpatterns = [
     path('erp/proyectos/eliminar/<int:proyecto_id>/', views.eliminar_proyecto_erp, name='eliminar_proyecto_erp'),
 
     # ==========================================
-    # ERP: SOLICITUDES DE ABASTECIMIENTO INTERNO (NUEVO FLUJO BODEGUERO)
-    # ==========================================
-    path('erp/abastecimiento/iniciar/', views.iniciar_solicitud_abastecimiento, name='iniciar_solicitud_abastecimiento'),
-    path('erp/abastecimiento/<int:solicitud_id>/items/', views.añadir_items_solicitud, name='añadir_items_solicitud'),
-
-    # ==========================================
     # ERP: ÓRDENES DE COMPRA (PROVEEDORES)
     # ==========================================
     path('erp/ordenes-compra/', views.listar_ordenes_compra, name='listar_ordenes_compra'),
-    #path('erp/ordenes-compra/nueva/', views.crear_orden_compra, name='crear_orden_compra'),
     path('erp/ordenes-compra/<int:oc_id>/items/', views.añadir_items_oc, name='añadir_items_oc'),
     path('erp/ordenes-compra/recibir/<int:oc_id>/', views.recibir_orden_compra, name='recibir_orden_compra'),
     path('erp/ordenes-compra/<int:oc_id>/pdf/', views.imprimir_pdf_oc, name='imprimir_pdf_oc'),
@@ -92,14 +98,8 @@ urlpatterns = [
     path('erp/auditoria/trazabilidad/', views.trazabilidad_requerimientos, name='trazabilidad_requerimientos'),
 
     # ==========================================
-    # ERP: SEGURIDAD, PREVENCIÓN DE INTRUSIONES Y CONFIGURACIÓN
+    # ERP: CONFIGURACIÓN GENERAL
     # ==========================================
-    path('erp/seguridad/bloqueos/', views.gestionar_bloqueos, name='gestionar_bloqueos'),
-    path('erp/seguridad/desbloquear/<int:intento_id>/', views.desbloquear_usuario, name='desbloquear_usuario'),
     path('erp/configuracion/', views.configuracion_erp, name='configuracion_erp'),
     path('erp/configuracion/categoria/<int:categoria_id>/alternar/', views.alternar_estado_categoria, name='alternar_categoria'), 
-    path('erp/abastecimiento/item/<int:item_id>/actualizar/', views.actualizar_item_solicitud, name='actualizar_item_solicitud'),
-    path('erp/abastecimiento/item/<int:item_id>/eliminar/', views.eliminar_item_requerimiento, name='eliminar_item_requerimiento'),
-    path('erp/empleados/desbloquear/<str:username>/', views.desbloquear_empleado, name='desbloquear_empleado'),
-    path('erp/ticket/actualizar-item/<int:item_id>/', views.actualizar_item_requerimiento, name='actualizar_item_requerimiento'),
 ]

@@ -234,22 +234,21 @@ def añadir_materiales(request, req_id):
     return render(request, 'web/erp/añadir_materiales.html', context)
 
 @login_required(login_url='login')
-@user_passes_test(es_solicitante, login_url='dashboard_erp')
-def eliminar_item_requerimiento(request, item_id):
-    """Permite al solicitante eliminar un material de su ticket antes de enviarlo."""
+@transaction.atomic
+def actualizar_item_ticket(request, item_id):
+    item = get_object_or_404(DetalleRequerimiento, id=item_id)
     if request.method == 'POST':
-        item = get_object_or_404(DetalleRequerimiento, id=item_id)
-        
-        # Validar que el ticket pertenezca al usuario y siga en PENDIENTE
-        if item.requerimiento.solicitante == request.user and item.requerimiento.estado == 'PENDIENTE':
-            nombre_material = item.material.nombre
-            item.delete()
-            messages.success(request, f'Se eliminó "{nombre_material}" de tu lista.')
-        else:
-            messages.error(request, 'No puedes modificar este ticket porque ya está en proceso.')
-            
-        return redirect('añadir_materiales', req_id=item.requerimiento.id)
-    return redirect('dashboard_erp')
+        try:
+            nueva_cantidad = int(request.POST.get('nueva_cantidad', 0))
+            if nueva_cantidad > 0:
+                item.cantidad_solicitada = nueva_cantidad
+                item.save()
+                messages.success(request, f"Cantidad de {item.material.nombre} actualizada.")
+            else:
+                messages.error(request, "La cantidad debe ser mayor a 0.")
+        except ValueError:
+            messages.error(request, "Ingrese un número entero válido.")
+    return redirect('añadir_materiales', req_id=item.requerimiento.id)
 
 # --- VISTA DE APROBACIÓN DE TICKETS AUTOMÁTICA (Admin) ---
 @login_required(login_url='login')
@@ -1691,8 +1690,18 @@ def actualizar_item_solicitud(request, item_id):
 
 @login_required(login_url='login')
 @transaction.atomic
-def eliminar_item_requerimiento(request, item_id):
-    """Permite al bodeguero borrar un material que agregó por error"""
+def eliminar_item_ticket(request, item_id):
+    item = get_object_or_404(DetalleRequerimiento, id=item_id)
+    req_id = item.requerimiento.id
+    if request.method == 'POST':
+        item.delete()
+        messages.warning(request, "Material eliminado del ticket.")
+    return redirect('añadir_materiales', req_id=req_id)
+
+@login_required(login_url='login')
+@transaction.atomic
+def eliminar_item_solicitud(request, item_id):
+    """Permite al bodeguero borrar un material que agregó por error en su solicitud"""
     if request.method == 'POST':
         item = get_object_or_404(CotizacionItem, id=item_id)
         solicitud_id = item.solicitud.id
@@ -1701,29 +1710,3 @@ def eliminar_item_requerimiento(request, item_id):
         messages.warning(request, f"Se eliminó {nombre_material} de la solicitud.")
         return redirect('añadir_items_solicitud', solicitud_id=solicitud_id)
     return redirect('dashboard_erp')
-
-@login_required(login_url='login')
-@transaction.atomic
-def actualizar_item_requerimiento(request, item_id):
-    """Permite al solicitante corregir la cantidad (en enteros) antes de mandar el ticket"""
-    item = get_object_or_404(DetalleRequerimiento, id=item_id)
-    
-    # Validar por seguridad que el ticket siga en borrador (PENDIENTE)
-    if item.requerimiento.estado == 'PENDIENTE':
-        if request.method == 'POST':
-            try:
-                # Convertimos estrictamente a entero (int)
-                nueva_cantidad = int(request.POST.get('nueva_cantidad', 0))
-                
-                if nueva_cantidad > 0:
-                    item.cantidad_solicitada = nueva_cantidad
-                    item.save()
-                    messages.success(request, f"Se actualizó la cantidad de {item.material.nombre} a {nueva_cantidad} unidades.")
-                else:
-                    messages.error(request, "La cantidad debe ser mayor a cero.")
-            except ValueError:
-                messages.error(request, "Error: Solo se permiten números enteros para solicitar material de obra.")
-    else:
-        messages.error(request, "No puedes modificar este ticket porque ya fue enviado o está siendo procesado.")
-        
-    return redirect('añadir_materiales', req_id=item.requerimiento.id)
