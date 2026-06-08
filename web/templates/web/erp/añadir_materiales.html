@@ -70,7 +70,7 @@
                         </div>
 
                         <div class="mb-4">
-                            <label class="form-label fw-bold text-dark small text-uppercase"><i class="bi bi-calculator me-1"></i> Cantidad Requerida <span class="text-danger">*</span></label>
+                            <label class="form-label fw-bold text-dark small text-uppercase"><i class="bi bi-calculator me-1"></i> Cantidad (Enteros) <span class="text-danger">*</span></label>
                             <div class="input-group input-group-lg shadow-sm">
                                 {{ form.cantidad_solicitada }}
                                 <span class="input-group-text bg-white border-start-0 text-primary fw-bold">Unid.</span>
@@ -102,8 +102,8 @@
                             <thead class="table-light text-secondary small text-uppercase">
                                 <tr>
                                     <th class="ps-4 py-3">Material Solicitado</th>
-                                    <th class="text-center" style="width: 150px;">Cantidad</th>
-                                    <th class="text-end pe-4" style="width: 100px;">Acción</th>
+                                    <th class="text-center" style="width: 160px;">Corregir Cantidad</th>
+                                    <th class="text-end pe-4" style="width: 100px;">Quitar</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -113,15 +113,21 @@
                                         <div class="fw-bold text-dark fs-6">{{ item.material.nombre }}</div>
                                         <div class="small text-muted"><i class="bi bi-upc-scan me-1"></i> SKU: {{ item.material.sku }}</div>
                                     </td>
+                                    
                                     <td class="text-center">
-                                        <span class="badge bg-primary-subtle text-primary fs-6 px-3 py-2 rounded-pill border border-primary-subtle shadow-sm">
-                                            {{ item.cantidad_solicitada }}
-                                        </span>
-                                    </td>
-                                    <td class="text-end pe-4">
-                                        <form action="#" method="POST" class="d-inline">
+                                        <form method="POST" action="{% url 'actualizar_item_requerimiento' item.id %}" class="d-flex justify-content-center align-items-center gap-2">
                                             {% csrf_token %}
-                                            <button type="button" class="btn btn-sm btn-outline-danger btn-bounce rounded-circle shadow-sm" style="width: 38px; height: 38px;" title="Quitar Material">
+                                            <input type="number" step="1" min="1" name="nueva_cantidad" value="{{ item.cantidad_solicitada|floatformat:0 }}" class="form-control form-control-sm text-center fw-bold text-primary shadow-sm" style="width: 80px; border-radius: 8px;">
+                                            <button type="submit" class="btn btn-sm btn-primary rounded-circle shadow-sm btn-bounce" style="width: 32px; height: 32px;" title="Guardar cantidad">
+                                                <i class="bi bi-check-lg"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                    
+                                    <td class="text-end pe-4">
+                                        <form action="{% url 'eliminar_item_requerimiento' item.id %}" method="POST" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger btn-bounce rounded-circle shadow-sm" style="width: 38px; height: 38px;" title="Quitar Material" onclick="return confirm('¿Seguro que deseas quitar este material del ticket?');">
                                                 <i class="bi bi-trash3-fill"></i>
                                             </button>
                                         </form>
@@ -144,9 +150,12 @@
                 </div>
                 
                 <div class="card-footer bg-light border-top p-4 rounded-bottom-4 text-end">
-                    <a href="{% url 'dashboard_erp' %}" class="btn btn-success btn-lg fw-bold px-5 shadow-sm btn-bounce {% if not detalles %}disabled{% endif %}">
-                        <i class="bi bi-send-check-fill me-2"></i> Finalizar y Enviar Requerimiento
-                    </a>
+                    <form method="POST" action="{% url 'procesar_ticket' requerimiento.id 'enviar' %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-success btn-lg fw-bold px-5 shadow-sm btn-bounce {% if not detalles %}disabled{% endif %}" onclick="this.disabled=true; this.form.submit();">
+                            <i class="bi bi-send-check-fill me-2"></i> Finalizar y Enviar a Gerencia
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -157,21 +166,23 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
     $(document).ready(function() {
-        // Inicializa el buscador en el campo de material generado por Django
         $('select').select2({
             placeholder: "🔍 Busca un material o SKU...",
             allowClear: true,
             width: '100%',
             language: {
-                noResults: function() {
-                    return "No se encontró el material";
-                }
+                noResults: function() { return "No se encontró el material"; }
             }
         });
 
-        // Asegurar que los inputs de Django tengan las clases de Bootstrap
         $('select').addClass('form-select form-select-lg');
-        $('input[type="number"]').addClass('form-control text-center fw-bold text-primary').attr('placeholder', '0.00');
+        
+        // RESTRICCIÓN JAVASCRIPT: Forzar enteros en el input del formulario principal de Django
+        $('input[name="cantidad_solicitada"]').attr({
+            'step': '1',
+            'min': '1',
+            'placeholder': 'Ej: 5'
+        }).addClass('form-control text-center fw-bold text-primary');
     });
 </script>
 {% endblock %}

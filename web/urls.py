@@ -101,4 +101,5 @@ urlpatterns = [
     path('erp/abastecimiento/item/<int:item_id>/actualizar/', views.actualizar_item_solicitud, name='actualizar_item_solicitud'),
     path('erp/abastecimiento/item/<int:item_id>/eliminar/', views.eliminar_item_requerimiento, name='eliminar_item_requerimiento'),
     path('erp/empleados/desbloquear/<str:username>/', views.desbloquear_empleado, name='desbloquear_empleado'),
-    ]
+    path('erp/ticket/actualizar-item/<int:item_id>/', views.actualizar_item_requerimiento, name='actualizar_item_requerimiento'),
+]

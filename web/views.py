@@ -1701,3 +1701,29 @@ def eliminar_item_requerimiento(request, item_id):
         messages.warning(request, f"Se eliminó {nombre_material} de la solicitud.")
         return redirect('añadir_items_solicitud', solicitud_id=solicitud_id)
     return redirect('dashboard_erp')
+
+@login_required(login_url='login')
+@transaction.atomic
+def actualizar_item_requerimiento(request, item_id):
+    """Permite al solicitante corregir la cantidad (en enteros) antes de mandar el ticket"""
+    item = get_object_or_404(DetalleRequerimiento, id=item_id)
+    
+    # Validar por seguridad que el ticket siga en borrador (PENDIENTE)
+    if item.requerimiento.estado == 'PENDIENTE':
+        if request.method == 'POST':
+            try:
+                # Convertimos estrictamente a entero (int)
+                nueva_cantidad = int(request.POST.get('nueva_cantidad', 0))
+                
+                if nueva_cantidad > 0:
+                    item.cantidad_solicitada = nueva_cantidad
+                    item.save()
+                    messages.success(request, f"Se actualizó la cantidad de {item.material.nombre} a {nueva_cantidad} unidades.")
+                else:
+                    messages.error(request, "La cantidad debe ser mayor a cero.")
+            except ValueError:
+                messages.error(request, "Error: Solo se permiten números enteros para solicitar material de obra.")
+    else:
+        messages.error(request, "No puedes modificar este ticket porque ya fue enviado o está siendo procesado.")
+        
+    return redirect('añadir_materiales', req_id=item.requerimiento.id)
