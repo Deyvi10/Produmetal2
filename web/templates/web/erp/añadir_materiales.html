@@ -115,7 +115,7 @@
                                     </td>
                                     
                                     <td class="text-center">
-                                        <form method="POST" action="{% url 'actualizar_item_requerimiento' item.id %}" class="d-flex justify-content-center align-items-center gap-2">
+                                        <form method="POST" action="{% url 'actualizar_item_ticket' item.id %}" class="d-flex justify-content-center align-items-center gap-2">
                                             {% csrf_token %}
                                             <input type="number" step="1" min="1" name="nueva_cantidad" value="{{ item.cantidad_solicitada|floatformat:0 }}" class="form-control form-control-sm text-center fw-bold text-primary shadow-sm" style="width: 80px; border-radius: 8px;">
                                             <button type="submit" class="btn btn-sm btn-primary rounded-circle shadow-sm btn-bounce" style="width: 32px; height: 32px;" title="Guardar cantidad">
@@ -125,7 +125,7 @@
                                     </td>
                                     
                                     <td class="text-end pe-4">
-                                        <form action="{% url 'eliminar_item_requerimiento' item.id %}" method="POST" class="d-inline">
+                                        <form action="{% url 'eliminar_item_ticket' item.id %}" method="POST" class="d-inline">
                                             {% csrf_token %}
                                             <button type="submit" class="btn btn-sm btn-outline-danger btn-bounce rounded-circle shadow-sm" style="width: 38px; height: 38px;" title="Quitar Material" onclick="return confirm('¿Seguro que deseas quitar este material del ticket?');">
                                                 <i class="bi bi-trash3-fill"></i>
