@@ -1,0 +1,48 @@
+{% extends 'web/base.html' %}
+{% block content %}
+<div class="container py-5" style="margin-top: 80px;">
+    <div class="mb-4">
+        <a href="{% url 'historial_solicitudes' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver al Historial</a>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4 border-top border-4 border-primary">
+        <div class="card-header bg-white p-4">
+            <h4 class="mb-0 fw-bold">Detalle de Solicitud: {{ solicitud.folio }}</h4>
+            <p class="text-muted mb-0">Estado General: <strong>{{ solicitud.estado }}</strong></p>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Material</th>
+                            <th>Proveedor Oferta</th>
+                            <th>Cant. Aprobada</th>
+                            <th>Decisión Admin</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td class="ps-4 fw-bold">{{ item.material.nombre }}</td>
+                            <td>{{ item.proveedor_cotizado|default:"-" }}</td>
+                            <td>{{ item.cantidad_requerida }}</td>
+                            <td>
+                                {% if item.estado_aprobacion == 'COMPRADO' %}
+                                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> O.C. Generada</span>
+                                {% elif item.estado_aprobacion == 'RECHAZADO' %}
+                                    <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Rechazado</span>
+                                    <div class="small text-muted mt-1">Motivo: {{ item.motivo_rechazo }}</div>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ item.estado_aprobacion }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

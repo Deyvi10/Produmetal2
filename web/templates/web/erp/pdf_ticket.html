@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Comprobante Ticket {{ ticket.folio }}</title>
+    <style>
+        @page {
+            size: a4 portrait;
+            margin: 2cm;
+        }
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 12px;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .info-box {
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .text-center { text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>TICKET DE REQUERIMIENTO: {{ ticket.folio }}</h2>
+        <p>ProduMetal CM - Sistema ERP</p>
+    </div>
+
+    <div class="info-box">
+        <p><strong>Solicitante:</strong> {{ ticket.solicitante.get_full_name|default:ticket.solicitante.username }}</p>
+        <p><strong>Proyecto/Destino:</strong> {{ ticket.proyecto.nombre }}</p>
+        <p><strong>Fecha de Solicitud:</strong> {{ ticket.fecha_solicitud|date:"d/m/Y H:i" }}</p>
+        <p><strong>Estado Actual:</strong> {{ ticket.get_estado_display }}</p>
+        <p><strong>Prioridad:</strong> {{ ticket.get_prioridad_display }}</p>
+        {% if ticket.observaciones %}
+        <p><strong>Observaciones:</strong> {{ ticket.observaciones }}</p>
+        {% endif %}
+    </div>
+
+    <h3>Materiales Solicitados</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Código (SKU)</th>
+                <th>Material</th>
+                <th class="text-center">Cant. Solicitada</th>
+                <th class="text-center">Cant. Despachada</th>
+                <th class="text-center">Estado del Ítem</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in detalles %}
+            <tr>
+                <td>{{ item.material.sku }}</td>
+                <td>{{ item.material.nombre }}</td>
+                <td class="text-center">{{ item.cantidad_solicitada }}</td>
+                <td class="text-center">{{ item.cantidad_despachada }}</td>
+                <td class="text-center">{{ item.get_estado_item_display }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="text-center">No hay materiales registrados en este ticket.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div style="margin-top: 50px;">
+        <p>Documento generado el: {{ fecha_impresion|date:"d/m/Y H:i" }}</p>
+    </div>
+</body>
+</html>

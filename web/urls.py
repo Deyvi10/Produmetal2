@@ -75,7 +75,8 @@ urlpatterns = [
     path('erp/cotizacion/desglosar/<int:item_id>/', views.desglosar_item_cotizacion, name='desglosar_item_cotizacion'), 
     path('erp/cotizacion/revisar/<int:solicitud_id>/', views.revisar_cotizacion, name='revisar_cotizacion'),
     path('erp/cotizacion/finalizar/<int:solicitud_id>/', views.finalizar_revision_cotizacion, name='finalizar_revision_cotizacion'),
-
+    path('erp/cotizacion/historial/', views.historial_solicitudes, name='historial_solicitudes'),
+    path('erp/cotizacion/historial/detalle/<int:solicitud_id>/', views.detalle_solicitud_procesada, name='detalle_solicitud_procesada'),
     # ==========================================
     # ERP: INVENTARIO, AJUSTES Y VENTAS
     # ==========================================

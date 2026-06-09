@@ -212,7 +212,18 @@ def crear_requerimiento(request):
 @login_required(login_url='login')
 @user_passes_test(es_solicitante, login_url='dashboard_erp')
 def añadir_materiales(request, req_id):
+    # Obtenemos el requerimiento asegurándonos de que pertenezca al usuario
     requerimiento = get_object_or_404(Requerimiento, id=req_id, solicitante=request.user)
+    
+    # BLOQUEO MAESTRO: Si el administrador ya lo revisó, el solicitante NO PUEDE entrar aquí
+    if requerimiento.estado != 'PENDIENTE':
+        messages.error(
+            request, 
+            f"El ticket {requerimiento.folio} ya se encuentra en proceso de {requerimiento.get_estado_display().lower()} y no puede ser modificado."
+        )
+        return redirect('dashboard_erp')
+
+    # Si sigue PENDIENTE, el flujo continúa normalmente para añadir materiales
     detalles = requerimiento.detalles.all() 
 
     if request.method == 'POST':
@@ -237,6 +248,12 @@ def añadir_materiales(request, req_id):
 @transaction.atomic
 def actualizar_item_ticket(request, item_id):
     item = get_object_or_404(DetalleRequerimiento, id=item_id)
+    
+    # BLOQUEO DE SEGURIDAD
+    if item.requerimiento.estado != 'PENDIENTE':
+        messages.error(request, "No puedes modificar las cantidades de un ticket que ya está en proceso.")
+        return redirect('añadir_materiales', req_id=item.requerimiento.id)
+
     if request.method == 'POST':
         try:
             nueva_cantidad = int(request.POST.get('nueva_cantidad', 0))
@@ -248,6 +265,7 @@ def actualizar_item_ticket(request, item_id):
                 messages.error(request, "La cantidad debe ser mayor a 0.")
         except ValueError:
             messages.error(request, "Ingrese un número entero válido.")
+            
     return redirect('añadir_materiales', req_id=item.requerimiento.id)
 
 # --- VISTA DE APROBACIÓN DE TICKETS AUTOMÁTICA (Admin) ---
@@ -365,10 +383,11 @@ def despachar_requerimiento(request, req_id):
                     bodega_origen=bodega_origen,
                     responsable=request.user, 
                     requerimiento_asociado=ticket,
-                    proyecto_asociado=ticket.proyecto, # Dejamos asentado en auditoría a qué obra se fue
+                    # Eliminamos 'proyecto_asociado' porque no existe en el modelo.
+                    # El sistema ya sabe que pertenece al proyecto de 'ticket' 
+                    # a través de 'requerimiento_asociado'.
                     observaciones=f"Despacho del ticket {ticket.folio} para el proyecto {ticket.proyecto.centro_costos}"
                 )
-
                 # 5. Actualizar el detalle del requerimiento
                 item.cantidad_despachada = cant_despachada + cantidad_a_entregar
                 item.estado_item = 'DESPACHADO'
@@ -589,7 +608,7 @@ def añadir_items_oc(request, oc_id):
     })
 
 @login_required(login_url='login')
-@user_passes_test(lambda u: es_bodeguero(u) or es_admin(u), login_url='dashboard_erp')
+@user_passes_test(lambda u: es_bodeguero(u) or es_admin(u) or es_comprador(u), login_url='dashboard_erp')
 def listar_ordenes_compra(request):
     es_administrador = es_admin(request.user)
     
@@ -604,11 +623,14 @@ def listar_ordenes_compra(request):
     if estado:
         ordenes = ordenes.filter(estado=estado)
 
+    # Identificamos el rol para la interfaz
+    rol_actual = 'Administrador' if es_administrador else ('Compras' if es_comprador(request.user) else 'Bodeguero')
+
     return render(request, 'web/erp/listar_oc.html', {
         'ordenes': ordenes,
         'estados': estados_permitidos, 
         'estado_filtro': estado,
-        'rol': 'Administrador' if es_administrador else 'Bodeguero',
+        'rol': rol_actual,
     })
 
 @login_required(login_url='login')
@@ -1693,9 +1715,16 @@ def actualizar_item_solicitud(request, item_id):
 def eliminar_item_ticket(request, item_id):
     item = get_object_or_404(DetalleRequerimiento, id=item_id)
     req_id = item.requerimiento.id
+    
+    # BLOQUEO DE SEGURIDAD
+    if item.requerimiento.estado != 'PENDIENTE':
+        messages.error(request, "No puedes eliminar ítems de un ticket que ya está en proceso.")
+        return redirect('añadir_materiales', req_id=req_id)
+
     if request.method == 'POST':
         item.delete()
         messages.warning(request, "Material eliminado del ticket.")
+        
     return redirect('añadir_materiales', req_id=req_id)
 
 @login_required(login_url='login')
@@ -1710,3 +1739,24 @@ def eliminar_item_solicitud(request, item_id):
         messages.warning(request, f"Se eliminó {nombre_material} de la solicitud.")
         return redirect('añadir_items_solicitud', solicitud_id=solicitud_id)
     return redirect('dashboard_erp')
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: es_comprador(u) or es_admin(u), login_url='dashboard_erp')
+def historial_solicitudes(request):
+    """Muestra todas las solicitudes de compra históricas para Admin y Compras"""
+    solicitudes = SolicitudCompra.objects.all().order_by('-fecha_creacion')
+    return render(request, 'web/erp/historial_solicitudes.html', {
+        'solicitudes': solicitudes,
+        'rol': 'Administrador' if es_admin(request.user) else 'Compras'
+    })
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: es_comprador(u) or es_admin(u), login_url='dashboard_erp')
+def detalle_solicitud_procesada(request, solicitud_id):
+    """Vista de Solo Lectura para ver qué aprobó o rechazó el Administrador"""
+    solicitud = get_object_or_404(SolicitudCompra, id=solicitud_id)
+    items = solicitud.items_cotizados.all()
+    return render(request, 'web/erp/detalle_solicitud_procesada.html', {
+        'solicitud': solicitud, 
+        'items': items
+    })

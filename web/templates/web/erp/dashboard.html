@@ -213,6 +213,17 @@
             <h6>Configuración</h6>
             <p class="small text-muted mt-2 mb-0">Ajustes del Sistema</p>
         </a>
+        
+        <a href="{% url 'historial_solicitudes' %}" class="action-card card-blue">
+            <div class="action-icon text-info"><i class="bi bi-clock-history"></i></div>
+            <h6>Historial Compras</h6>
+            <p class="small text-muted mt-2 mb-0">Auditar cotizaciones</p>
+        </a>
+        <a href="{% url 'listar_ordenes_compra' %}" class="action-card card-red">
+            <div class="action-icon text-danger"><i class="bi bi-file-earmark-check"></i></div>
+            <h6>Órdenes Emitidas</h6>
+            <p class="small text-muted mt-2 mb-0">Monitorear proveedores</p>
+        </a>
     </div>
 
     {% if cotizaciones_pendientes %}
@@ -354,6 +365,23 @@
         </a>
     </div>
 
+    {% if mis_compras_pendientes %}
+    <div class="row mb-4 fade-up delay-2">
+        <div class="col-12">
+            <div class="card card-minimal" style="border-left: 4px solid var(--pm-blue);">
+                <div class="card-header-custom d-flex justify-content-between align-items-center pb-2">
+                    <h6 class="text-info m-0"><i class="bi bi-truck me-2 fs-5"></i> Stock en Tránsito (Órdenes Emitidas)</h6>
+                    <span class="badge-soft badge-soft-info px-3">{{ mis_compras_pendientes.count }} Camiones en Camino</span>
+                </div>
+                <div class="card-body p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+                    <p class="text-muted mb-0">El Administrador ha aprobado compras y los proveedores están en proceso de entrega. Prepárese para la recepción de mercadería.</p>
+                    <a href="{% url 'listar_ordenes_compra' %}" class="btn btn-sm btn-outline-info shadow-sm fw-bold px-4 py-2 text-uppercase" style="font-family: var(--font-display); letter-spacing: 1px;"><i class="bi bi-box-arrow-in-right me-1"></i> Ir a Recepción</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <div class="row g-4 mb-4">
         {% if alertas_stock %}
         <div class="col-12 fade-up delay-2">
@@ -388,7 +416,6 @@
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <!-- SECCIÓN CORREGIDA: Se eliminaron los <td> huérfanos y se reestructuró la tabla -->
                         <table class="table table-modern mb-0">
                             <thead>
                                 <tr>
@@ -440,7 +467,20 @@
 
     {% elif rol == 'Compras' %}
     
-    <div class="row g-4 mt-2 mb-4 fade-up delay-1">
+    <div class="action-card-grid mb-4 fade-up delay-1" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
+        <a href="{% url 'historial_solicitudes' %}" class="action-card card-blue py-4">
+            <div class="action-icon text-info"><i class="bi bi-clock-history"></i></div>
+            <h6>Historial de Solicitudes</h6>
+            <p class="small text-muted mt-2 mb-0">Ver cotizaciones pasadas</p>
+        </a>
+        <a href="{% url 'listar_ordenes_compra' %}" class="action-card card-green py-4">
+            <div class="action-icon text-success"><i class="bi bi-file-earmark-check"></i></div>
+            <h6>Órdenes Aprobadas</h6>
+            <p class="small text-muted mt-2 mb-0">Ver O.C. generadas por Gerencia</p>
+        </a>
+    </div>
+
+    <div class="row g-4 mt-2 mb-4 fade-up delay-2">
         <div class="col-12">
             <div class="card card-minimal shadow-lg" style="border-top: 4px solid var(--pm-amber);">
                 <div class="card-header-custom d-flex flex-column flex-md-row justify-content-between align-items-center p-4">
@@ -538,13 +578,17 @@
                                     <span class="badge-soft badge-soft-info"><i class="bi bi-cart"></i> Adquiriendo Faltante</span>
                                 {% endif %}
                             </td>
+                            
                             <td class="text-end pe-4 text-nowrap">
-                                {% if req.estado == 'APROBADO' or req.estado == 'DESPACHADO' or req.estado == 'PARCIALMENTE_DESPACHADO' %}
-                                    <a href="{% url 'imprimir_pdf_ticket' req.id %}" target="_blank" class="btn btn-sm btn-outline-danger px-3 py-2 me-1 mb-1 mb-md-0" style="border-radius: 6px;" title="Ver PDF"><i class="bi bi-file-pdf"></i></a>
+                                {% if req.estado == 'PENDIENTE' %}
+                                    <a href="{% url 'añadir_materiales' req.id %}" class="btn btn-sm btn-outline-warning px-3 py-2 shadow-sm" style="border-radius: 6px;">
+                                        <i class="bi bi-pencil-square"></i> <span class="d-none d-md-inline ms-1">Editar / Detalle</span>
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'imprimir_pdf_ticket' req.id %}" target="_blank" class="btn btn-sm btn-outline-danger px-3 py-2 shadow-sm" style="border-radius: 6px;" title="Descargar Comprobante PDF">
+                                        <i class="bi bi-file-earmark-pdf-fill"></i> <span class="d-none d-md-inline ms-1">Ver PDF</span>
+                                    </a>
                                 {% endif %}
-                                <a href="{% url 'añadir_materiales' req.id %}" class="btn btn-sm btn-outline-secondary text-white border-secondary px-3 py-2 shadow-sm" style="border-radius: 6px;">
-                                    <i class="bi bi-eye"></i> <span class="d-none d-md-inline ms-1">Detalle</span>
-                                </a>
                             </td>
                         </tr>
                         {% empty %}
