@@ -1,143 +1,291 @@
 {% extends 'web/base.html' %}
 {% load static %}
 
+{% block extra_head %}
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+{% endblock %}
+
 {% block content %}
 <style>
-    /* Fondo con una textura muy sutil tipo corporativa */
-    .login-page-bg {
-        background-color: #f8f9fa;
-        background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
-        background-size: 20px 20px;
+    /* =======================================================
+       LOGIN ERP 2026: CYBER-INDUSTRIAL DARK MODE
+       ======================================================= */
+    :root {
+        --bg-deep: #050505;
+        --panel-glass: rgba(18, 18, 20, 0.65);
+        --panel-border: rgba(255, 255, 255, 0.08);
+        
+        --text-pure: #ffffff;
+        --text-secondary: #a1a1aa; 
+        
+        --accent-blue: #3b82f6;
+        --accent-blue-glow: rgba(59, 130, 246, 0.4);
+        --accent-amber: #f59e0b;
+        --accent-danger: #ef4444;
+        
+        --font-title: 'Barlow Condensed', sans-serif;
+        --font-ui: 'Inter', sans-serif;
     }
-    
-    /* Tarjeta flotante principal */
-    .login-card {
-        border: none;
-        border-radius: 1.5rem;
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+
+    body {
+        background-color: var(--bg-deep) !important;
+        background-image: 
+            radial-gradient(circle at 20% 40%, rgba(59, 130, 246, 0.04) 0%, transparent 40%),
+            radial-gradient(circle at 80% 60%, rgba(245, 158, 11, 0.03) 0%, transparent 40%);
+        background-attachment: fixed;
+        color: var(--text-pure) !important;
+        font-family: var(--font-ui);
+    }
+
+    /* Contenedor centralizado */
+    .login-wrapper {
+        min-height: calc(100vh - 80px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+        margin-top: 50px;
+    }
+
+    /* Panel Translúcido (Glassmorphism) */
+    .glass-panel {
+        background: var(--panel-glass);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--panel-border);
+        border-radius: 20px;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6);
+        width: 100%;
+        max-width: 420px;
         overflow: hidden;
-        background: white;
+        animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
-    
-    /* Encabezado industrial oscuro */
+
+    @keyframes slideUpFade {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
     .login-header {
-        background: linear-gradient(135deg, #1e293b 0%, #2c3e50 100%);
-        padding: 3rem 2rem 2rem;
         text-align: center;
-        color: white;
-        border-bottom: 5px solid #3498db;
+        padding: 2.5rem 2rem 1.5rem;
+        background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%);
+        border-bottom: 1px solid rgba(255,255,255,0.02);
     }
-    
-    /* Efecto premium para el logo */
-    .login-logo {
+
+    .logo-neo {
         width: 85px;
         height: 85px;
-        object-fit: cover;
-        border: 3px solid rgba(255, 255, 255, 0.9);
         border-radius: 50%;
-        margin-bottom: 1rem;
-        box-shadow: 0 6px 15px rgba(0,0,0,0.3);
-        background-color: white;
+        object-fit: cover;
+        border: 2px solid var(--panel-border);
+        box-shadow: 0 0 25px rgba(245, 158, 11, 0.15);
+        margin-bottom: 1.2rem;
+        transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s;
+    }
+    .logo-neo:hover { 
+        transform: scale(1.05) rotate(5deg); 
+        border-color: rgba(255,255,255,0.2); 
+    }
+
+    .app-title {
+        font-family: var(--font-title);
+        font-size: 1.8rem;
+        font-weight: 700;
+        letter-spacing: 1px;
+        margin-bottom: 0.2rem;
+    }
+
+    /* Inputs Modernos */
+    .input-group-neo {
+        position: relative;
+        margin-bottom: 1.5rem;
     }
     
-    /* Entradas de texto modernas */
-    .form-control-custom {
-        border-radius: 0 0.75rem 0.75rem 0;
-        padding: 0.8rem 1.2rem;
-        border: 1px solid #dee2e6;
-        background-color: #f8f9fa;
-        font-weight: 500;
-    }
-    .form-control-custom:focus {
-        background-color: #fff;
-        border-color: #3498db;
-        box-shadow: none;
-    }
-    .input-group-text-custom {
-        border-radius: 0.75rem 0 0 0.75rem;
-        background-color: #f8f9fa;
-        border: 1px solid #dee2e6;
-        border-right: none;
-        color: #6c757d;
-    }
-    
-    /* Botón de acción principal */
-    .btn-login {
-        background: linear-gradient(to right, #2c3e50, #3498db);
-        border: none;
-        border-radius: 0.75rem;
-        padding: 0.85rem;
+    .input-group-neo label {
+        font-family: var(--font-ui);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: var(--text-secondary);
         font-weight: 600;
-        letter-spacing: 0.5px;
+        margin-bottom: 0.6rem;
+        display: block;
+    }
+
+    .input-neo {
+        background: rgba(0, 0, 0, 0.3) !important;
+        border: 1px solid var(--panel-border) !important;
+        color: var(--text-pure) !important;
+        border-radius: 12px;
+        padding: 0.85rem 1rem 0.85rem 2.8rem; /* Espacio para el ícono izquierdo */
+        font-size: 1rem;
+        width: 100%;
         transition: all 0.3s ease;
     }
-    .btn-login:hover {
+    .input-neo:focus {
+        background: rgba(255, 255, 255, 0.03) !important;
+        border-color: var(--accent-blue) !important;
+        box-shadow: 0 0 0 4px var(--accent-blue-glow) !important;
+        outline: none;
+    }
+    .input-neo::placeholder { color: #52525b; font-weight: 400; }
+
+    /* Iconos Dinámicos */
+    .icon-left {
+        position: absolute;
+        left: 1rem;
+        top: 2.3rem; /* Alineado con el input, saltando el label */
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+        pointer-events: none;
+        transition: color 0.3s ease;
+    }
+    /* El icono se pinta de azul cuando el input tiene foco */
+    .input-neo:focus + .icon-left { color: var(--accent-blue); }
+
+    /* Botón Ver Contraseña */
+    .btn-toggle-pass {
+        position: absolute;
+        right: 0.5rem;
+        top: 1.95rem;
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        padding: 0.5rem;
+        cursor: pointer;
+        transition: color 0.2s;
+        border-radius: 8px;
+    }
+    .btn-toggle-pass:hover { color: var(--text-pure); background: rgba(255,255,255,0.05); }
+
+    /* Botón de Submit Neo */
+    .btn-neo-submit {
+        background: linear-gradient(135deg, var(--accent-blue), #2563eb);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 1rem;
+        font-family: var(--font-title);
+        font-size: 1.2rem;
+        font-weight: 600;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        width: 100%;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        margin-top: 1rem;
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .btn-neo-submit:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(52, 152, 219, 0.4);
+        box-shadow: 0 10px 25px var(--accent-blue-glow);
+        color: white;
+    }
+
+    /* Alerta Premium */
+    .alert-neo {
+        background: rgba(239, 68, 68, 0.05);
+        border: 1px solid rgba(239, 68, 68, 0.15);
+        border-left: 4px solid var(--accent-danger);
+        border-radius: 10px;
+        padding: 1rem 1.2rem;
+        display: flex;
+        align-items: center;
+        margin-bottom: 1.8rem;
+    }
+
+    .footer-login {
+        margin-top: 2rem;
+        text-align: center;
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+        animation: slideUpFade 0.6s 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        opacity: 0;
     }
 </style>
 
-<div class="login-page-bg py-5" style="margin-top: 70px; min-height: calc(100vh - 70px); display: flex; align-items: center;">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-12 col-sm-10 col-md-8 col-lg-5">
+<div class="container-fluid login-wrapper">
+    
+    <div class="glass-panel">
+        <div class="login-header">
+            <img src="{% static 'web/img/logo.jpg' %}" alt="Logo ProduMetal" class="logo-neo">
+            <h3 class="app-title text-white">ProduMetal <span class="text-warning">ERP</span></h3>
+            <p class="text-secondary small mb-0 mt-1" style="letter-spacing: 0.5px;">Acceso Logístico Restringido</p>
+        </div>
+
+        <div class="card-body p-4 p-md-5">
+            
+            {% if form.errors %}
+                <div class="alert-neo">
+                    <i class="bi bi-shield-lock text-danger fs-3 me-3"></i>
+                    <div>
+                        <strong class="text-danger d-block fw-bold" style="font-family: var(--font-title); letter-spacing: 1px;">ACCESO DENEGADO</strong>
+                        <span style="color: #fca5a5; font-size: 0.85rem;">Credenciales inválidas o cuenta inactiva.</span>
+                    </div>
+                </div>
+            {% endif %}
+
+            <form method="POST">
+                {% csrf_token %}
                 
-                <div class="login-card">
-                    <div class="login-header">
-                        <img src="{% static 'web/img/logo.jpg' %}" alt="Logo ProduMetal" class="login-logo">
-                        <h3 class="fw-bold mb-0" style="letter-spacing: -0.5px;">PRODUMETAL <span class="text-info">ERP</span></h3>
-                        <p class="text-light opacity-75 small mb-0 mt-1">Portal de Acceso Restringido</p>
-                    </div>
-
-                    <div class="card-body p-4 p-md-5">
-                        
-                        {% if form.errors %}
-                            <div class="alert alert-danger d-flex align-items-center rounded-3 mb-4 shadow-sm border-0 bg-danger bg-opacity-10" role="alert">
-                                <i class="bi bi-shield-x text-danger fs-3 me-3"></i>
-                                <div>
-                                    <strong class="text-danger d-block">Acceso Denegado</strong>
-                                    <span class="small text-danger">Credenciales inválidas. Intente nuevamente.</span>
-                                </div>
-                            </div>
-                        {% endif %}
-
-                        <form method="POST">
-                            {% csrf_token %}
-                            
-                            <div class="mb-4">
-                                <label class="form-label fw-bold text-secondary small text-uppercase">Usuario Asignado</label>
-                                <div class="input-group shadow-sm rounded-3">
-                                    <span class="input-group-text input-group-text-custom px-3"><i class="bi bi-person-fill"></i></span>
-                                    <input type="text" name="username" class="form-control form-control-custom border-start-0 ps-0" placeholder="Ej. tu_usuario" required autofocus>
-                                </div>
-                            </div>
-
-                            <div class="mb-4">
-                                <label class="form-label fw-bold text-secondary small text-uppercase">Clave de Seguridad</label>
-                                <div class="input-group shadow-sm rounded-3">
-                                    <span class="input-group-text input-group-text-custom px-3"><i class="bi bi-lock-fill"></i></span>
-                                    <input type="password" name="password" class="form-control form-control-custom border-start-0 ps-0" placeholder="••••••••" required>
-                                </div>
-                            </div>
-
-                            <div class="d-grid mt-5">
-                                <button type="submit" class="btn btn-primary btn-login btn-lg text-white">
-                                    Ingresar al Sistema <i class="bi bi-arrow-right-circle-fill ms-2"></i>
-                                </button>
-                            </div>
-                            
-                            <input type="hidden" name="next" value="{{ next|default:'/erp/dashboard/' }}">
-                        </form>
-                    </div>
+                <div class="input-group-neo">
+                    <label>Usuario Asignado</label>
+                    <input type="text" name="username" class="input-neo" placeholder="Identificador de usuario" required autofocus>
+                    <i class="bi bi-person-bounding-box icon-left"></i>
                 </div>
 
-                <div class="text-center mt-4 text-muted small">
-                    <i class="bi bi-shield-lock-fill text-success"></i> Conexión Privada y Encriptada<br>
-                    <span class="fw-medium">&copy; {% now "Y" %} ProduMetal CM. Todos los derechos reservados.</span>
+                <div class="input-group-neo">
+                    <label>Clave de Seguridad</label>
+                    <input type="password" name="password" id="password-input" class="input-neo" placeholder="••••••••" required>
+                    <i class="bi bi-key-fill icon-left"></i>
+                    
+                    <button type="button" class="btn-toggle-pass" id="toggle-password" tabindex="-1" title="Mostrar/Ocultar">
+                        <i class="bi bi-eye-slash" id="toggle-icon"></i>
+                    </button>
                 </div>
 
-            </div>
+                <button type="submit" class="btn-neo-submit">
+                    Iniciar Sesión <i class="bi bi-arrow-right-short ms-2 fs-4"></i>
+                </button>
+                
+                <input type="hidden" name="next" value="{{ next|default:'/erp/dashboard/' }}">
+            </form>
         </div>
     </div>
+
+    <div class="footer-login">
+        <i class="bi bi-shield-check text-success me-1 fs-6" style="vertical-align: middle;"></i> Conexión encriptada de extremo a extremo<br>
+        <span class="mt-2 d-inline-block">&copy; {% now "Y" %} ProduMetal CM. Base de datos segura.</span>
+    </div>
+
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const passwordInput = document.getElementById('password-input');
+        const toggleButton = document.getElementById('toggle-password');
+        const toggleIcon = document.getElementById('toggle-icon');
+
+        toggleButton.addEventListener('click', function() {
+            // Lógica para alternar el tipo de input y el icono visual
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.classList.remove('bi-eye-slash');
+                toggleIcon.classList.add('bi-eye');
+                toggleIcon.style.color = 'var(--accent-blue)';
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.classList.remove('bi-eye');
+                toggleIcon.classList.add('bi-eye-slash');
+                toggleIcon.style.color = '';
+            }
+            // Retorna el foco al input para que el usuario pueda seguir escribiendo
+            passwordInput.focus();
+        });
+    });
+</script>
 {% endblock %}
