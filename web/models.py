@@ -250,6 +250,42 @@ class Requerimiento(models.Model):
 
     def __str__(self):
         return f"{self.folio} - {self.proyecto.nombre}"
+    def actualizar_estado_general(self):
+        """
+        Calcula y actualiza automáticamente el estado maestro del Requerimiento 
+        basándose en las decisiones que se tomaron ítem por ítem.
+        """
+        detalles = self.detalles.all()
+        if not detalles.exists():
+            return
+            
+        estados = [item.estado_item for item in detalles]
+        
+        # 1. Si absolutamente todo fue rechazado por el Admin
+        if all(estado == 'RECHAZADO' for estado in estados):
+            self.estado = 'RECHAZADO'
+            
+        # 2. Si todo el material ya fue entregado físicamente al técnico
+        elif all(estado == 'DESPACHADO' for estado in estados):
+            self.estado = 'DESPACHADO'
+            
+        # 3. Si todo el material válido está en la bodega listo para que el técnico lo retire
+        elif all(estado in ['APROBADO_BODEGA', 'DESPACHADO', 'RECHAZADO'] for estado in estados) and any(estado == 'APROBADO_BODEGA' for estado in estados):
+            self.estado = 'APROBADO'
+            
+        # 4. Si todo el material faltaba y se fue directo al departamento de Compras
+        elif all(estado in ['EN_COMPRAS', 'RECHAZADO'] for estado in estados) and any(estado == 'EN_COMPRAS' for estado in estados):
+            self.estado = 'EN_COMPRAS'
+            
+        # 5. SPLIT: Si una parte se entrega ahora en bodega y la otra parte se mandó a comprar
+        elif any(estado in ['EN_COMPRAS', 'APROBADO_BODEGA', 'DESPACHADO'] for estado in estados):
+            self.estado = 'PARCIALMENTE_DESPACHADO'
+            
+        # 6. Si todavía el Admin no revisa nada
+        else:
+            self.estado = 'PENDIENTE'
+            
+        self.save()
 
 class DetalleRequerimiento(models.Model):
     ESTADOS_ITEM = [
@@ -316,7 +352,7 @@ class CotizacionItem(models.Model):
     
     estado_aprobacion = models.CharField(max_length=15, choices=ESTADOS_APROBACION, default='PENDIENTE')
     motivo_rechazo = models.TextField(blank=True)
-
+    bodega_destino = models.ForeignKey(Bodega, on_delete=models.SET_NULL, null=True, blank=True)
     @property
     def total_estimado(self):
         if self.cantidad_requerida and self.precio_unitario:
@@ -368,7 +404,7 @@ class DetalleOrdenCompra(models.Model):
     material = models.ForeignKey(Material, on_delete=models.PROTECT)
     cantidad_pedida = models.DecimalField(max_digits=10, decimal_places=2)
     cantidad_recibida = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-
+    bodega_destino = models.ForeignKey(Bodega, on_delete=models.SET_NULL, null=True, blank=True)
     def __str__(self):
         return f"{self.cantidad_pedida} de {self.material.nombre} (OC: {self.orden.folio})"
 

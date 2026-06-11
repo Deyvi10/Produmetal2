@@ -1,207 +1,114 @@
 {% extends 'web/base.html' %}
-{% load static %}
 
 {% block content %}
 <style>
-    /* =========================================
-       UI PREMIUM - CONFIRMAR DESPACHO A OBRA
-       ========================================= */
     :root {
-        --pm-bg: #f4f6f9;
         --pm-surface: #ffffff;
         --pm-border: #e1e4e8;
         --pm-text: #24292e;
-        --pm-text-muted: #586069;
         --pm-success: #28a745;
-        --pm-primary: #0366d6;
-        --pm-orange: #fd7e14;
+        --pm-amber: #f9a826;
     }
-
-    body { background-color: var(--pm-bg); }
+    body { background-color: #f4f6f9; }
     .fade-in { animation: fadeIn 0.4s ease-in-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-    .erp-container { max-width: 900px; padding-bottom: 80px; }
+    .erp-container { max-width: 900px; padding-bottom: 80px; margin-top: 30px;}
 
-    /* Tarjetas y Contenedores */
-    .card-master {
-        background: var(--pm-surface);
-        border: 1px solid var(--pm-border);
-        border-radius: 12px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
-        overflow: hidden;
-        margin-bottom: 20px;
-    }
+    .card-master { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); overflow: hidden; margin-bottom: 20px; }
 
-    /* Cabecera del Ticket */
-    .ticket-header {
-        background: linear-gradient(135deg, #1e8449 0%, #28a745 100%);
-        color: white; padding: 20px; border-radius: 12px;
-        box-shadow: 0 8px 20px rgba(40, 167, 69, 0.2);
-    }
-    .ticket-header.bg-parcial {
-        background: linear-gradient(135deg, #e67e22 0%, #f39c12 100%);
-        box-shadow: 0 8px 20px rgba(230, 126, 34, 0.2);
-    }
+    .ticket-header { background: linear-gradient(135deg, #1e8449 0%, #28a745 100%); color: white; padding: 25px; border-radius: 12px; box-shadow: 0 8px 20px rgba(40, 167, 69, 0.2); }
+    .ticket-header.bg-parcial { background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%); box-shadow: 0 8px 20px rgba(217, 119, 6, 0.2); }
 
-    /* Inputs Táctiles */
-    .form-select-solid {
-        background: #f8f9fa !important; border: 1px solid #d1d5da !important;
-        color: #24292e !important; border-radius: 8px; padding: 14px 16px;
-        font-weight: bold; font-size: 1rem; width: 100%; transition: all 0.2s ease;
-        min-height: 52px; cursor: pointer;
-    }
-    .form-select-solid:focus {
-        border-color: var(--pm-primary) !important; box-shadow: 0 0 0 3px rgba(3, 102, 214, 0.15) !important;
-        outline: none; background: #ffffff !important;
-    }
-
-    /* Tabla a Cards (Mobile First) */
     .table-despacho { width: 100%; margin-bottom: 0; color: var(--pm-text); }
-    .table-despacho th { 
-        background: #f8f9fa; color: var(--pm-text-muted); font-size: 0.8rem; 
-        text-transform: uppercase; letter-spacing: 1px; padding: 12px 20px; 
-        border-bottom: 2px solid var(--pm-border); 
-    }
+    .table-despacho th { background: #f8f9fa; color: #586069; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; padding: 14px 20px; border-bottom: 2px solid var(--pm-border); }
     .table-despacho td { padding: 16px 20px; border-bottom: 1px solid var(--pm-border); vertical-align: middle; }
     
-    .qty-badge {
-        background: rgba(40, 167, 69, 0.1); color: #1a7f37; border: 1px solid rgba(40, 167, 69, 0.2);
-        font-size: 1.1rem; font-weight: 800; padding: 6px 16px; border-radius: 20px; display: inline-block;
-    }
+    .qty-badge { background: rgba(40, 167, 69, 0.1); color: #1a7f37; border: 1px solid rgba(40, 167, 69, 0.2); font-size: 1.1rem; font-weight: 800; padding: 6px 16px; border-radius: 20px; display: inline-block; }
+    .bodega-badge { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-size: 0.8rem; font-weight: 800; padding: 4px 12px; border-radius: 8px; display: inline-flex; align-items: center; gap: 4px;}
 
-    /* Botones de Acción */
-    .btn-success-custom {
-        background: var(--pm-success); color: white; font-weight: bold; border-radius: 8px; 
-        padding: 14px 24px; border: none; transition: all 0.2s ease; display: flex; 
-        align-items: center; justify-content: center; font-size: 1.1rem; letter-spacing: 0.5px;
-    }
+    .btn-success-custom { background: var(--pm-success); color: white; font-weight: bold; border-radius: 8px; padding: 14px 24px; border: none; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
     .btn-success-custom:hover { background: #22863a; transform: translateY(-2px); box-shadow: 0 8px 15px rgba(40, 167, 69, 0.3); color: white;}
-    
-    .btn-cancel {
-        background: #f1f4f9; color: var(--pm-text-muted); font-weight: bold; border-radius: 8px; 
-        padding: 14px 24px; border: 1px solid #d1d5da; transition: all 0.2s ease; text-decoration: none;
-        display: flex; align-items: center; justify-content: center;
-    }
-    .btn-cancel:hover { background: #e1e4e8; color: var(--pm-text); }
 
     .mobile-label { display: none; }
 
-    /* Adaptación a Celulares */
     @media (max-width: 768px) {
         .erp-container { padding-top: 10px; }
         .card-master { border: none; box-shadow: none; background: transparent; }
         .table-despacho thead { display: none; }
         .table-despacho tbody { display: flex; flex-direction: column; gap: 12px; }
-        .table-despacho tbody tr { 
-            display: flex; flex-direction: column; background: var(--pm-surface); 
-            border: 1px solid var(--pm-border); border-radius: 12px; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.03); padding: 8px;
-        }
-        .table-despacho td { 
-            padding: 12px 15px; border-bottom: 1px solid #f1f4f9; 
-            display: flex; flex-direction: column; gap: 6px; 
-        }
-        .table-despacho td:last-child { border-bottom: none; align-items: center; }
-        .mobile-label { display: block; font-size: 0.7rem; text-transform: uppercase; color: var(--pm-text-muted); font-weight: 800; letter-spacing: 0.5px;}
-        
+        .table-despacho tbody tr { display: flex; flex-direction: column; background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; padding: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.03);}
+        .table-despacho td { padding: 12px 15px; border-bottom: 1px solid #f1f4f9; display: flex; flex-direction: column; gap: 6px; align-items: flex-start !important;}
+        .table-despacho td:last-child { border-bottom: none; align-items: stretch !important; }
+        .mobile-label { display: block; font-size: 0.7rem; text-transform: uppercase; color: #586069; font-weight: 800; letter-spacing: 0.5px;}
         .desktop-footer { display: none !important; }
-        .mobile-bottom-bar {
-            position: fixed; bottom: 0; left: 0; width: 100%;
-            background: var(--pm-surface); padding: 15px; display: flex; gap: 10px;
-            box-shadow: 0 -4px 15px rgba(0,0,0,0.08); z-index: 1000;
-            border-top: 1px solid var(--pm-border);
-        }
-        .mobile-bottom-bar .btn-cancel { width: 30%; padding: 14px 0; }
-        .mobile-bottom-bar .btn-success-custom { width: 70%; }
+        .mobile-bottom-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--pm-surface); padding: 15px; box-shadow: 0 -4px 15px rgba(0,0,0,0.08); z-index: 1000; border-top: 1px solid var(--pm-border); }
     }
 </style>
 
-<div class="container erp-container fade-in mt-3 mt-md-4">
+<div class="container erp-container fade-in">
     
     <div class="ticket-header {% if ticket.estado == 'PARCIALMENTE_DESPACHADO' %}bg-parcial{% endif %} mb-4">
-        <div class="d-flex justify-content-between align-items-start">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
             <div>
-                <h5 class="mb-1 text-uppercase fw-bold" style="letter-spacing: 0.5px;">
-                    <i class="bi bi-box-seam me-2"></i> Orden de Despacho
+                <h5 class="mb-1 text-uppercase fw-bold" style="letter-spacing: 0.5px; opacity: 0.9;">
+                    <i class="bi bi-box-seam me-1"></i> Orden de Trabajo Logística
                 </h5>
-                <h3 class="fw-bold mb-2">{{ ticket.proyecto.nombre }}</h3>
-                <p class="mb-0 opacity-75" style="font-size: 0.9rem;">
-                    Solicita: {{ ticket.solicitante.get_full_name|default:ticket.solicitante.username }}
-                </p>
+                <h2 class="fw-bold mb-1">{{ ticket.proyecto.nombre }}</h2>
+                <p class="mb-0 fw-bold">Técnico/Operador: {{ ticket.solicitante.get_full_name|default:ticket.solicitante.username }}</p>
             </div>
-            <div class="text-end">
-                <div class="fw-bold fs-4">#{{ ticket.folio }}</div>
+            <div class="text-md-end mt-2 mt-md-0">
+                <div class="fw-bold fs-3">#{{ ticket.folio }}</div>
                 {% if ticket.estado == 'PARCIALMENTE_DESPACHADO' %}
-                    <span class="badge bg-white text-dark mt-1 shadow-sm px-2 py-1"><i class="bi bi-pie-chart-fill me-1 text-warning"></i> Entrega Parcial</span>
+                    <span class="badge bg-white text-dark shadow-sm px-3 py-2 fs-6 mt-1 rounded-pill"><i class="bi bi-pie-chart-fill text-warning me-1"></i> Entrega Parcial</span>
                 {% else %}
-                    <span class="badge bg-white text-success mt-1 shadow-sm px-2 py-1"><i class="bi bi-check-circle-fill me-1"></i> Entrega Completa</span>
+                    <span class="badge bg-white text-success shadow-sm px-3 py-2 fs-6 mt-1 rounded-pill"><i class="bi bi-check-circle-fill me-1"></i> Lista Completa</span>
                 {% endif %}
             </div>
         </div>
     </div>
 
+    <div class="alert alert-info border-0 shadow-sm rounded-3 d-flex align-items-start p-3 mb-4">
+        <i class="bi bi-shield-lock-fill fs-3 text-info me-3 mt-1"></i>
+        <div>
+            <h6 class="fw-bold text-dark mb-1">Ruteo de Bodega Estricto Activado</h6>
+            <p class="small text-dark mb-0">Esta es una orden de entrega física. El sistema descontará el stock única y exclusivamente de la bodega destino que el solicitante requirió para cada ítem. Acércate a la percha correspondiente.</p>
+        </div>
+    </div>
+
     <form method="POST">
         {% csrf_token %}
-        
-        <div class="card-master bg-white p-3 p-md-4" style="border-left: 4px solid var(--pm-primary);">
-            <label class="form-label fw-bold mb-2 text-dark"><i class="bi bi-shop me-1 text-primary"></i> 1. ¿De qué Bodega se extraerá el material?</label>
-            <select name="bodeda_origen" class="form-select-solid" required>
-                {% for bodega in bodegas %}
-                    <option value="{{ bodega.id }}" {% if bodega.is_principal %}selected{% endif %}>
-                        {{ bodega.nombre }}
-                    </option>
-                {% endfor %}
-            </select>
-            <div class="text-muted small mt-2">
-                <i class="bi bi-info-circle me-1"></i> El sistema descontará el stock de la bodega seleccionada. Asegúrese de contar con existencias físicas.
-            </div>
-        </div>
-
-        <div class="card-master bg-white mt-4">
-            <div class="p-3 bg-light border-bottom">
-                <h6 class="mb-0 fw-bold text-dark text-uppercase" style="font-size: 0.85rem;"><i class="bi bi-list-check me-2"></i> 2. Materiales listos para entregar al técnico</h6>
-            </div>
-            
+        <div class="card-master bg-white">
             <div class="table-responsive m-0 border-0">
                 <table class="table-despacho">
                     <thead>
                         <tr>
-                            <th class="ps-4">Detalle del Material</th>
-                            <th>Estado de Entrega</th>
-                            <th class="text-center">A Despachar Ahora</th>
+                            <th class="ps-4">Material / Suministro</th>
+                            <th>Ubicación (Extraer de)</th>
+                            <th class="text-center pe-4">Cantidad a Despachar</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item in items %}
                         <tr>
                             <td class="ps-md-4">
+                                <span class="mobile-label">Ítem Requerido</span>
                                 <div class="fw-bold text-dark fs-6">{{ item.material.nombre }}</div>
-                                <span class="badge bg-light text-secondary border mt-1"><i class="bi bi-upc-scan"></i> {{ item.material.sku }}</span>
+                                <div class="text-muted small mt-1"><i class="bi bi-upc-scan me-1"></i> SKU: {{ item.material.sku }}</div>
                             </td>
                             
                             <td>
-                                <span class="mobile-label">Resumen del Pedido</span>
-                                <div class="text-muted" style="font-size: 0.85rem;">
-                                    Solicitado Total: <strong class="text-dark">{{ item.cantidad_solicitada|add:item.cantidad_despachada|default:item.cantidad_solicitada|floatformat:"0" }}</strong>
+                                <span class="mobile-label mt-2">Extraer material desde</span>
+                                <div class="bodega-badge shadow-sm">
+                                    <i class="bi bi-shop"></i> {{ item.bodega_destino.nombre|default:"Bodega Principal" }}
                                 </div>
-                                {% if ticket.estado == 'PARCIALMENTE_DESPACHADO' %}
-                                    <div class="text-warning small fw-bold mt-1"><i class="bi bi-clock-history"></i> Faltante en Compras</div>
-                                {% endif %}
                             </td>
 
-                            <td class="text-md-center">
-                                <span class="mobile-label mb-2">Entregar en este momento</span>
-                                <div class="qty-badge shadow-sm">
-                                    {{ item.cantidad_solicitada|floatformat:"0" }} <span style="font-size: 0.7rem; font-weight: normal; text-transform: uppercase;">Unidades</span>
+                            <td class="text-md-center pe-md-4">
+                                <span class="mobile-label mt-2 mb-2">Despachar al técnico</span>
+                                <div class="qty-badge shadow-sm w-100 w-md-auto text-center">
+                                    {{ item.cantidad_solicitada|floatformat:"0" }} <span style="font-size: 0.75rem; text-transform: uppercase; font-weight: normal; margin-left: 3px;">UNID.</span>
                                 </div>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="3" class="text-center py-5 text-muted">
-                                <i class="bi bi-box-seam fs-1"></i>
-                                <p class="mt-2">No hay materiales con autorización para despacho en este ticket.</p>
                             </td>
                         </tr>
                         {% endfor %}
@@ -210,32 +117,17 @@
             </div>
         </div>
 
-        <div class="desktop-footer d-flex justify-content-end gap-3 mt-4">
-            <a href="{% url 'dashboard_erp' %}" class="btn-cancel">
-                Cancelar
-            </a>
-            <button type="submit" class="btn-success-custom px-5">
-                <i class="bi bi-check-circle-fill me-2"></i> Confirmar Despacho Físico
+        <div class="desktop-footer d-flex justify-content-end mt-4">
+            <button type="submit" class="btn-success-custom px-5 shadow-sm" onclick="this.disabled=true; this.form.submit();">
+                <i class="bi bi-check-all fs-4 me-2"></i> Confirmar Entrega del Material
             </button>
         </div>
 
-        <div class="mobile-bottom-bar d-none">
-            <a href="{% url 'dashboard_erp' %}" class="btn-cancel text-center">
-                <i class="bi bi-x-lg fs-5"></i>
-            </a>
-            <button type="submit" class="btn-success-custom flex-grow-1">
-                <i class="bi bi-check-circle-fill me-2"></i> Despachar
+        <div class="mobile-bottom-bar d-md-none">
+            <button type="submit" class="btn-success-custom w-100 shadow-lg py-3" onclick="this.disabled=true; this.form.submit();">
+                <i class="bi bi-check-all fs-4 me-2"></i> Confirmar Entrega Física
             </button>
         </div>
     </form>
 </div>
-
-<script>
-    // Pequeño script para asegurar que la barra móvil se muestre correctamente en resoluciones pequeñas
-    document.addEventListener("DOMContentLoaded", function() {
-        if (window.innerWidth <= 768) {
-            document.querySelector('.mobile-bottom-bar').classList.remove('d-none');
-        }
-    });
-</script>
 {% endblock %}
