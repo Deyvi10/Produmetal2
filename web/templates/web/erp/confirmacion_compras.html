@@ -1,0 +1,188 @@
+{% extends 'web/base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    /* =========================================
+       UI PREMIUM - CONFIRMACIÓN DE COMPRAS (RESPONSIVE)
+       ========================================= */
+    :root {
+        --pm-bg: #f4f6f9;
+        --pm-surface: #ffffff;
+        --pm-surface-hover: #f8f9fa;
+        --pm-border: #e1e4e8;
+        --pm-text: #24292e;
+        --pm-text-muted: #586069;
+        --pm-success: #28a745;
+        --pm-danger: #dc3545;
+        --pm-amber: #f9a826;
+        --pm-info: #0366d6;
+    }
+
+    body { background-color: var(--pm-bg); }
+    .fade-in { animation: fadeIn 0.4s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    .erp-container { max-width: 1100px; padding-bottom: 80px; }
+
+    .card-master {
+        background: var(--pm-surface);
+        border: 1px solid var(--pm-border);
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+        overflow: hidden;
+    }
+
+    /* Tabla de ítems consolidada */
+    .table-compras { margin-bottom: 0; color: var(--pm-text); vertical-align: middle; width: 100%; }
+    .table-compras th { 
+        color: var(--pm-text-muted); 
+        font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; 
+        padding: 16px 20px; border-bottom: 2px solid var(--pm-border); background: #f8f9fa;
+    }
+    .table-compras td { 
+        padding: 16px 20px; border-bottom: 1px solid var(--pm-border); 
+        background: var(--pm-surface); transition: background 0.2s ease;
+    }
+    .table-compras tr:hover td { background-color: var(--pm-surface-hover); }
+
+    /* Badges de estados premium */
+    .badge-soft { padding: 6px 12px; font-weight: 700; font-size: 0.75rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; text-transform: uppercase;}
+    .badge-soft-success { background: #e6ffed; color: #1a7f37; border: 1px solid #2ea043; }
+    .badge-soft-danger { background: #ffebe9; color: #cf222e; border: 1px solid #ff7b72; }
+    .badge-soft-info { background: #dbedff; color: #0366d6; border: 1px solid #8cc2ff; }
+
+    /* Botón de emisión definitiva */
+    .btn-checkout {
+        background: var(--pm-success); color: white; font-weight: bold; border-radius: 8px; padding: 14px 28px;
+        border: none; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; width: 100%;
+        font-size: 1.1rem; letter-spacing: 0.5px; box-shadow: 0 4px 10px rgba(40, 167, 69, 0.2);
+    }
+    .btn-checkout:hover { background: #22863a; transform: translateY(-2px); box-shadow: 0 6px 15px rgba(40, 167, 69, 0.4); color: white; }
+
+    .mobile-label { display: none; }
+
+    /* =========================================
+       DISEÑO ADAPTABLE MÓVIL EXTREMO
+       ========================================= */
+    @media (max-width: 768px) {
+        .erp-container { padding-top: 15px; }
+        .card-master { border: none; box-shadow: none; background: transparent; }
+        .table-compras thead { display: none; /* Transforma tabla en tarjetas */ }
+        .table-compras tbody { display: flex; flex-direction: column; gap: 14px; }
+        .table-compras tbody tr { 
+            display: flex; flex-direction: column; background: var(--pm-surface); 
+            border: 1px solid var(--pm-border); border-radius: 12px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.04); padding: 6px;
+        }
+        .table-compras td { 
+            padding: 10px 14px; border-bottom: 1px solid #f1f4f9; 
+            display: flex; flex-direction: column; gap: 4px; align-items: flex-start;
+        }
+        .table-compras td:last-child { border-bottom: none; }
+        .mobile-label { display: block; font-size: 0.7rem; text-transform: uppercase; color: var(--pm-text-muted); font-weight: 800; letter-spacing: 0.5px;}
+        
+        /* Panel fijado abajo para teléfonos */
+        .mobile-action-bar {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: var(--pm-surface); padding: 15px;
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.08); z-index: 1000;
+            border-top: 1px solid var(--pm-border);
+        }
+        .desktop-footer { display: none; }
+    }
+</style>
+
+<div class="container erp-container fade-in mt-4">
+    
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-2">
+        <div>
+            <a href="{% url 'dashboard_erp' %}" class="btn btn-sm btn-outline-secondary fw-bold rounded-pill px-3 shadow-sm mb-2">
+                <i class="bi bi-arrow-left me-1"></i> Volver al Panel
+            </a>
+            <h2 class="fw-bold text-dark mb-0">Verificación de Solicitud <span class="text-success">#{{ solicitud.folio }}</span></h2>
+            <p class="text-muted small mb-0">Origen del Requerimiento Interno: <strong>{{ solicitud.requerimiento_origen.folio|default:"Abastecimiento Directo" }}</strong></p>
+        </div>
+        <div class="text-start text-md-end">
+            <span class="badge bg-dark py-2 px-3 rounded-pill shadow-sm" style="font-size: 0.9rem;">
+                <i class="bi bi-calendar-check me-1 text-success"></i> {{ solicitud.fecha_creacion|date:"d M, Y" }}
+            </span>
+        </div>
+    </div>
+
+    <div class="alert alert-warning shadow-sm border-0 d-flex align-items-start rounded-3 p-4 mb-4 gap-3">
+        <i class="bi bi-info-circle-fill text-warning fs-3 mt-1"></i>
+        <div>
+            <h5 class="fw-bold text-dark mb-1">Control de Cambios - Administración</h5>
+            <p class="mb-0 text-dark small" style="line-height: 1.4;">A continuación se despliegan los materiales filtrados por la gerencia. Aquellos marcados como <span class="text-success fw-bold">Aprobado</span> procederán a la compra. Revise que los proveedores cotizados estén correctos antes de realizar la emisión final.</p>
+        </div>
+    </div>
+
+    <form method="POST" action="{% url 'confirmar_compra_definitiva' solicitud.id %}">
+        {% csrf_token %}
+        <div class="card-master">
+            <div class="table-responsive m-0 border-0">
+                <table class="table table-compras">
+                    <thead>
+                        <tr>
+                            <th>Material / SKU</th>
+                            <th>Cantidad Aceptada</th>
+                            <th>Proveedor Asignado</th>
+                            <th>Dictamen Gerencial</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td>
+                                <div class="fw-bold text-dark fs-6">{{ item.material.nombre }}</div>
+                                <div class="text-muted small mt-1"><i class="bi bi-upc-scan"></i> SKU: {{ item.material.sku }}</div>
+                            </td>
+
+                            <td>
+                                <span class="mobile-label">Cantidad autorizada</span>
+                                <div class="fw-bold fs-6 text-dark border bg-light px-2 py-1 rounded d-inline-block">
+                                    {{ item.cantidad_requerida|floatformat:"0" }} <span class="text-muted fw-normal" style="font-size: 0.8rem;">Unidades</span>
+                                </div>
+                            </td>
+
+                            <td>
+                                <span class="mobile-label">Proveedor cotizado</span>
+                                <div class="text-dark fw-semibold">
+                                    <i class="bi bi-shop me-1 text-muted"></i> {{ item.proveedor_cotizado.nombre|default:item.proveedor_cotizado }}
+                                </div>
+                            </td>
+
+                            <td>
+                                <span class="mobile-label">Estado del Ítem</span>
+                                {% if item.estado_aprobacion == 'APROBADO' %}
+                                    <span class="badge-soft badge-soft-success"><i class="bi bi-check2-circle"></i> Listo para Orden</span>
+                                {% elif item.estado_aprobacion == 'RECHAZADO' %}
+                                    <span class="badge-soft badge-soft-danger"><i class="bi bi-x-circle"></i> Negado por Admin</span>
+                                {% else %}
+                                    <span class="badge-soft badge-soft-info"><i class="bi bi-file-earmark-check"></i> {{ item.get_estado_aprobacion_display }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card-footer desktop-footer bg-light p-4 border-top d-flex justify-content-end">
+                <div style="max-width: 360px; width: 100%;">
+                    <button type="submit" class="btn-checkout">
+                        <i class="bi bi-check-all fs-4 me-2"></i> Proceder a Compra Definitiva
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="mobile-action-bar d-md-none">
+            <button type="submit" class="btn-checkout py-3">
+                <i class="bi bi-check-all fs-5 me-1"></i> Proceder a Compra
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

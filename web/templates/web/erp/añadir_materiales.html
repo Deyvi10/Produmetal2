@@ -2,6 +2,17 @@
 
 {% block content %}
 <style>
+    /* =========================================
+       UI PREMIUM - AÑADIR MATERIALES AL TICKET
+       ========================================= */
+    :root {
+        --pm-primary: #0366d6;
+        --pm-surface: #ffffff;
+        --pm-border: #e1e4e8;
+    }
+
+    body { background-color: #f4f6f9; }
+
     .card-transition { transition: all 0.3s ease; border: none; }
     .card-transition:hover { box-shadow: 0 12px 24px rgba(0,0,0,0.08)!important; }
     .table-hover-custom tbody tr { transition: background-color 0.2s ease, transform 0.2s ease; }
@@ -10,8 +21,54 @@
     .btn-bounce:active { transform: scale(0.95); }
     
     /* Personalización del Select2 para que coincida con Bootstrap */
-    .select2-container .select2-selection--single { height: 45px!important; padding: 8px; border-color: #dee2e6; border-radius: 8px; }
-    .select2-container--default .select2-selection--single .select2-selection__arrow { height: 43px!important; }
+    .select2-container .select2-selection--single { height: 48px!important; padding: 10px 8px; border-color: #d1d5da; border-radius: 8px; font-weight: 500;}
+    .select2-container--default .select2-selection--single .select2-selection__arrow { height: 46px!important; }
+
+    /* Inputs Táctiles Generales */
+    .form-control-solid, .form-select-solid {
+        background: #f8f9fa !important; border: 1px solid #d1d5da !important;
+        color: #24292e !important; border-radius: 8px; padding: 12px 14px;
+        font-weight: 500; font-size: 0.95rem; width: 100%; transition: all 0.2s ease;
+        min-height: 48px;
+    }
+    .form-control-solid:focus, .form-select-solid:focus {
+        border-color: var(--pm-primary) !important; box-shadow: 0 0 0 3px rgba(3, 102, 214, 0.15) !important; outline: none; background: #ffffff !important;
+    }
+
+    .mobile-label { display: none; }
+
+    /* =========================================
+       ADAPTACIÓN MÓVIL EXTREMA
+       ========================================= */
+    @media (max-width: 991px) {
+        /* Quita el sticky para que fluya natural en celular */
+        .sticky-lg-top { position: static !important; }
+        
+        /* Transforma la tabla de resumen en Tarjetas (Cards) */
+        .table-hover-custom thead { display: none; }
+        .table-hover-custom tbody, .table-hover-custom tr { display: flex; flex-direction: column; gap: 10px; }
+        .table-hover-custom tr { 
+            background: var(--pm-surface); border: 1px solid var(--pm-border); 
+            border-radius: 12px; margin-bottom: 0.5rem; padding: 5px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.03); 
+        }
+        .table-hover-custom td { 
+            padding: 12px 15px !important; border-bottom: 1px solid #f1f4f9; 
+            display: flex; flex-direction: column; gap: 6px; align-items: flex-start !important;
+        }
+        .table-hover-custom td:last-child { border-bottom: none; flex-direction: row; justify-content: flex-end; width: 100%;}
+        .mobile-label { display: block; font-size: 0.7rem; text-transform: uppercase; color: #8b949e; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 4px;}
+        
+        /* Barrita inferior flotante para finalizar */
+        .desktop-footer { display: none !important; }
+        .mobile-bottom-bar {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: var(--pm-surface); padding: 15px;
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.08); z-index: 1000;
+            border-top: 1px solid var(--pm-border);
+        }
+        body { padding-bottom: 80px; }
+    }
 </style>
 
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
@@ -24,14 +81,14 @@
                 <div class="bg-primary text-white rounded-circle d-flex justify-content-center align-items-center me-3 shadow-sm" style="width: 45px; height: 45px;">
                     <i class="bi bi-box-seam fs-5"></i>
                 </div>
-                Paso 2: Añadir Materiales
+                Paso 2: Materiales y Logística
             </h3>
             <p class="text-muted ms-5 ps-2 mb-0 fs-6">
                 Ticket: <span class="badge bg-dark">{{ requerimiento.folio }}</span> | 
                 Obra: <strong class="text-primary">{{ requerimiento.proyecto.nombre }}</strong>
             </p>
         </div>
-        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+        <div class="col-md-4 text-md-end mt-3 mt-md-0 d-none d-md-block">
             <div class="d-inline-flex align-items-center gap-2 bg-white px-4 py-2 rounded-pill shadow-sm border">
                 <span class="text-muted small fw-bold">PROGRESO</span>
                 <div class="progress" style="width: 100px; height: 10px;">
@@ -52,34 +109,40 @@
     {% endif %}
 
     <div class="row g-4">
+        
         <div class="col-12 col-lg-5 col-xl-4">
             <div class="card card-transition shadow-sm rounded-4 sticky-lg-top" style="top: 20px;">
                 <div class="card-header bg-dark text-white p-3 rounded-top-4 d-flex align-items-center">
                     <i class="bi bi-search me-2 fs-5 text-warning"></i>
-                    <h6 class="mb-0 fw-bold">Buscar Material</h6>
+                    <h6 class="mb-0 fw-bold">Asignar Suministros</h6>
                 </div>
                 
                 <div class="card-body p-4 bg-light rounded-bottom-4 border border-top-0">
                     <form action="" method="POST" class="needs-validation" novalidate>
                         {% csrf_token %}
                         
-                        <div class="mb-4">
-                            <label class="form-label fw-bold text-dark small text-uppercase"><i class="bi bi-tags me-1"></i> Catálogo <span class="text-danger">*</span></label>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-dark small text-uppercase"><i class="bi bi-tags me-1 text-primary"></i> Catálogo de Material <span class="text-danger">*</span></label>
                             {{ form.material }}
-                            <div class="form-text text-muted mt-2" style="font-size: 0.8rem;">Escribe el nombre o SKU para buscar rápidamente.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-dark small text-uppercase"><i class="bi bi-shop me-1 text-primary"></i> Bodega Destino <span class="text-danger">*</span></label>
+                            {{ form.bodega_destino }}
+                            <div class="form-text text-muted mt-1" style="font-size: 0.75rem;">¿Hacia qué bodega física requiere que llegue este ítem?</div>
                         </div>
 
                         <div class="mb-4">
-                            <label class="form-label fw-bold text-dark small text-uppercase"><i class="bi bi-calculator me-1"></i> Cantidad (Enteros) <span class="text-danger">*</span></label>
-                            <div class="input-group input-group-lg shadow-sm">
+                            <label class="form-label fw-bold text-dark small text-uppercase"><i class="bi bi-calculator me-1 text-primary"></i> Cantidad (Enteros) <span class="text-danger">*</span></label>
+                            <div class="input-group shadow-sm">
                                 {{ form.cantidad_solicitada }}
-                                <span class="input-group-text bg-white border-start-0 text-primary fw-bold">Unid.</span>
+                                <span class="input-group-text bg-white border-start-0 text-primary fw-bold">Unidades</span>
                             </div>
                         </div>
 
                         <div class="d-grid mt-2">
-                            <button type="submit" class="btn btn-primary btn-lg btn-bounce fw-bold shadow-sm d-flex justify-content-center align-items-center gap-2 rounded-3">
-                                <i class="bi bi-plus-circle-fill"></i> Añadir a la Lista
+                            <button type="submit" name="añadir_item" class="btn btn-primary btn-lg btn-bounce fw-bold shadow-sm d-flex justify-content-center align-items-center gap-2 rounded-3 py-3">
+                                <i class="bi bi-plus-circle-fill fs-5"></i> Añadir a la Lista
                             </button>
                         </div>
                     </form>
@@ -90,7 +153,7 @@
         <div class="col-12 col-lg-7 col-xl-8">
             <div class="card card-transition shadow-sm rounded-4 h-100 border">
                 <div class="card-header bg-white border-bottom p-3 d-flex justify-content-between align-items-center rounded-top-4">
-                    <h5 class="fw-bold text-dark mb-0"><i class="bi bi-list-check text-success me-2"></i> Resumen del Ticket</h5>
+                    <h5 class="fw-bold text-dark mb-0"><i class="bi bi-list-check text-success me-2"></i> Resumen de la Solicitud</h5>
                     <span class="badge bg-success-subtle text-success border border-success rounded-pill px-3 py-2 fs-6">
                         {{ detalles.count }} Ítems
                     </span>
@@ -101,7 +164,7 @@
                         <table class="table table-hover-custom align-middle mb-0">
                             <thead class="table-light text-secondary small text-uppercase">
                                 <tr>
-                                    <th class="ps-4 py-3">Material Solicitado</th>
+                                    <th class="ps-4 py-3">Detalle y Logística</th>
                                     <th class="text-center" style="width: 160px;">Corregir Cantidad</th>
                                     <th class="text-end pe-4" style="width: 100px;">Quitar</th>
                                 </tr>
@@ -109,25 +172,31 @@
                             <tbody>
                                 {% for item in detalles %}
                                 <tr>
-                                    <td class="ps-4 py-3">
+                                    <td class="ps-md-4 py-3">
+                                        <span class="mobile-label">Ítem Solicitado</span>
                                         <div class="fw-bold text-dark fs-6">{{ item.material.nombre }}</div>
-                                        <div class="small text-muted"><i class="bi bi-upc-scan me-1"></i> SKU: {{ item.material.sku }}</div>
+                                        <div class="small text-muted mb-2"><i class="bi bi-upc-scan me-1"></i> SKU: {{ item.material.sku }}</div>
+                                        
+                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill shadow-sm" style="font-size: 0.75rem;">
+                                            <i class="bi bi-geo-alt-fill me-1"></i> Destino: {{ item.bodega_destino.nombre|default:"Sin asignar" }}
+                                        </span>
                                     </td>
                                     
-                                    <td class="text-center">
-                                        <form method="POST" action="{% url 'actualizar_item_ticket' item.id %}" class="d-flex justify-content-center align-items-center gap-2">
+                                    <td class="text-md-center">
+                                        <span class="mobile-label">Unidades a Pedir</span>
+                                        <form method="POST" action="{% url 'actualizar_item_ticket' item.id %}" class="d-flex justify-content-start justify-content-md-center align-items-center gap-2">
                                             {% csrf_token %}
-                                            <input type="number" step="1" min="1" name="nueva_cantidad" value="{{ item.cantidad_solicitada|floatformat:0 }}" class="form-control form-control-sm text-center fw-bold text-primary shadow-sm" style="width: 80px; border-radius: 8px;">
-                                            <button type="submit" class="btn btn-sm btn-primary rounded-circle shadow-sm btn-bounce" style="width: 32px; height: 32px;" title="Guardar cantidad">
+                                            <input type="number" step="1" min="1" name="nueva_cantidad" value="{{ item.cantidad_solicitada|floatformat:0 }}" class="form-control form-control-sm text-center fw-bold text-primary shadow-sm" style="width: 80px; height: 38px; border-radius: 8px;">
+                                            <button type="submit" class="btn btn-primary rounded-circle shadow-sm btn-bounce" style="width: 38px; height: 38px;" title="Guardar cantidad">
                                                 <i class="bi bi-check-lg"></i>
                                             </button>
                                         </form>
                                     </td>
                                     
-                                    <td class="text-end pe-4">
+                                    <td class="text-end pe-md-4">
                                         <form action="{% url 'eliminar_item_ticket' item.id %}" method="POST" class="d-inline">
                                             {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-outline-danger btn-bounce rounded-circle shadow-sm" style="width: 38px; height: 38px;" title="Quitar Material" onclick="return confirm('¿Seguro que deseas quitar este material del ticket?');">
+                                            <button type="submit" class="btn btn-outline-danger btn-bounce rounded-circle shadow-sm" style="width: 42px; height: 42px;" title="Quitar Material" onclick="return confirm('¿Seguro que deseas quitar este material del ticket?');">
                                                 <i class="bi bi-trash3-fill"></i>
                                             </button>
                                         </form>
@@ -149,40 +218,58 @@
                     </div>
                 </div>
                 
-                <div class="card-footer bg-light border-top p-4 rounded-bottom-4 text-end">
+                {% if detalles %}
+                <div class="card-footer desktop-footer bg-light border-top p-4 rounded-bottom-4 text-end">
                     <form method="POST" action="{% url 'procesar_ticket' requerimiento.id 'enviar' %}" class="d-inline">
                         {% csrf_token %}
-                        <button type="submit" class="btn btn-success btn-lg fw-bold px-5 shadow-sm btn-bounce {% if not detalles %}disabled{% endif %}" onclick="this.disabled=true; this.form.submit();">
-                            <i class="bi bi-send-check-fill me-2"></i> Finalizar y Enviar a Gerencia
+                        <button type="submit" class="btn btn-success btn-lg fw-bold px-5 shadow-sm btn-bounce" onclick="this.disabled=true; this.form.submit();">
+                            <i class="bi bi-send-check-fill me-2"></i> Finalizar y Enviar Requerimiento
                         </button>
                     </form>
                 </div>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
 
+{% if detalles %}
+<div class="mobile-bottom-bar d-none">
+    <form method="POST" action="{% url 'procesar_ticket' requerimiento.id 'enviar' %}" class="w-100">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-success w-100 fw-bold shadow-lg py-3 rounded-3" style="font-size: 1.1rem;" onclick="this.disabled=true; this.form.submit();">
+            <i class="bi bi-send-check-fill me-2"></i> Finalizar Solicitud
+        </button>
+    </form>
+</div>
+{% endif %}
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
     $(document).ready(function() {
-        $('select').select2({
+        // Inicializar Select2 solo para el Material (Buscador potente)
+        $('select[name="material"]').select2({
             placeholder: "🔍 Busca un material o SKU...",
             allowClear: true,
             width: '100%',
-            language: {
-                noResults: function() { return "No se encontró el material"; }
-            }
+            language: { noResults: function() { return "No se encontró el material"; } }
         });
 
-        $('select').addClass('form-select form-select-lg');
+        // Estilizar Select de Bodega (Nativo, rápido en móvil)
+        $('select[name="bodega_destino"]').addClass('form-select-solid');
         
-        // RESTRICCIÓN JAVASCRIPT: Forzar enteros en el input del formulario principal de Django
+        // RESTRICCIÓN JAVASCRIPT: Forzar enteros en cantidad
         $('input[name="cantidad_solicitada"]').attr({
             'step': '1',
             'min': '1',
             'placeholder': 'Ej: 5'
-        }).addClass('form-control text-center fw-bold text-primary');
+        }).addClass('form-control-solid text-center fw-bold text-primary').css('min-height', '48px');
+
+        // Mostrar barra flotante móvil si la pantalla es pequeña
+        if (window.innerWidth <= 991 && document.querySelector('.mobile-bottom-bar')) {
+            document.querySelector('.mobile-bottom-bar').classList.remove('d-none');
+        }
     });
 </script>
 {% endblock %}

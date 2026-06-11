@@ -4,165 +4,228 @@
 {% block content %}
 <style>
     /* =========================================
-       UI PREMIUM - REVISIÓN LOGÍSTICA CORREGIDA
+       UI PREMIUM - REVISIÓN LOGÍSTICA (RESPONSIVE)
        ========================================= */
     :root {
-        --pm-bg: #f8f9fa;
+        --pm-bg: #f4f6f9;
         --pm-surface: #ffffff;
-        --pm-surface-hover: #f1f4f9;
+        --pm-surface-hover: #f8f9fa;
         --pm-border: #e1e4e8;
         --pm-text: #24292e;
         --pm-text-muted: #586069;
         --pm-amber: #f9a826;
+        --pm-orange: #fd7e14;
         --pm-success: #28a745;
         --pm-danger: #dc3545;
         --pm-info: #0366d6;
     }
 
+    body { background-color: var(--pm-bg); }
     .fade-in { animation: fadeIn 0.4s ease-in-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Contenedor Principal */
+    .erp-container { max-width: 1200px; padding-bottom: 80px; }
 
     .card-master {
         background: var(--pm-surface);
         border: 1px solid var(--pm-border);
         border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
         overflow: hidden;
     }
 
-    .table-req { margin-bottom: 0; color: var(--pm-text); vertical-align: middle; }
+    /* Tabla para Escritorio */
+    .table-req { margin-bottom: 0; color: var(--pm-text); vertical-align: middle; width: 100%; }
     .table-req th { 
         color: var(--pm-text-muted); 
         font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; 
         padding: 16px 20px; border-bottom: 2px solid var(--pm-border); background: #f8f9fa;
     }
     .table-req td { 
-        padding: 20px; border-bottom: 1px solid var(--pm-border); 
+        padding: 16px 20px; border-bottom: 1px solid var(--pm-border); 
         background: var(--pm-surface); transition: background 0.2s ease;
     }
     .table-req tr:hover td { background-color: var(--pm-surface-hover); }
 
-    /* Inputs corregidos para que se lean bien */
+    /* Inputs y Selects Táctiles */
     .form-control-solid, .form-select-solid {
-        background: #f1f4f9 !important;
-        border: 1px solid #d1d5da !important;
-        color: #24292e !important;
-        border-radius: 6px;
-        padding: 10px 12px;
-        font-weight: 500;
-        transition: all 0.2s ease;
+        background: #f1f4f9 !important; border: 1px solid #d1d5da !important;
+        color: #24292e !important; border-radius: 8px; padding: 12px;
+        font-weight: 500; transition: all 0.2s ease; width: 100%;
+        min-height: 48px; /* Touch-friendly para celular */
     }
     .form-control-solid:focus, .form-select-solid:focus {
-        border-color: var(--pm-info) !important;
-        box-shadow: 0 0 0 3px rgba(3, 102, 214, 0.2);
-        outline: none;
-        background: #ffffff !important;
+        border-color: var(--pm-info) !important; box-shadow: 0 0 0 3px rgba(3, 102, 214, 0.2);
+        outline: none; background: #ffffff !important;
     }
 
+    /* Píldoras de Estado */
     .stock-pill {
         display: inline-flex; align-items: center; gap: 6px;
-        padding: 6px 12px; border-radius: 20px;
-        font-weight: 700; font-size: 0.9rem;
+        padding: 6px 12px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;
     }
     .pill-success { background: #e6ffed; color: #1a7f37; border: 1px solid #2ea043; }
     .pill-danger { background: #ffebe9; color: #cf222e; border: 1px solid #ff7b72; }
 
+    .badge-parcial { background: rgba(253, 126, 20, 0.15); color: var(--pm-orange); border: 1px solid rgba(253, 126, 20, 0.3); font-weight: bold; }
+
+    /* Botones de Acción */
     .btn-auto {
-        background: var(--pm-info); color: white;
-        font-weight: bold; border-radius: 8px; padding: 12px 24px;
-        border: none; transition: all 0.2s ease;
+        background: var(--pm-info); color: white; font-weight: bold; border-radius: 8px; padding: 12px 24px;
+        border: none; transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center;
     }
-    .btn-auto:hover { background: #005cc5; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(3, 102, 214, 0.3); }
+    .btn-auto:hover { background: #005cc5; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(3, 102, 214, 0.3); color: white; }
 
     .btn-manual {
-        background: var(--pm-success); color: white;
-        font-weight: bold; border-radius: 8px; padding: 12px 24px;
-        border: none; transition: all 0.2s ease;
+        background: var(--pm-success); color: white; font-weight: bold; border-radius: 8px; padding: 12px 24px;
+        border: none; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; width: 100%;
     }
-    .btn-manual:hover { background: #22863a; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(40, 167, 69, 0.3); }
+    .btn-manual:hover { background: #22863a; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(40, 167, 69, 0.3); color: white;}
+
+    .mobile-label { display: none; }
+
+    /* =========================================
+       MAGIA MÓVIL (Transformación a Cards)
+       ========================================= */
+    @media (max-width: 768px) {
+        .erp-container { padding-top: 15px; }
+        .card-master { border: none; box-shadow: none; background: transparent; }
+        .table-req thead { display: none; /* Ocultar cabeceras en celular */ }
+        .table-req tbody { display: flex; flex-direction: column; gap: 16px; }
+        .table-req tbody tr { 
+            display: flex; flex-direction: column; background: var(--pm-surface); 
+            border: 1px solid var(--pm-border); border-radius: 12px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05); padding: 5px;
+        }
+        .table-req td { 
+            padding: 12px 15px; border-bottom: 1px solid #f1f4f9; 
+            display: flex; flex-direction: column; gap: 6px; 
+        }
+        .table-req td:last-child { border-bottom: none; }
+        .mobile-label { display: block; font-size: 0.7rem; text-transform: uppercase; color: var(--pm-text-muted); font-weight: 800; letter-spacing: 0.5px;}
+        
+        .header-acciones { flex-direction: column; align-items: stretch !important; gap: 15px; }
+        .btn-auto { width: 100%; }
+        
+        /* Barrita flotante para guardar cambios en celular */
+        .mobile-bottom-bar {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: var(--pm-surface); padding: 15px;
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.1); z-index: 1000;
+            border-top: 1px solid var(--pm-border);
+        }
+        .card-footer { display: none; } /* Ocultar el footer normal de la tarjeta */
+    }
 </style>
 
-<div class="container erp-container mb-5 fade-in pt-4">
+<div class="container erp-container fade-in mt-4">
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
         <div>
-            <a href="{% url 'dashboard_erp' %}" class="btn btn-sm btn-outline-secondary fw-bold mb-3">
-                <i class="bi bi-arrow-left me-1"></i> Volver al panel
+            <a href="{% url 'dashboard_erp' %}" class="btn btn-sm btn-outline-secondary fw-bold mb-3 rounded-pill px-3">
+                <i class="bi bi-arrow-left me-1"></i> Panel
             </a>
-            <h2 class="fw-bold text-dark mb-0">
-                Auditoría de Ticket <span class="text-primary">#{{ requerimiento.folio }}</span>
-            </h2>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <h2 class="fw-bold text-dark mb-0">Ticket <span class="text-primary">#{{ requerimiento.folio }}</span></h2>
+                
+                {% if requerimiento.estado == 'PARCIALMENTE_DESPACHADO' %}
+                    <span class="badge badge-parcial px-3 py-2 rounded-pill fs-6 shadow-sm"><i class="bi bi-pie-chart-fill me-1"></i> Abierto / Entregas Parciales</span>
+                {% elif requerimiento.estado == 'PENDIENTE' %}
+                    <span class="badge bg-secondary px-3 py-2 rounded-pill fs-6 shadow-sm"><i class="bi bi-hourglass-split me-1"></i> Pendiente</span>
+                {% else %}
+                    <span class="badge bg-dark px-3 py-2 rounded-pill fs-6 shadow-sm">{{ requerimiento.estado }}</span>
+                {% endif %}
+            </div>
         </div>
-        <div class="text-md-end">
-            <span class="badge bg-dark fs-6 shadow-sm"><i class="bi bi-building me-1"></i> {{ requerimiento.proyecto.centro_costos }}</span>
+        <div class="text-start text-md-end">
+            <div class="text-muted small fw-bold text-uppercase mb-1">Destino / Centro de Costos</div>
+            <span class="badge bg-dark fs-6 shadow-sm py-2 px-3"><i class="bi bi-building me-1"></i> {{ requerimiento.proyecto.centro_costos }}</span>
         </div>
     </div>
 
-    <div class="alert alert-info shadow-sm border-0 d-flex justify-content-between align-items-center mb-4 rounded-3">
+    <div class="alert alert-info shadow-sm border-0 d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 rounded-3 p-4 gap-3">
         <div>
-            <h5 class="fw-bold text-dark mb-1"></i> Asistente de Logística</h5>
-            <p class="mb-0 small text-dark">Permite que el sistema evalúe el stock actual. Enviará a bodega lo que haya y generará órdenes de compra para los faltantes automáticamente.</p>
+            <h5 class="fw-bold text-dark mb-2"><i class="bi bi-robot text-primary me-2"></i> Asistente de Logística</h5>
+            <p class="mb-0 text-dark" style="font-size: 0.9rem;">El sistema puede revisar automáticamente el inventario actual de la bodega, aprobar el despacho de lo que haya en existencia y enviar a Compras exactamente los materiales que falten.</p>
         </div>
-        <a href="{% url 'procesar_ticket' requerimiento.id 'aprobar' %}" class="btn-auto text-decoration-none">
-            <i class="bi bi-magic me-2"></i> Dividir y Aprobar Automáticamente
+        <a href="{% url 'procesar_ticket' requerimiento.id 'aprobar' %}" class="btn-auto text-decoration-none text-nowrap shadow-sm">
+            <i class="bi bi-magic me-2"></i> Dividir y Aprobar Auto
         </a>
     </div>
 
     <form method="POST">
         {% csrf_token %}
         <div class="card-master">
-            <div class="table-responsive">
+            <div class="table-responsive m-0 border-0">
                 <table class="table table-req">
                     <thead>
                         <tr>
-                            <th>Detalle del Material</th>
-                            <th class="text-center">Inventario Actual</th>
-                            <th>Decisión Manual</th>
-                            <th>Notas Adicionales</th>
+                            <th>Material Requerido</th>
+                            <th>Desglose de Cantidades</th>
+                            <th class="text-center">Stock Bodega</th>
+                            <th>Decisión Logística</th>
+                            <th>Observaciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item in items %}
                         <tr>
                             <td>
-                                <div class="d-flex align-items-center gap-3">
-                                    <div class="bg-light rounded-3 px-3 py-2 border text-center">
-                                        <span class="d-block text-muted" style="font-size: 0.65rem; font-weight: bold;">CANTIDAD</span>
-                                        <span class="fw-bold fs-5 text-dark">{{ item.cantidad_solicitada|floatformat:"0" }}</span>
+                                <div class="fw-bold text-dark fs-6">{{ item.material.nombre }}</div>
+                                <div class="text-muted small mt-1"><i class="bi bi-upc-scan"></i> SKU: {{ item.material.sku }}</div>
+                            </td>
+
+                            <td>
+                                <span class="mobile-label">Desglose de Solicitud</span>
+                                <div class="d-flex flex-column gap-1">
+                                    <div class="text-muted small">
+                                        Original pedido: 
+                                        <strong class="text-dark border bg-light px-2 py-1 rounded">
+                                            {{ item.cantidad_solicitada|add:item.cantidad_despachada|default:item.cantidad_solicitada|floatformat:"0" }}
+                                        </strong>
                                     </div>
-                                    <div>
-                                        <div class="fw-bold text-dark fs-6">{{ item.material.nombre }}</div>
-                                        <div class="text-muted small"><i class="bi bi-upc-scan"></i> SKU: {{ item.material.sku }}</div>
+                                    <div class="text-danger small mt-1">
+                                        Faltante/Pendiente: 
+                                        <strong class="text-danger fw-bold fs-6">
+                                            {{ item.cantidad_solicitada|floatformat:"0" }}
+                                        </strong>
                                     </div>
                                 </div>
                             </td>
-                            <td class="text-center">
+
+                            <td class="text-md-center">
+                                <span class="mobile-label">Disponibilidad Física</span>
                                 {% if item.material.stock_actual >= item.cantidad_solicitada %}
-                                    <span class="stock-pill pill-success" title="Hay suficiente stock">
-                                        <i class="bi bi-check-circle-fill"></i> {{ item.material.stock_actual|floatformat:"0" }} en Bodega
+                                    <span class="stock-pill pill-success shadow-sm">
+                                        <i class="bi bi-check-circle-fill"></i> {{ item.material.stock_actual|floatformat:"0" }} en percha
                                     </span>
                                 {% else %}
-                                    <span class="stock-pill pill-danger" title="Falta stock">
-                                        <i class="bi bi-exclamation-triangle-fill"></i> {{ item.material.stock_actual|floatformat:"0" }} disponibles
+                                    <span class="stock-pill pill-danger shadow-sm">
+                                        <i class="bi bi-exclamation-triangle-fill"></i> Solo {{ item.material.stock_actual|floatformat:"0" }}
                                     </span>
                                 {% endif %}
                             </td>
+
                             <td>
+                                <span class="mobile-label">Acción a tomar</span>
                                 {% if item.estado_item != 'PENDIENTE' %}
-                                    <span class="badge bg-secondary w-100 py-2 fs-6">{{ item.get_estado_item_display }}</span>
+                                    <span class="badge bg-light text-dark border w-100 py-3 fs-6">{{ item.get_estado_item_display }}</span>
                                 {% else %}
-                                    <select name="decision_{{ item.id }}" class="form-select-solid w-100">
-                                        <option value="PENDIENTE" selected>⏳ Pendiente de revisión</option>
-                                        <option value="APROBADO_BODEGA">📦 Aprobar para Despacho</option>
+                                    <select name="decision_{{ item.id }}" class="form-select-solid">
+                                        <option value="PENDIENTE" selected>⏳ Pendiente</option>
+                                        <option value="APROBADO_BODEGA">📦 Despachar Existencia</option>
                                         <option value="EN_COMPRAS">🛒 Mandar a Compras</option>
-                                        <option value="RECHAZADO">❌ Rechazar Ítem</option>
+                                        <option value="RECHAZADO">❌ Cancelar Ítem</option>
                                     </select>
                                 {% endif %}
                             </td>
+
                             <td>
+                                <span class="mobile-label">Notas</span>
                                 {% if item.estado_item == 'PENDIENTE' %}
-                                    <input type="text" name="motivo_{{ item.id }}" class="form-control-solid w-100" placeholder="Añadir nota o motivo...">
+                                    <input type="text" name="motivo_{{ item.id }}" class="form-control-solid" placeholder="Detalles de la decisión...">
                                 {% else %}
-                                    <span class="text-muted small fw-bold">{{ item.motivo_rechazo|default:"---" }}</span>
+                                    <span class="text-muted small fw-bold d-block p-2 bg-light rounded">{{ item.motivo_rechazo|default:"Sin notas." }}</span>
                                 {% endif %}
                             </td>
                         </tr>
@@ -172,10 +235,18 @@
             </div>
             
             <div class="card-footer bg-light p-4 border-top d-flex justify-content-end align-items-center">
-                <button type="submit" class="btn-manual">
-                    <i class="bi bi-save-fill me-2"></i> Guardar Decisiones Manuales
-                </button>
+                <div style="max-width: 300px; width: 100%;">
+                    <button type="submit" class="btn-manual shadow-sm">
+                        <i class="bi bi-save2-fill me-2"></i> Guardar Revisión
+                    </button>
+                </div>
             </div>
+        </div>
+
+        <div class="mobile-bottom-bar d-md-none">
+            <button type="submit" class="btn-manual shadow-lg py-3">
+                <i class="bi bi-save2-fill me-2"></i> Guardar Cambios
+            </button>
         </div>
     </form>
 </div>

@@ -182,7 +182,7 @@ def dashboard_erp(request):
 
     elif es_comprador(usuario):
         context['rol'] = 'Compras'
-        context['solicitudes_compras'] = SolicitudCompra.objects.filter(estado='ENVIADO_A_COMPRAS').order_by('-fecha_creacion')
+        context['solicitudes_compras'] = SolicitudCompra.objects.filter(estado__in=['ENVIADO_A_COMPRAS', 'REVISADO_ADMIN']).order_by('-fecha_creacion')
         context['alertas_oc'] = OrdenCompra.objects.filter(estado='RECIBIDA_PARCIAL')
 
     else:
@@ -450,17 +450,27 @@ def atender_cotizacion(request, solicitud_id):
 
 @login_required(login_url='login')
 @user_passes_test(es_comprador, login_url='dashboard_erp')
+@transaction.atomic
 def desglosar_item_cotizacion(request, item_id):
     item = get_object_or_404(CotizacionItem, id=item_id)
     if request.method == 'POST':
-        cantidad_nueva = float(request.POST.get('cantidad_separar', 0))
-        if 0 < cantidad_nueva < float(item.cantidad_requerida):
-            item.cantidad_requerida -= cantidad_nueva
-            item.save()
-            CotizacionItem.objects.create(
-                solicitud=item.solicitud, material=item.material, cantidad_requerida=cantidad_nueva
-            )
-            messages.success(request, "Material desglosado en dos registros para comprar a distintos proveedores.")
+        try:
+            # Blindaje con Decimal
+            cantidad_nueva = Decimal(request.POST.get('cantidad_separar', '0').replace(',', '.'))
+            if Decimal('0') < cantidad_nueva < item.cantidad_requerida:
+                item.cantidad_requerida -= cantidad_nueva
+                item.save()
+                
+                # Crear el nuevo clon preservando la solicitud
+                CotizacionItem.objects.create(
+                    solicitud=item.solicitud, material=item.material, 
+                    cantidad_requerida=cantidad_nueva, estado_aprobacion=item.estado_aprobacion
+                )
+                messages.success(request, "Material desglosado correctamente para asignar a otro proveedor.")
+            else:
+                messages.error(request, "La cantidad a separar es inválida o excede lo requerido.")
+        except Exception as e:
+            messages.error(request, "Error de formato numérico.")
     return redirect('atender_cotizacion', solicitud_id=item.solicitud.id)
 
 
@@ -526,39 +536,71 @@ def revisar_cotizacion(request, solicitud_id):
 @user_passes_test(es_admin, login_url='dashboard_erp')
 @transaction.atomic
 def finalizar_revision_cotizacion(request, solicitud_id):
+    """
+    VISTA DEL ADMIN: Solo finaliza su revisión y le pasa la pelota a Compras.
+    Ya no genera las órdenes de compra aquí.
+    """
     solicitud = get_object_or_404(SolicitudCompra, id=solicitud_id)
     
-    items_aprobados = solicitud.items_cotizados.filter(estado_aprobacion='APROBADO')
-    items_pendientes = solicitud.items_cotizados.filter(estado_aprobacion='PENDIENTE')
-    
-    proveedores = items_aprobados.values_list('proveedor_cotizado', flat=True).distinct()
-    
-    for prov in proveedores:
-        if prov: 
-            items_prov = items_aprobados.filter(proveedor_cotizado=prov)
-            nueva_oc = OrdenCompra.objects.create(
-                proveedor=prov,
-                creado_por=request.user,
-                estado='EMITIDA', 
-                observaciones=f"Generada automáticamente desde Solicitud {solicitud.folio}"
-            )
-            for item in items_prov:
-                DetalleOrdenCompra.objects.create(
-                    orden=nueva_oc, material=item.material, cantidad_pedida=item.cantidad_requerida
-                )
-            items_prov.update(estado_aprobacion='COMPRADO')
-            
-    if items_pendientes.exists():
-        solicitud.estado = 'COTIZADO'
-        messages.warning(request, f"Se generaron O.C. parciales. Aún te quedan {items_pendientes.count()} ítems pendientes por decidir.")
-    else:
-        solicitud.estado = 'PROCESADO'
-        messages.success(request, "Todas las órdenes fueron generadas y la solicitud fue cerrada por completo.")
-        
+    # Cambiamos al nuevo estado (asegúrate de haberlo agregado en models.py como se indicó en la mejora 9)
+    solicitud.estado = 'REVISADO_ADMIN'
     solicitud.save()
+    
+    messages.success(request, "Revisión finalizada. Se notificó al departamento de Compras para que procedan con la generación definitiva de las Órdenes.")
     return redirect('dashboard_erp')
 
+# AGREGAR NUEVA VISTA PARA COMPRADOR
+@login_required(login_url='login')
+@user_passes_test(es_comprador, login_url='dashboard_erp')
+@transaction.atomic
+def confirmar_compra_definitiva(request, solicitud_id):
+    """
+    VISTA DE COMPRAS: El comprador revisa lo que el admin aprobó/rechazó
+    y le da al botón final para generar las Órdenes de Compra reales.
+    """
+    solicitud = get_object_or_404(SolicitudCompra, id=solicitud_id)
+    
+    if request.method == 'POST':
+        # Buscamos solo los ítems que el Administrador dejó como APROBADO
+        items_aprobados = solicitud.items_cotizados.filter(estado_aprobacion='APROBADO')
+        proveedores = items_aprobados.values_list('proveedor_cotizado', flat=True).distinct()
+        
+        # Generamos una Orden de Compra por cada proveedor distinto
+        for prov in proveedores:
+            if prov: 
+                items_prov = items_aprobados.filter(proveedor_cotizado=prov)
+                
+                # Crear la O.C. Cabecera
+                nueva_oc = OrdenCompra.objects.create(
+                    proveedor=prov, 
+                    creado_por=request.user, 
+                    estado='EMITIDA', 
+                    observaciones=f"Generada formalmente por Compras desde Solicitud {solicitud.folio}"
+                )
+                
+                # Crear los detalles de la O.C.
+                for item in items_prov:
+                    DetalleOrdenCompra.objects.create(
+                        orden=nueva_oc, 
+                        material=item.material, 
+                        cantidad_pedida=item.cantidad_requerida
+                    )
+                
+                # Actualizar el estado del ítem cotizado
+                items_prov.update(estado_aprobacion='COMPRADO')
+                
+        # Cerramos la solicitud por completo
+        solicitud.estado = 'PROCESADO'
+        solicitud.save()
+        
+        messages.success(request, "¡Check confirmado! Las Órdenes de Compra definitivas han sido generadas exitosamente.")
+        return redirect('dashboard_erp')
 
+    # Si entra por GET, le mostramos la pantalla de resumen antes de confirmar
+    return render(request, 'web/erp/confirmacion_compras.html', {
+        'solicitud': solicitud, 
+        'items': solicitud.items_cotizados.all()
+    })
 # =======================================================
 # MÓDULO DE INVENTARIO Y ABASTECIMIENTO TRADICIONAL
 # =======================================================
@@ -809,8 +851,8 @@ def venta_material(request):
         form = VentaMaterialForm()
     return render(request, 'web/erp/venta_material.html', {'form': form})
 
-
 @login_required(login_url='login')
+@user_passes_test(lambda u: es_bodeguero(u) or es_admin(u) or es_solicitante(u), login_url='dashboard_erp')
 def inventario_actual(request):
     # 1. SEGURIDAD LOGÍSTICA: Qué ve cada usuario
     if request.user.is_superuser:
@@ -1180,6 +1222,9 @@ def imprimir_pdf_ticket(request, req_id):
         'detalles': ticket.detalles.all(),
         'logo_path': os.path.join(settings.BASE_DIR, 'web', 'static', 'web', 'img', 'logo.jpg'),
         'fecha_impresion': timezone.now(),
+        'firma_bodeguero': request.user.get_full_name() or request.user.username,
+        'firma_solicitante': ticket.solicitante.get_full_name() or ticket.solicitante.username,
+        'firma_admin': 'Administración ProduMetal',
     }
  
     html = get_template('web/erp/pdf_ticket.html').render(context)
@@ -1201,6 +1246,8 @@ def imprimir_pdf_oc(request, oc_id):
         'oc': oc, 'detalles': oc.detalles.all(),
         'logo_path': os.path.join(settings.BASE_DIR, 'web', 'static', 'web', 'img', 'logo.jpg'),
         'fecha_impresion': timezone.now(),
+        'firma_compras': oc.creado_por.get_full_name() or oc.creado_por.username,
+        'firma_admin': 'Gerencia de ProduMetal',
     }
  
     html = get_template('web/erp/pdf_oc.html').render(context)
@@ -1760,3 +1807,42 @@ def detalle_solicitud_procesada(request, solicitud_id):
         'solicitud': solicitud, 
         'items': items
     })
+
+# AGREGAR nueva vista
+@login_required(login_url='login')
+@user_passes_test(es_bodeguero, login_url='dashboard_erp')
+@transaction.atomic
+def entrega_directa_bodeguero(request):
+    bodega_asignada = getattr(request.user.perfil, 'bodega_asignada', None)
+    if not bodega_asignada:
+        messages.error(request, "No tienes una bodega asignada para realizar despachos.")
+        return redirect('dashboard_erp')
+
+    if request.method == 'POST':
+        material_id = request.POST.get('material_id')
+        cantidad = Decimal(request.POST.get('cantidad', '0').replace(',', '.'))
+        observaciones = request.POST.get('observaciones')
+        proyecto_id = request.POST.get('proyecto_id') # Destino administrativo
+
+        material = get_object_or_404(Material, id=material_id)
+        stock_b = StockBodega.objects.select_for_update().filter(bodega=bodega_asignada, material=material).first()
+
+        if stock_b and stock_b.cantidad >= cantidad > 0 and observaciones:
+            stock_b.cantidad -= cantidad
+            stock_b.save()
+            material.save()
+
+            MovimientoInventario.objects.create(
+                material=material, tipo='SALIDA', cantidad=cantidad, bodega_origen=bodega_asignada,
+                responsable=request.user, 
+                observaciones=f"[ENTREGA DIRECTA URGENTE] Proyecto ID: {proyecto_id} | {observaciones}"
+            )
+            # Aquí podrías crear un registro de Notificación si tuvieras el modelo
+            messages.success(request, f"Entrega directa de {cantidad} {material.nombre} registrada. El administrador ha sido notificado en la auditoría.")
+            return redirect('dashboard_erp')
+        else:
+            messages.error(request, "Error: Stock insuficiente u observaciones vacías.")
+            
+    materiales = Material.objects.filter(stocks_bodegas__bodega=bodega_asignada, stocks_bodegas__cantidad__gt=0).distinct()
+    proyectos = Proyecto.objects.filter(is_active=True)
+    return render(request, 'web/erp/entrega_directa.html', {'materiales': materiales, 'proyectos': proyectos})

@@ -29,10 +29,11 @@ class RequerimientoForm(forms.ModelForm):
 class DetalleRequerimientoForm(forms.ModelForm):
     class Meta:
         model = DetalleRequerimiento
-        fields = ['material', 'cantidad_solicitada']
+        fields = ['material', 'cantidad_solicitada', 'bodega_destino']
         widgets = {
             'material': forms.Select(attrs={'class': 'form-select'}),
             'cantidad_solicitada': forms.NumberInput(attrs={'class': 'form-control', 'min': '0.01', 'step': '0.01'}),
+            'bodega_destino': forms.Select(attrs={'class': 'form-select', 'required': 'required'}),
         }
         
     def clean_cantidad_solicitada(self):
@@ -197,19 +198,26 @@ class AjusteInventarioForm(forms.Form):
         queryset=Bodega.objects.all(), 
         widget=forms.Select(attrs={'class': 'form-select'})
     )
-    cantidad_ajuste = forms.DecimalField(
-        max_digits=10, decimal_places=2,
-        widget=forms.NumberInput(attrs={'class': 'form-control form-control-lg fw-bold', 'placeholder': 'Ej: -10 para mermas, 5 para sobrantes'})
+    cantidad_ajuste = forms.IntegerField(
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control form-control-lg fw-bold', 
+            'placeholder': 'Ej: -10 para mermas, 5 para sobrantes', 
+            'step': '1'
+        })
     )
     observaciones = forms.CharField(
-        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Justifique obligatoriamente el motivo del ajuste (Pérdida, conteo, rotura...)'}), 
+        widget=forms.Textarea(attrs={
+            'class': 'form-control', 
+            'rows': 3, 
+            'placeholder': 'Justifique el motivo de este ajuste manual...'
+        }),
         required=True
     )
-    
+
     def clean_cantidad_ajuste(self):
         cantidad = self.cleaned_data.get('cantidad_ajuste')
         if cantidad == 0:
-            raise ValidationError("El ajuste no puede ser cero.")
+            raise forms.ValidationError("El ajuste no puede ser cero.")
         return cantidad
 
 class VentaMaterialForm(forms.Form):

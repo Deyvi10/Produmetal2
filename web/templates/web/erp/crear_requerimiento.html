@@ -1,77 +1,114 @@
 {% extends 'web/base.html' %}
 
 {% block content %}
-<div class="container py-4 py-md-5" style="margin-top: 80px;">
+<style>
+    :root {
+        --pm-bg: #f4f6f9;
+        --pm-surface: #ffffff;
+        --pm-border: #e1e4e8;
+        --pm-text: #24292e;
+        --pm-primary: #0366d6;
+        --pm-amber: #f9a826;
+    }
+    body { background-color: var(--pm-bg); }
+    .fade-in { animation: fadeIn 0.4s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    .erp-container { max-width: 800px; padding-bottom: 40px; margin-top: 40px; }
+
+    .card-master {
+        background: var(--pm-surface); border: 1px solid var(--pm-border);
+        border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); overflow: hidden;
+    }
+
+    .step-header {
+        background: #1a202c; color: white; padding: 20px;
+        display: flex; justify-content: space-between; align-items: center;
+    }
+
+    /* Inputs Táctiles (Estilo App) */
+    .form-control-solid, .form-select-solid {
+        background: #f8f9fa !important; border: 1px solid #d1d5da !important;
+        color: #24292e !important; border-radius: 8px; padding: 14px 16px;
+        font-weight: 500; font-size: 1rem; width: 100%; transition: all 0.2s ease;
+        min-height: 52px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);
+    }
+    .form-control-solid:focus, .form-select-solid:focus {
+        border-color: var(--pm-primary) !important; box-shadow: 0 0 0 3px rgba(3, 102, 214, 0.15) !important;
+        outline: none; background: #ffffff !important;
+    }
+
+    .btn-primary-custom {
+        background: var(--pm-primary); color: white; font-weight: bold; border-radius: 8px;
+        padding: 14px 24px; border: none; transition: all 0.2s ease; width: 100%;
+        display: flex; justify-content: center; align-items: center; font-size: 1.1rem;
+    }
+    .btn-primary-custom:hover { background: #005cc5; transform: translateY(-2px); box-shadow: 0 8px 15px rgba(3, 102, 214, 0.3); color: white;}
     
-    <div class="row justify-content-center">
-        <div class="col-12 col-md-10 col-lg-8">
-            
-            <!-- Botón de regreso responsivo -->
-            <div class="mb-3">
-                <a href="{% url 'dashboard_erp' %}" class="text-decoration-none text-secondary fw-bold">
-                    <i class="bi bi-arrow-left-circle me-1"></i> Volver al Panel
-                </a>
-            </div>
+    @media (max-width: 768px) {
+        .erp-container { padding-top: 10px; margin-top: 20px; }
+        .card-master { border: none; border-radius: 0; box-shadow: none; background: transparent;}
+        .step-header { border-radius: 12px; margin-bottom: 15px; }
+        .form-body { padding: 0 !important; }
+    }
+</style>
 
-            <div class="card shadow border-0 rounded-4">
-                <!-- Cabecera -->
-                <div class="card-header bg-dark text-white p-3 p-md-4 rounded-top-4 d-flex justify-content-between align-items-center">
-                    <div>
-                        <h4 class="mb-1 fw-bold"><i class="bi bi-ticket-detailed text-warning me-2"></i>Nuevo Ticket</h4>
-                        <p class="mb-0 text-light opacity-75 small">Paso 1: Información General</p>
-                    </div>
-                    <!-- Indicador visual de pasos -->
-                    <span class="badge bg-warning text-dark rounded-pill fs-6 px-3 py-2 d-none d-sm-block shadow-sm">
-                        1 / 2
-                    </span>
-                </div>
-                
-                <div class="card-body p-4 p-md-5 bg-light rounded-bottom-4">
-                    <form method="POST" class="needs-validation" novalidate>
-                        {% csrf_token %}
-                        
-                        <!-- Fila para Proyecto y Prioridad (Lado a lado en PC, Apilados en Móvil) -->
-                        <div class="row g-3 mb-4">
-                            <!-- Proyecto -->
-                            <div class="col-12 col-md-7">
-                                <label class="form-label fw-bold text-dark small text-uppercase">Proyecto Destino <span class="text-danger">*</span></label>
-                                {{ form.proyecto }}
-                                {% if form.proyecto.errors %}
-                                    <div class="text-danger small mt-1 fw-bold"><i class="bi bi-exclamation-triangle"></i> {{ form.proyecto.errors|striptags }}</div>
-                                {% endif %}
-                            </div>
-
-                            <!-- Prioridad (AÑADIDO) -->
-                            <div class="col-12 col-md-5">
-                                <label class="form-label fw-bold text-dark small text-uppercase">Nivel de Prioridad <span class="text-danger">*</span></label>
-                                {{ form.prioridad }}
-                                {% if form.prioridad.errors %}
-                                    <div class="text-danger small mt-1 fw-bold"><i class="bi bi-exclamation-triangle"></i> {{ form.prioridad.errors|striptags }}</div>
-                                {% endif %}
-                            </div>
-                        </div>
-
-                        <!-- Observaciones -->
-                        <div class="mb-4">
-                            <label class="form-label fw-bold text-dark small text-uppercase">Observaciones / Motivo <span class="text-muted fw-normal text-lowercase">(Opcional)</span></label>
-                            {{ form.observaciones }}
-                            {% if form.observaciones.errors %}
-                                <div class="text-danger small mt-1 fw-bold"><i class="bi bi-exclamation-triangle"></i> {{ form.observaciones.errors|striptags }}</div>
-                            {% endif %}
-                            <div class="form-text small" style="font-size: 0.75rem;">Ej: Materiales urgentes para el montaje de la cubierta en el bloque B.</div>
-                        </div>
-
-                        <!-- Botonera -->
-                        <div class="d-grid mt-5">
-                            <button type="submit" class="btn btn-primary btn-lg fw-bold shadow-sm d-flex justify-content-center align-items-center gap-2">
-                                Generar Folio y Continuar <i class="bi bi-arrow-right-circle fs-5"></i>
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            
-        </div>
+<div class="container erp-container fade-in">
+    
+    <div class="mb-3">
+        <a href="{% url 'dashboard_erp' %}" class="btn btn-sm btn-outline-secondary fw-bold rounded-pill px-3 shadow-sm bg-white">
+            <i class="bi bi-arrow-left me-1"></i> Volver al Panel
+        </a>
     </div>
+
+    <form method="POST" class="needs-validation" novalidate>
+        {% csrf_token %}
+        <div class="card-master bg-white">
+            
+            <div class="step-header">
+                <div>
+                    <h4 class="mb-1 fw-bold"><i class="bi bi-ticket-detailed text-warning me-2"></i>Nuevo Ticket</h4>
+                    <p class="mb-0 text-light opacity-75 small">Paso 1: Información General de la Obra</p>
+                </div>
+                <span class="badge bg-warning text-dark rounded-pill fs-6 px-3 py-2 shadow-sm">1 / 2</span>
+            </div>
+            
+            <div class="card-body p-4 p-md-5 form-body">
+                <div class="row g-3 mb-4">
+                    <div class="col-12 col-md-7">
+                        <label class="form-label fw-bold text-dark small text-uppercase">Proyecto Destino <span class="text-danger">*</span></label>
+                        {{ form.proyecto }}
+                        {% if form.proyecto.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.proyecto.errors|striptags }}</div>{% endif %}
+                    </div>
+
+                    <div class="col-12 col-md-5">
+                        <label class="form-label fw-bold text-dark small text-uppercase">Nivel de Prioridad <span class="text-danger">*</span></label>
+                        {{ form.prioridad }}
+                        {% if form.prioridad.errors %}<div class="text-danger small mt-1 fw-bold">{{ form.prioridad.errors|striptags }}</div>{% endif %}
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-bold text-dark small text-uppercase">Observaciones / Motivo <span class="text-muted fw-normal text-lowercase">(Opcional)</span></label>
+                    {{ form.observaciones }}
+                    <div class="form-text small mt-1">Ej: Materiales urgentes para el montaje de la cubierta en el bloque B.</div>
+                </div>
+
+                <div class="mt-5">
+                    <button type="submit" class="btn-primary-custom shadow-sm">
+                        Generar Folio y Continuar <i class="bi bi-arrow-right-circle ms-2 fs-5"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
 </div>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll("select, input, textarea").forEach(el => {
+            el.classList.add("form-select-solid");
+            if(el.tagName === "TEXTAREA") el.classList.replace("form-select-solid", "form-control-solid");
+        });
+    });
+</script>
 {% endblock %}

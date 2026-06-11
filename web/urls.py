@@ -88,7 +88,9 @@ urlpatterns = [
     path('erp/inventario/ventas/', views.venta_material, name='venta_material'),
     path('erp/inventario/trasladar/<int:material_id>/', views.trasladar_material, name='trasladar_material'),
     path('erp/inventario/categoria/nueva/', views.crear_categoria, name='crear_categoria'), 
-
+    path('erp/inventario/entrega-directa/', views.entrega_directa_bodeguero, name='entrega_directa_bodeguero'),
+    # AGREGAR la nueva ruta de compras
+    path('erp/cotizacion/confirmar-compra/<int:solicitud_id>/', views.confirmar_compra_definitiva, name='confirmar_compra_definitiva'),
     # ==========================================
     # ERP: AUDITORÍA Y TRAZABILIDAD DOCUMENTAL
     # ==========================================

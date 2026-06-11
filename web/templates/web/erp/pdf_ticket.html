@@ -4,88 +4,318 @@
     <meta charset="UTF-8">
     <title>Comprobante Ticket {{ ticket.folio }}</title>
     <style>
+        /* CONFIGURACIÓN DE MÁRGENES Y FRAMES (xhtml2pdf) */
         @page {
             size: a4 portrait;
-            margin: 2cm;
+            margin: 1.5cm;
+            margin-bottom: 2.8cm; 
+            @frame footer_frame {
+                -pdf-frame-content: footer_content;
+                left: 1.5cm;
+                right: 1.5cm;
+                bottom: 0.5cm;
+                height: 1.8cm;
+            }
         }
+
         body {
-            font-family: Helvetica, Arial, sans-serif;
-            font-size: 12px;
-            color: #333;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 10px;
+            color: #1e293b;
+            line-height: 1.4;
         }
-        .header {
-            text-align: center;
-            border-bottom: 2px solid #000;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-        }
-        .info-box {
-            margin-bottom: 20px;
-        }
-        table {
+
+        /* ENCABEZADO CORPORATIVO ENMAQUETADO EN CUADRÍCULA */
+        .header-table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 20px;
+            border: 1px solid #cbd5e1;
         }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
+        .header-table td {
+            padding: 12px;
+            vertical-align: middle;
+            border: 1px solid #cbd5e1;
         }
-        th {
-            background-color: #f2f2f2;
+        .logo { width: 75px; height: 75px; object-fit: cover; }
+        .company-name { font-size: 18px; font-weight: bold; color: #0f172a; margin: 0 0 2px 0; letter-spacing: -0.5px; }
+        .company-details { font-size: 9px; color: #64748b; line-height: 1.3; }
+        
+        .box-folio { text-align: center; background-color: #f8fafc; width: 30%; }
+        .title-document { font-size: 9px; color: #64748b; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; }
+        .number-folio { font-size: 20px; font-weight: bold; color: #e11d48; margin-top: 4px; }
+
+        /* SECCIÓN DE METADATOS Y RESPONSABLES */
+        .section-header {
+            font-size: 9px;
             font-weight: bold;
+            color: #1e293b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background-color: #f1f5f9;
+            padding: 6px 10px;
+            border: 1px solid #cbd5e1;
+            border-bottom: none;
         }
+        
+        .metadata-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            border: 1px solid #cbd5e1;
+        }
+        .metadata-table td {
+            padding: 7px 10px;
+            border: 1px solid #cbd5e1;
+            font-size: 10px;
+        }
+        .meta-label {
+            font-weight: bold;
+            color: #475569;
+            background-color: #f8fafc;
+            width: 18%;
+        }
+        .meta-value {
+            color: #0f172a;
+            width: 32%;
+        }
+
+        /* TABLA MAESTRA DE MATERIALES CON BORDES DE CONTROL */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 25px;
+        }
+        .data-table th {
+            background-color: #1e293b;
+            color: #ffffff;
+            font-size: 9px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 8px 10px;
+            border: 1px solid #1e293b;
+        }
+        .data-table td {
+            padding: 9px 10px;
+            border: 1px solid #cbd5e1;
+            font-size: 10px;
+            color: #334155;
+        }
+        .data-table tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+
         .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .bold { font-weight: bold; }
+        
+        .status-badge { font-weight: bold; font-size: 9px; text-transform: uppercase; }
+        .status-approved { color: #16a34a; }
+        .status-pending { color: #d97706; }
+        .status-rejected { color: #dc2626; }
+
+        /* =======================================================
+           BLOQUE DE FIRMAS TÉCNICO Y ORDENADO (MEJORA #5)
+           ======================================================= */
+        .signatures-container {
+            margin-top: 45px;
+            width: 100%;
+            page-break-inside: avoid;
+        }
+        .signature-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .signature-table td {
+            width: 33.33%;
+            text-align: center;
+            padding: 0 12px;
+            vertical-align: top;
+        }
+        .signature-space {
+            height: 60px; /* Altura regulada para firma caligráfica o sello */
+        }
+        .signature-line {
+            border-top: 1px solid #334155;
+            width: 95%;
+            margin: 0 auto 6px auto;
+        }
+        .signature-name {
+            font-size: 10px;
+            font-weight: bold;
+            color: #0f172a;
+            text-transform: uppercase;
+        }
+        .signature-role {
+            font-size: 8.5px;
+            color: #64748b;
+            margin-top: 2px;
+            letter-spacing: 0.3px;
+        }
+
+        /* PIE DE PÁGINA CORPORATIVO */
+        #footer_content {
+            border-top: 1px solid #cbd5e1;
+            padding-top: 8px;
+            font-size: 8px;
+            color: #64748b;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h2>TICKET DE REQUERIMIENTO: {{ ticket.folio }}</h2>
-        <p>ProduMetal CM - Sistema ERP</p>
-    </div>
 
-    <div class="info-box">
-        <p><strong>Solicitante:</strong> {{ ticket.solicitante.get_full_name|default:ticket.solicitante.username }}</p>
-        <p><strong>Proyecto/Destino:</strong> {{ ticket.proyecto.nombre }}</p>
-        <p><strong>Fecha de Solicitud:</strong> {{ ticket.fecha_solicitud|date:"d/m/Y H:i" }}</p>
-        <p><strong>Estado Actual:</strong> {{ ticket.get_estado_display }}</p>
-        <p><strong>Prioridad:</strong> {{ ticket.get_prioridad_display }}</p>
+    <table class="header-table">
+        <tr>
+            <td style="width: 12%; text-align: center;">
+                <img src="{{ logo_path }}" alt="Logo" class="logo">
+            </td>
+            <td style="width: 58%;">
+                <h1 class="company-name">ProduMetal CM</h1>
+                <div class="company-details">
+                    <strong>RUC:</strong> 1792418521001 | <strong>Email:</strong> operaciones@produmetalcm.com<br>
+                    <strong>Planta Industrial:</strong> Av. General Enríquez, Sector San Jorge<br>
+                    <strong>Módulo:</strong> Sistema ERP - Gestión de Suministros e Inventarios
+                </div>
+            </td>
+            <td class="box-folio">
+                <div class="title-document">Requerimiento Interno</div>
+                <div class="number-folio">{{ ticket.folio }}</div>
+            </td>
+        </tr>
+    </table>
+
+    <div class="section-header">Información General del Ticket</div>
+    <table class="metadata-table">
+        <tr>
+            <td class="meta-label">Solicitante:</td>
+            <td class="meta-value">
+                {% if ticket.solicitante.get_full_name %}
+                    {{ ticket.solicitante.get_full_name }}
+                {% else %}
+                    {{ ticket.solicitante.username }}
+                {% endif %}
+            </td>
+            <td class="meta-label">Fecha de Solicitud:</td>
+            <td class="meta-value">{{ ticket.fecha_solicitud|date:"d/m/Y H:i" }}</td>
+        </tr>
+        <tr>
+            <td class="meta-label">Proyecto Destino:</td>
+            <td class="meta-value bold" style="color: #0284c7;">{{ ticket.proyecto.centro_costos }} - {{ ticket.proyecto.nombre }}</td>
+            <td class="meta-label">Nivel Prioridad:</td>
+            <td class="meta-value">{{ ticket.get_prioridad_display|upper }}</td>
+        </tr>
+        <tr>
+            <td class="meta-label">Estado de Gestión:</td>
+            <td class="meta-value">
+                <span class="bold">
+                    {% if ticket.estado == 'APROBADO' or ticket.estado == 'DESPACHADO' or ticket.estado == 'PARCIALMENTE_DESPACHADO' %}
+                        SOPORTADO / EN DESPACHO
+                    {% else %}
+                        {{ ticket.get_estado_display|upper }}
+                    {% endif %}
+                </span>
+            </td>
+            <td class="meta-label">Fecha de Impresión:</td>
+            <td class="meta-value">{{ fecha_impresion|date:"d/m/Y H:i" }}</td>
+        </tr>
         {% if ticket.observaciones %}
-        <p><strong>Observaciones:</strong> {{ ticket.observaciones }}</p>
+        <tr>
+            <td class="meta-label">Notas Adicionales:</td>
+            <td class="meta-value" colspan="3" style="font-weight: normal; color: #475569; font-style: italic;">
+                {{ ticket.observaciones }}
+            </td>
+        </tr>
         {% endif %}
-    </div>
+    </table>
 
-    <h3>Materiales Solicitados</h3>
-    <table>
+    <div class="section-header">Materiales Solicitados y Asignados por Ítem</div>
+    <table class="data-table">
         <thead>
             <tr>
-                <th>Código (SKU)</th>
-                <th>Material</th>
-                <th class="text-center">Cant. Solicitada</th>
-                <th class="text-center">Cant. Despachada</th>
-                <th class="text-center">Estado del Ítem</th>
+                <th style="width: 15%; text-align: center;">Código SKU</th>
+                <th style="width: 45%;">Descripción del Material / Suministro</th>
+                <th class="text-center" style="width: 12%;">Cant. Pedida</th>
+                <th class="text-center" style="width: 13%;">Cant. Surtida</th>
+                <th class="text-center" style="width: 15%;">Estado Ítem</th>
             </tr>
         </thead>
         <tbody>
             {% for item in detalles %}
             <tr>
-                <td>{{ item.material.sku }}</td>
-                <td>{{ item.material.nombre }}</td>
-                <td class="text-center">{{ item.cantidad_solicitada }}</td>
-                <td class="text-center">{{ item.cantidad_despachada }}</td>
-                <td class="text-center">{{ item.get_estado_item_display }}</td>
+                <td class="bold text-center" style="color: #475569;">{{ item.material.sku }}</td>
+                <td>
+                    <span class="bold" style="color: #0f172a;">{{ item.material.nombre }}</span>
+                    <br><span style="font-size: 8px; color: #64748b; font-weight: bold;">Centro Custodia: {{ item.bodega_destino.nombre|default:"Bodega Central" }}</span>
+                </td>
+                <td class="text-center bold" style="font-size: 11px;">{{ item.cantidad_solicitada|floatformat:"0" }}</td>
+                <td class="text-center bold" style="color: #16a34a; font-size: 11px;">{{ item.cantidad_despachada|floatformat:"0"|default:"0" }}</td>
+                <td class="text-center">
+                    <span class="status-badge {% if item.estado_item == 'APROBADO_BODEGA' or item.estado_item == 'COMPRADO' %}status-approved{% elif item.estado_item == 'PENDIENTE' %}status-pending{% else %}status-rejected{% endif %}">
+                        {{ item.get_estado_item_display }}
+                    </span>
+                </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="5" class="text-center">No hay materiales registrados en este ticket.</td>
+                <td colspan="5" class="text-center" style="padding: 20px; color: #94a3b8; font-style: italic;">No existen materiales vinculados a esta orden.</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 
-    <div style="margin-top: 50px;">
-        <p>Documento generado el: {{ fecha_impresion|date:"d/m/Y H:i" }}</p>
+    <div class="signatures-container">
+        <table class="signature-table">
+            <tr>
+                <td>
+                    <div class="signature-space"></div>
+                    <div class="signature-line"></div>
+                    <div class="signature-name">
+                        {% if ticket.solicitante.get_full_name %}
+                            {{ ticket.solicitante.get_full_name }}
+                        {% else %}
+                            {{ ticket.solicitante.username }}
+                        {% endif %}
+                    </div>
+                    <div class="signature-role">Solicitante de Obra</div>
+                </td>
+                
+                <td>
+                    <div class="signature-space"></div>
+                    <div class="signature-line"></div>
+                    <div class="signature-name">
+                        {% if firma_bodeguero %}
+                            {{ firma_bodeguero }}
+                        {% elif detalles.first.bodega_destino.encargado.get_full_name %}
+                            {{ detalles.first.bodega_destino.encargado.get_full_name }}
+                        {% else %}
+                            {{ ticket.movimientos.first.responsable.get_full_name|default:"Custodio de Almacén" }}
+                        {% endif %}
+                    </div>
+                    <div class="signature-role">Responsable de Bodega</div>
+                </td>
+                
+                <td>
+                    <div class="signature-space"></div>
+                    <div class="signature-line"></div>
+                    <div class="signature-name">
+                        {% if ticket.aprobado_por.get_full_name %}
+                            {{ ticket.aprobado_por.get_full_name }}
+                        {% else %}
+                            {{ firma_admin|default:"Administrador del Sistema" }}
+                        {% endif %}
+                    </div>
+                    <div class="signature-role">Administrador Autorizante</div>
+                </td>
+            </tr>
+        </table>
     </div>
+
+    <div id="footer_content">
+        Este documento constituye un registro oficial e inalterable de la bitácora logística de ProduMetal CM.
+        <br><strong>Documento Controlado Electrónicamente - ERP 2026 | Página <pdf:pagenumber> de <pdf:pagecount></strong>
+    </div>
+
 </body>
 </html>

@@ -167,6 +167,15 @@ class Material(models.Model):
     def tiene_movimientos(self):
         """Verifica si el material tiene auditoría de movimientos"""
         return self.movimientos.exists()
+    @property
+    def ultimo_certificado_url(self):
+        mov = self.movimientos.filter(tipo='INGRESO', certificado_calidad__isnull=False).order_by('-fecha_hora').first()
+        return mov.certificado_calidad.url if mov and mov.certificado_calidad else None
+
+    @property
+    def desglose_stock_bodegas(self):
+        """Retorna un diccionario o queryset con el stock por bodega para el tooltip/UI"""
+        return self.stocks_bodegas.filter(cantidad__gt=0)
     
 class StockBodega(models.Model):
     material = models.ForeignKey(Material, on_delete=models.CASCADE, related_name='stocks_bodegas')
@@ -211,37 +220,31 @@ class Requerimiento(models.Model):
 
     @transaction.atomic
     def procesar_y_dividir_stock(self):
-        """ LÓGICA CORE: Ejecutar cuando el Admin aprueba el requerimiento """
         for detalle in self.detalles.all():
-            if detalle.estado_item == 'RECHAZADO':
-                continue
+            if detalle.estado_item == 'RECHAZADO': continue
 
-            # select_for_update() asegura que nadie mueva el stock mientras calculamos
             material = Material.objects.select_for_update().get(id=detalle.material.id)
+            bodega_req = detalle.bodega_destino
             
-            if material.stock_actual >= detalle.cantidad_solicitada:
-                # Stock suficiente: Todo a bodega
+            # Buscar stock SOLO en la bodega solicitada
+            stock_bodega = StockBodega.objects.filter(material=material, bodega=bodega_req).first()
+            cant_bodega = stock_bodega.cantidad if stock_bodega else Decimal('0.0')
+
+            if cant_bodega >= detalle.cantidad_solicitada:
                 detalle.estado_item = 'APROBADO_BODEGA'
                 detalle.save()
-            elif material.stock_actual > 0:
-                # Stock parcial: DIVIDIR EL REQUERIMIENTO
-                cantidad_en_bodega = material.stock_actual
-                cantidad_faltante = detalle.cantidad_solicitada - cantidad_en_bodega
-                
-                detalle.cantidad_solicitada = cantidad_en_bodega
+            elif cant_bodega > 0:
+                cantidad_faltante = detalle.cantidad_solicitada - cant_bodega
+                detalle.cantidad_solicitada = cant_bodega
                 detalle.estado_item = 'APROBADO_BODEGA'
                 detalle.save()
                 
-                # Crear el excedente directamente para Compras
                 DetalleRequerimiento.objects.create(
-                    requerimiento=self,
-                    material=material,
-                    cantidad_solicitada=cantidad_faltante,
-                    estado_item='EN_COMPRAS',
-                    motivo_rechazo='División automática por sistema (Falta de stock)'
+                    requerimiento=self, material=material, cantidad_solicitada=cantidad_faltante,
+                    bodega_destino=bodega_req, estado_item='EN_COMPRAS',
+                    motivo_rechazo='División automática (Falta de stock en bodega seleccionada)'
                 )
             else:
-                # Sin stock: Todo a compras
                 detalle.estado_item = 'EN_COMPRAS'
                 detalle.save()
 
@@ -258,6 +261,7 @@ class DetalleRequerimiento(models.Model):
 
     requerimiento = models.ForeignKey(Requerimiento, related_name='detalles', on_delete=models.CASCADE)
     material = models.ForeignKey(Material, on_delete=models.PROTECT)
+    bodega_destino = models.ForeignKey(Bodega, on_delete=models.PROTECT, null=True, help_text="Bodega donde se necesita el material") # NUEVO
     cantidad_solicitada = models.DecimalField(max_digits=10, decimal_places=2)
     cantidad_despachada = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     estado_item = models.CharField(max_length=30, choices=ESTADOS_ITEM, default='PENDIENTE')
@@ -273,7 +277,8 @@ class SolicitudCompra(models.Model):
     ESTADOS = [
         ('ENVIADO_A_COMPRAS', 'Pendiente de Cotización (En Compras)'),
         ('COTIZADO', 'Cotizado (Esperando Aprobación Admin)'),
-        ('PROCESADO', 'Procesado (Órdenes Generadas / Rechazados)'),
+        ('REVISADO_ADMIN', 'Revisado por Admin (Requiere Acción Compras)'), # NUEVO
+        ('PROCESADO', 'Procesado (Órdenes Generadas)'),
     ]
 
     folio = models.CharField(max_length=20, unique=True, blank=True, editable=False)
