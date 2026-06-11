@@ -306,6 +306,13 @@ class DetalleRequerimiento(models.Model):
     def __str__(self):
         return f"{self.cantidad_solicitada} x {self.material.nombre} [{self.estado_item}]"
 
+    @property
+    def stock_en_bodega_destino(self):
+        """Devuelve el stock físico que existe ÚNICAMENTE en la bodega solicitada para este ítem."""
+        if self.bodega_destino:
+            stock = self.material.stocks_bodegas.filter(bodega=self.bodega_destino).first()
+            return stock.cantidad if stock else 0
+        return 0
 # =====================================================================
 # 4. MÓDULO DE COTIZACIONES Y COMPRAS
 # =====================================================================

@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.contrib.auth.models import User, Group
-from django.db.models import F, Q
+from django.db.models import Sum, F, Q
 from axes.models import AccessAttempt
 from django.db import transaction
 from django.core.paginator import Paginator
@@ -169,14 +169,22 @@ def dashboard_erp(request):
 
     if es_admin(usuario):
         context['rol'] = 'Administrador'
-        context['tickets_pendientes'] = Requerimiento.objects.filter(estado='PENDIENTE').order_by('fecha_solicitud')
+        # El admin debe ver todo ticket que tenga al menos un ítem PENDIENTE (independiente de si está parcialmente despachado)
+        context['tickets_pendientes'] = Requerimiento.objects.filter(detalles__estado_item='PENDIENTE').distinct().order_by('fecha_solicitud')
         context['ultimos_movimientos'] = MovimientoInventario.objects.all().order_by('-fecha_hora')[:5]
         context['cotizaciones_pendientes'] = SolicitudCompra.objects.filter(estado='COTIZADO').order_by('fecha_creacion')
         context['alertas_oc'] = OrdenCompra.objects.filter(estado='RECIBIDA_PARCIAL')
         
     elif es_bodeguero(usuario):
         context['rol'] = 'Bodeguero'
-        context['tickets_por_despachar'] = Requerimiento.objects.filter(estado='APROBADO')
+        bodega_asignada = getattr(usuario.perfil, 'bodega_asignada', None) if hasattr(usuario, 'perfil') else None
+        
+        # El bodeguero SOLO ve tickets que tengan ítems aprobados y que pertenezcan a SU bodega
+        if bodega_asignada:
+            context['tickets_por_despachar'] = Requerimiento.objects.filter(detalles__estado_item='APROBADO_BODEGA', detalles__bodega_destino=bodega_asignada).distinct()
+        else:
+            context['tickets_por_despachar'] = Requerimiento.objects.none()
+            
         context['mis_compras_pendientes'] = OrdenCompra.objects.filter(estado__in=['EMITIDA', 'RECIBIDA_PARCIAL'])
         context['alertas_stock'] = Material.objects.filter(stock_actual__lte=F('stock_minimo'))
 
@@ -190,7 +198,6 @@ def dashboard_erp(request):
         context['mis_requerimientos'] = Requerimiento.objects.filter(solicitante=usuario).order_by('-fecha_solicitud')
 
     return render(request, 'web/erp/dashboard.html', context)
-
 
 # --- GESTIÓN DE REQUERIMIENTOS (SOLICITANTES) ---
 
@@ -318,86 +325,63 @@ def procesar_ticket(request, req_id, accion):
 def despachar_requerimiento(request, req_id):
     ticket = get_object_or_404(Requerimiento, id=req_id)
     
-    # Solo podemos despachar si el ticket tiene ítems aprobados
-    if ticket.estado not in ['APROBADO', 'PARCIALMENTE_DESPACHADO']:
-        messages.error(request, "Este ticket no tiene autorización logística para despacho físico.")
-        return redirect('dashboard_erp')
-
-    # Identificamos el acceso logístico del usuario
     es_super = request.user.is_superuser
     bodega_del_usuario = getattr(request.user.perfil, 'bodega_asignada', None) if hasattr(request.user, 'perfil') else None
 
-    # Filtrar solo los ítems que están listos para entregar en bodega
-    items_a_despachar = ticket.detalles.filter(estado_item='APROBADO_BODEGA')
-    
+    # Filtrado Estricto de ítems a despachar
+    if es_super:
+        items_a_despachar = ticket.detalles.filter(estado_item='APROBADO_BODEGA')
+    else:
+        if not bodega_del_usuario:
+            messages.error(request, "No tienes bodega asignada para operar.")
+            return redirect('dashboard_erp')
+        items_a_despachar = ticket.detalles.filter(estado_item='APROBADO_BODEGA', bodega_destino=bodega_del_usuario)
+
     if not items_a_despachar.exists():
-        messages.warning(request, "No hay ítems aprobados listos para despachar en este ticket.")
+        messages.warning(request, "No tienes autorización para despachar materiales de este ticket en tu bodega.")
         return redirect('dashboard_erp')
 
     if request.method == 'POST':
         for item in items_a_despachar:
-            
-            # --- SEGURIDAD: VERIFICACIÓN DE BODEGA DESTINO DEL ÍTEM ---
-            # Si no es admin, el usuario solo puede despachar si el ítem va a SU bodega
-            if not es_super and (not bodega_del_usuario or item.bodega_destino != bodega_del_usuario):
-                messages.error(request, f"Acceso denegado: El ítem '{item.material.nombre}' está enrutado a {item.bodega_destino.nombre if item.bodega_destino else 'Bodega Principal'}. Tú solo tienes acceso a {bodega_del_usuario.nombre if bodega_del_usuario else 'ninguna bodega'}.")
-                return redirect('despachar_requerimiento', req_id=ticket.id)
-            
-            # Blindaje Decimal: Conversión de cantidades
             cant_solicitada = Decimal(str(item.cantidad_solicitada))
             cant_despachada = Decimal(str(item.cantidad_despachada))
             cantidad_a_entregar = cant_solicitada - cant_despachada
             
             if cantidad_a_entregar > 0:
-                # 1. Bloqueo de concurrencia del material
                 material = Material.objects.select_for_update().get(id=item.material.id)
-                
-                # 2. Obtener el stock real de la BODEGA DESTINO ELEGIDA POR EL SOLICITANTE
-                bodega_origen = item.bodega_destino if item.bodega_destino else Bodega.objects.filter(is_principal=True).first()
+                bodega_origen = item.bodega_destino # EXTRAE DIRECTO DE LA VINCULADA
                 stock_bodega = StockBodega.objects.select_for_update().filter(bodega=bodega_origen, material=material).first()
                 
                 cant_en_bodega = Decimal(str(stock_bodega.cantidad)) if stock_bodega and stock_bodega.cantidad else Decimal('0.0')
                 
-                # 3. Validar disponibilidad estricta
                 if cant_en_bodega < cantidad_a_entregar:
-                    messages.error(request, f"Fallo Logístico: Se requieren {cantidad_a_entregar} de {material.nombre}, pero solo tienes {cant_en_bodega} físicos en la bodega enrutada ({bodega_origen.nombre}).")
+                    messages.error(request, f"Error físico: Faltan existencias en {bodega_origen.nombre} para {material.nombre}.")
                     return redirect('despachar_requerimiento', req_id=ticket.id)
 
-                # 4. RESTAR DE LA BODEGA ESPECÍFICA Y GUARDAR PRIMERO
+                # Descuenta de la bodega específica
                 stock_bodega.cantidad = cant_en_bodega - cantidad_a_entregar
                 stock_bodega.save()
-
-                # 5. GUARDAR EL MATERIAL LUEGO (Actualiza stock total de red)
                 material.save()
 
-                # 6. Registrar el movimiento de SALIDA desde la bodega enrutada
                 MovimientoInventario.objects.create(
-                    material=material, 
-                    tipo='SALIDA', 
-                    cantidad=cantidad_a_entregar, 
-                    bodega_origen=bodega_origen,
-                    responsable=request.user, 
-                    requerimiento_asociado=ticket,
-                    observaciones=f"Despacho automatizado del ticket {ticket.folio} desde {bodega_origen.nombre}"
+                    material=material, tipo='SALIDA', cantidad=cantidad_a_entregar, bodega_origen=bodega_origen,
+                    responsable=request.user, requerimiento_asociado=ticket,
+                    observaciones=f"Despacho físico desde {bodega_origen.nombre}"
                 )
                 
-                # 7. Actualizar el detalle del requerimiento
                 item.cantidad_despachada = cant_despachada + cantidad_a_entregar
                 item.estado_item = 'DESPACHADO'
                 item.save()
 
-        # 8. Actualizar el estado maestro del ticket
         ticket.actualizar_estado_general()
-        
-        messages.success(request, f"✅ Despacho físico confirmado. Los materiales del ticket {ticket.folio} han salido de sus respectivas bodegas.")
+        messages.success(request, f"Despacho completado. Los materiales salieron estrictamente de sus bodegas destino.")
         return redirect('dashboard_erp')
 
-    # Si es GET, mostramos el formulario
-    # Nota: Ya no mandamos 'bodegas' al template, porque el sistema no le permite elegir de dónde sacarlo
     return render(request, 'web/erp/confirmar_despacho.html', {
         'ticket': ticket,
         'items': items_a_despachar,
     })
+    
 # =======================================================
 # MÓDULO DE COMPRAS Y COTIZACIONES (DESGLOSE INCLUIDO)
 # =======================================================
@@ -681,23 +665,21 @@ def recibir_orden_compra(request, oc_id):
     detalles = oc.detalles.all()
     
     if request.method == 'POST':
+        # 1. SEGURIDAD: Identificamos la bodega donde se está recibiendo.
         bodega_id = request.POST.get('bodega_destino')
         bodega = get_object_or_404(Bodega, id=bodega_id) if bodega_id else Bodega.objects.filter(is_principal=True).first()
+        
         entrega_incompleta = False
 
         for item in detalles:
-            # BLINDAJE: Capturar errores y convertir a Decimal (Alta precisión)
+            # BLINDAJE 1: Capturar errores y convertir a Decimal (Alta precisión)
             try:
-                # Obtenemos el texto, por defecto '0'
-                valor_texto = request.POST.get(f'recibido_{item.id}', '0')
-                # Reemplazamos coma por punto por si el navegador manda formato europeo
-                valor_texto = valor_texto.replace(',', '.') 
-                # Convertimos estrictamente a Decimal
+                valor_texto = request.POST.get(f'recibido_{item.id}', '0').replace(',', '.')
                 ingresado = Decimal(valor_texto)
             except Exception:
                 ingresado = Decimal('0.0')
 
-            # BLINDAJE: Evitar ingresos negativos (restar stock maliciosamente)
+            # BLINDAJE 2: Evitar ingresos negativos (restar stock maliciosamente)
             if ingresado < 0:
                 messages.error(request, "No se permiten valores negativos en la recepción.")
                 return redirect('recibir_orden_compra', oc_id=oc.id)
@@ -705,13 +687,12 @@ def recibir_orden_compra(request, oc_id):
             archivo_certificado = request.FILES.get(f'certificado_{item.id}')
 
             if ingresado > 0:
-                # 1. Homologar todos los valores de la base de datos a Decimal
                 cant_recibida = Decimal(str(item.cantidad_recibida))
                 cant_pedida = Decimal(str(item.cantidad_pedida))
 
-                # BLINDAJE: Evitar que el bodeguero reciba más de lo que se pidió
+                # BLINDAJE 3: Evitar que el bodeguero reciba más de lo que se pidió
                 if (cant_recibida + ingresado) > cant_pedida:
-                    messages.error(request, f"Error: Estás intentando recibir más {item.material.nombre} del que se solicitó.")
+                    messages.error(request, f"Fallo Logístico: Estás intentando ingresar más {item.material.nombre} de lo que Compras autorizó.")
                     return redirect('recibir_orden_compra', oc_id=oc.id)
 
                 item.cantidad_recibida = cant_recibida + ingresado
@@ -723,76 +704,75 @@ def recibir_orden_compra(request, oc_id):
                 # BLOQUEO DE CONCURRENCIA PARA RECEPCIÓN SEGURA
                 material = Material.objects.select_for_update().get(id=item.material.id)
 
-                # 1. PRIMERO ACTUALIZAMOS EL STOCK EN LA BODEGA
+                # PRIMERO ACTUALIZAMOS EL STOCK FÍSICO EN LA BODEGA
                 stock_b, _ = StockBodega.objects.select_for_update().get_or_create(bodega=bodega, material=material)
-                
-                # Prevenir error si la cantidad de la bodega viene vacía o nula
                 cant_bodega = Decimal(str(stock_b.cantidad)) if stock_b.cantidad else Decimal('0.0')
                 
-                # CORRECCIÓN APLICADA: Sumamos la variable correcta de esta vista
                 stock_b.cantidad = cant_bodega + ingresado
-                stock_b.save() # <-- Se guarda la bodega primero
+                stock_b.save()
 
-                # 2. LUEGO GUARDAMOS EL MATERIAL
-                # Como la bodega ya tiene el nuevo stock, el save() del modelo hará la suma matemática perfecta automáticamente.
+                # LUEGO ACTUALIZAMOS EL MATERIAL (Suma total auto)
                 material.save() 
 
+                # Registrar el movimiento de Ingreso en Bitácora
                 MovimientoInventario.objects.create(
-                    material=material, tipo='INGRESO', cantidad=ingresado, bodega_destino=bodega,
-                    responsable=request.user, orden_compra_asociada=oc, certificado_calidad=archivo_certificado
+                    material=material, tipo='INGRESO', cantidad=ingresado, bodega_origen=bodega,
+                    responsable=request.user, orden_compra_asociada=oc, certificado_calidad=archivo_certificado,
+                    observaciones=f"Ingreso físico de proveedor (O.C. #{oc.folio})"
                 )
 
-                # ==========================================================
-                # MAGIA: DESPERTAR TICKETS EN ESPERA (BACKORDER)
-                # ==========================================================
-                # Buscamos los tickets antiguos que se quedaron esperando este material
-                detalles_en_espera = DetalleRequerimiento.objects.filter(
-                    material=material, 
-                    estado_item='EN_COMPRAS'
-                ).order_by('requerimiento__fecha_solicitud')
-                
-                stock_restante = ingresado # Usamos el stock que acaba de llegar
-                
-                for det in detalles_en_espera:
-                    # Blindaje: Conversión a Decimal para la lógica de Backorder
-                    cant_solicitada_det = Decimal(str(det.cantidad_solicitada))
-                    cant_despachada_det = Decimal(str(det.cantidad_despachada))
-                    cantidad_pendiente = cant_solicitada_det - cant_despachada_det
-                    
-                    if stock_restante >= cantidad_pendiente:
-                        # Si alcanza, lo liberamos para que el bodeguero lo despache
-                        det.estado_item = 'APROBADO_BODEGA'
-                        det.save()
-                        stock_restante -= cantidad_pendiente
-                        
-                        # Actualizamos el estado del ticket padre para que vuelva a aparecer en el Dashboard
-                        req = det.requerimiento
-                        estados_req = list(req.detalles.values_list('estado_item', flat=True))
-                        
-                        if 'EN_COMPRAS' not in estados_req:
-                            # Si ya no le falta nada por comprar
-                            req.estado = 'APROBADO'
-                        else:
-                            req.estado = 'PARCIALMENTE_DESPACHADO'
-                        req.save()
-                    else:
-                        # Si el stock no alcanzó para este ticket, rompemos el ciclo
-                        break
-                # ==========================================================
-        
+        # Determinar el estado general de la Orden de Compra
         if entrega_incompleta:
             oc.estado = 'RECIBIDA_PARCIAL'
-            messages.warning(request, "Entrega parcial registrada. Se ha notificado al departamento de Compras.")
+            messages.warning(request, "Entrega parcial registrada en bodega. Queda saldo pendiente con el proveedor.")
         else:
             oc.estado = 'RECIBIDA'
-            messages.success(request, f"Orden {oc.folio} recibida al 100%. Inventario actualizado en la {bodega.nombre}.")
-            
+            messages.success(request, f"Orden {oc.folio} recibida al 100%. Las perchas de la {bodega.nombre} fueron actualizadas.")
+        
         oc.save()
+
+        # ========================================================================
+        # 🧠 MAGIA LOGÍSTICA: EL DESPERTADOR DE TICKETS (FIFO)
+        # ========================================================================
+        # Al ingresar cualquier mercadería, el sistema escanea qué tickets antiguos 
+        # estaban detenidos esperando material (Ordenados por fecha, del más viejo al más nuevo)
+        
+        tickets_dormidos = DetalleRequerimiento.objects.filter(
+            estado_item__in=['EN_COMPRAS', 'COMPRADO']
+        ).order_by('requerimiento__fecha_solicitud')
+        
+        for req_item in tickets_dormidos:
+            # Vemos si hay stock real en la Bodega a la que el ticket pidió el material
+            stock_b = StockBodega.objects.filter(material=req_item.material, bodega=req_item.bodega_destino).first()
+            cant_fisica = Decimal(str(stock_b.cantidad)) if stock_b and stock_b.cantidad else Decimal('0.0')
+            
+            # Restamos el stock "comprometido" por otros tickets que ya se aprobaron pero el bodeguero no ha despachado
+            comprometido_query = DetalleRequerimiento.objects.filter(
+                material=req_item.material,
+                bodega_destino=req_item.bodega_destino,
+                estado_item='APROBADO_BODEGA'
+            ).aggregate(total=Sum('cantidad_solicitada'))['total']
+            
+            comprometido = Decimal(str(comprometido_query)) if comprometido_query else Decimal('0.0')
+            stock_libre = cant_fisica - comprometido
+            
+            # Si el Stock Libre (Real - Apartado) alcanza para cubrir este ítem antiguo...
+            if stock_libre >= Decimal(str(req_item.cantidad_solicitada)):
+                # ...Lo liberamos para que el bodeguero pueda despacharlo inmediatamente
+                req_item.estado_item = 'APROBADO_BODEGA'
+                req_item.motivo_rechazo = "✅ Material recibido del proveedor. Liberado para despacho a obra."
+                req_item.save()
+                
+                # Despertamos al Ticket Maestro para que reaparezca en el Dashboard del Bodeguero
+                req_item.requerimiento.actualizar_estado_general()
+        # ========================================================================
+
         return redirect('listar_ordenes_compra')
 
     return render(request, 'web/erp/recibir_stock_form.html', {
         'oc': oc, 'detalles': detalles, 'bodegas': Bodega.objects.all()
     })
+
 
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
@@ -841,22 +821,25 @@ def venta_material(request):
 @login_required(login_url='login')
 @user_passes_test(lambda u: es_bodeguero(u) or es_admin(u) or es_solicitante(u), login_url='dashboard_erp')
 def inventario_actual(request):
+    usuario = request.user
+    
     # 1. SEGURIDAD LOGÍSTICA: Qué ve cada usuario
-    if request.user.is_superuser:
+    if es_admin(usuario) or es_solicitante(usuario):
+        # Admin y Solicitantes deben ver TODO el catálogo maestro para auditar o pedir
         materiales_list = Material.objects.all().order_by('nombre')
     else:
-        # El Bodeguero solo ve los materiales que tengan stock físico en su bodega asignada
-        if hasattr(request.user, 'perfil') and request.user.perfil.bodega_asignada:
-            bodega_empleado = request.user.perfil.bodega_asignada
+        # El Bodeguero ve los materiales enrutados a su bodega 
+        # (¡CORRECCIÓN: Se eliminó el límite de cantidad > 0 para que los ceros NUNCA desaparezcan!)
+        bodega_empleado = getattr(usuario.perfil, 'bodega_asignada', None) if hasattr(usuario, 'perfil') else None
+        
+        if bodega_empleado:
             materiales_list = Material.objects.filter(
-                stocks_bodegas__bodega=bodega_empleado,
-                stocks_bodegas__cantidad__gt=0
+                stocks_bodegas__bodega=bodega_empleado
             ).distinct().order_by('nombre')
         else:
             materiales_list = Material.objects.none()
 
     # 2. BÚSQUEDA DINÁMICA POR CATEGORÍA
-    # En lugar de buscar por "tipo", buscaremos por las categorías reales creadas en el ERP
     categorias = Categoria.objects.filter(is_active=True)
     categoria_id = request.GET.get('categoria')
     if categoria_id:
@@ -877,12 +860,21 @@ def inventario_actual(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
+    # 5. ASIGNACIÓN DINÁMICA DE ROLES PARA LA VISTA (Soluciona fallos en botones)
+    if es_admin(usuario):
+        rol_actual = 'Administrador'
+    elif es_bodeguero(usuario):
+        rol_actual = 'Bodeguero'
+    else:
+        rol_actual = 'Solicitante'
+
     return render(request, 'web/erp/inventario.html', {
-        'page_obj': page_obj, # El HTML debe usar page_obj ahora
+        'page_obj': page_obj, 
         'categorias': categorias,
         'alertas': alertas,
-        'rol': 'Administrador' if request.user.is_superuser else 'Bodeguero'
+        'rol': rol_actual
     })
+
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
 def crear_material(request):
@@ -1425,69 +1417,82 @@ def alternar_estado_empleado(request, empleado_id):
 @transaction.atomic
 def revisar_requerimiento_items(request, req_id):
     requerimiento = get_object_or_404(Requerimiento, id=req_id)
-    items = requerimiento.detalles.all()
-
+    
     if request.method == 'POST':
-        for item in items:
+        # Solo audita los ítems que siguen pendientes, ignora los que ya fueron procesados
+        items_pendientes = requerimiento.detalles.filter(estado_item='PENDIENTE')
+        
+        for item in items_pendientes:
             decision = request.POST.get(f'decision_{item.id}')
             motivo = request.POST.get(f'motivo_{item.id}')
 
-            if decision and item.estado_item == 'PENDIENTE':
-                if decision == 'APROBADO_BODEGA':
-                    # ¡LÓGICA ESTRICTA DE BODEGA DESTINO!
-                    stock_b = StockBodega.objects.filter(material=item.material, bodega=item.bodega_destino).first()
-                    cant_bodega = stock_b.cantidad if stock_b else Decimal('0.0')
+            if decision:
+                cant_solicitada = Decimal(str(item.cantidad_solicitada))
+                stock_b = StockBodega.objects.filter(material=item.material, bodega=item.bodega_destino).first()
+                cant_bodega = Decimal(str(stock_b.cantidad)) if stock_b and stock_b.cantidad else Decimal('0.0')
 
-                    if cant_bodega >= item.cantidad_solicitada:
+                if decision == 'APROBADO_BODEGA':
+                    if cant_bodega >= cant_solicitada:
                         item.estado_item = 'APROBADO_BODEGA'
-                        item.motivo_rechazo = motivo
+                        item.motivo_rechazo = motivo or "Aprobado. Hay stock en bodega."
                         item.save()
                     elif cant_bodega > 0:
-                        # Split Inteligente
-                        cant_faltante = item.cantidad_solicitada - cant_bodega
+                        # División Inteligente #1: Aprueba lo que hay, DEJA EL RESTO PENDIENTE para el Admin
+                        cant_faltante = cant_solicitada - cant_bodega
                         item.cantidad_solicitada = cant_bodega
                         item.estado_item = 'APROBADO_BODEGA'
-                        item.motivo_rechazo = "División automática: Stock parcial en la bodega requerida."
+                        item.motivo_rechazo = "División: Despacho de existencia actual."
                         item.save()
-
-                        # Se crea el faltante enrutado a compras pero con su bodega destino preservada
+                        
                         DetalleRequerimiento.objects.create(
                             requerimiento=requerimiento, material=item.material,
                             cantidad_solicitada=cant_faltante, bodega_destino=item.bodega_destino,
-                            estado_item='EN_COMPRAS', motivo_rechazo="Generado auto por falta de stock."
+                            estado_item='PENDIENTE', motivo_rechazo="Faltante auto-generado. Esperando decisión."
                         )
                     else:
-                        item.estado_item = 'EN_COMPRAS'
-                        item.motivo_rechazo = "Sin stock en bodega destino, forzado a compras."
+                        messages.warning(request, f"El ítem '{item.material.nombre}' NO tiene stock en {item.bodega_destino.nombre}. Se mantuvo Pendiente.")
+
+                elif decision == 'EN_COMPRAS':
+                    solicitud, _ = SolicitudCompra.objects.get_or_create(requerimiento_origen=requerimiento, defaults={'estado': 'ENVIADO_A_COMPRAS'})
+                    
+                    if cant_bodega >= cant_solicitada:
+                        item.estado_item = 'APROBADO_BODEGA'
+                        item.motivo_rechazo = "Mando a compras abortado: Hay stock 100%. Aprobado a bodega."
                         item.save()
-                else:
-                    item.estado_item = decision
-                    item.motivo_rechazo = motivo
+                    elif cant_bodega > 0:
+                        # División Inteligente #2: Aprueba lo que hay, EL RESTO SE VA A COMPRAS MANTENIENDO LA BODEGA
+                        cant_faltante = cant_solicitada - cant_bodega
+                        item.cantidad_solicitada = cant_bodega
+                        item.estado_item = 'APROBADO_BODEGA'
+                        item.motivo_rechazo = "División: Stock a bodega, resto a compras."
+                        item.save()
+                        
+                        nuevo_item = DetalleRequerimiento.objects.create(
+                            requerimiento=requerimiento, material=item.material,
+                            cantidad_solicitada=cant_faltante, bodega_destino=item.bodega_destino,
+                            estado_item='EN_COMPRAS', motivo_rechazo="Faltante enrutado a compras."
+                        )
+                        CotizacionItem.objects.create(solicitud=solicitud, material=nuevo_item.material, bodega_destino=nuevo_item.bodega_destino, cantidad_requerida=nuevo_item.cantidad_solicitada)
+                    else:
+                        item.estado_item = 'EN_COMPRAS'
+                        item.motivo_rechazo = motivo or "Enviado directo a compras."
+                        item.save()
+                        CotizacionItem.objects.create(solicitud=solicitud, material=item.material, bodega_destino=item.bodega_destino, cantidad_requerida=item.cantidad_solicitada)
+
+                elif decision == 'RECHAZADO':
+                    item.estado_item = 'RECHAZADO'
+                    item.motivo_rechazo = motivo or "Ítem denegado."
                     item.save()
 
-        # Al agrupar para Compras, preservamos la bodega destino
-        items_compras = requerimiento.detalles.filter(estado_item='EN_COMPRAS')
-        if items_compras.exists():
-            solicitud, _ = SolicitudCompra.objects.get_or_create(requerimiento_origen=requerimiento, defaults={'estado': 'ENVIADO_A_COMPRAS'})
-            for item in items_compras:
-                cot, created = CotizacionItem.objects.get_or_create(
-                    solicitud=solicitud, material=item.material, bodega_destino=item.bodega_destino,
-                    defaults={'cantidad_requerida': item.cantidad_solicitada, 'estado_aprobacion': 'PENDIENTE'}
-                )
-                if not created:
-                    cot.cantidad_requerida += item.cantidad_solicitada
-                    cot.save()
-
+        # Recalcula el estado general (Parcial, Pendiente, Aprobado...)
         requerimiento.actualizar_estado_general()
-        messages.success(request, "Ticket auditado con ruteo de bodega estricto.")
+        messages.success(request, "Ticket procesado con trazabilidad estricta. Los faltantes siguen en su bandeja de PENDIENTES.")
         return redirect('dashboard_erp')
 
-    # ---> ESTA ES LA LÍNEA QUE LE FALTABA A TU CÓDIGO (FUERA DEL IF POST) <---
     return render(request, 'web/erp/revisar_requerimiento.html', {
         'requerimiento': requerimiento,
-        'items': items
+        'items': requerimiento.detalles.all().order_by('estado_item')
     })
-    
 
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
