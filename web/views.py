@@ -88,7 +88,7 @@ def detalle_especialidad(request, tipo):
 def proyectos(request):
     lista_proyectos = [
         {'id': 'plaza-kocoa', 'titulo': 'Plaza Kocoa', 'categoria': 'Comercial / Estructuras', 'img': 'kocoa/kocoa_main.jpg'},
-        {'id': 'campo-oh', 'titulo': 'Casa de Campo O&H', 'categoria': 'Residencial / Diseño', 'img': 'oh_main.jpg'},
+        {'id': 'campo-oh', 'titulo': 'Casa de Campo "El Refugio" ', 'categoria': 'Residencial / Diseño', 'img': 'oh_main.jpg'},
         {'id': 'san-isidro', 'titulo': 'Conjunto San Isidro', 'categoria': 'Residencial / Carpintería', 'img': 'isidro_main.jpg'},
         {'id': 'vaca-lima', 'titulo': 'Residencia Vaca Lima', 'categoria': 'Residencial / Estructura Mixta', 'img': 'vaca_main.jpg'},
         {'id': 'residencia-art', 'titulo': 'Residencia Arteaga', 'categoria': 'Residencial / Estructura Mixta', 'img': 'arteaga_main.jpg'}
@@ -105,9 +105,9 @@ def detalle_proyecto(request, proyecto_id):
             'videos': ['kocoa/kocoa_vid.mp4']
         },
         'campo-oh': {
-            'titulo': 'Casa de Campo O&H',
+            'titulo': 'Casa de Campo "El Refugio" ',
             'ubicacion': 'Proyecto Residencial',
-            'descripcion': 'Residencia O&H es un proyecto que integra la estructura metálica con principios geométricos...',
+            'descripcion': 'Residencia "El Refugio" es un proyecto que integra la estructura metálica con principios geométricos...',
             'fotos': ['campo/campo1.jpg', 'campo/campo2.jpg', 'campo/campo3.jpg', 'campo/campo4.jpg', 'campo/campo5.jpg', 'campo/campo6.jpg', 'campo/campo7.jpg', 'campo/campo8.jpg', 'campo/campo9.jpg'],
             'videos': ['campo/campo_video1.mp4','campo/campo_video2.mp4']
         },
