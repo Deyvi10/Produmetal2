@@ -148,11 +148,24 @@ if not DEBUG:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 
-# Cloudinary — solo activar cuando vayas a producción en Render
-# Cuando tengas las credenciales, descomenta esto y añádelas al .env
-# CLOUDINARY_STORAGE = {
-#     'CLOUD_NAME': config('CLOUDINARY_NAME'),
-#     'API_KEY': config('CLOUDINARY_KEY'),
-#     'API_SECRET': config('CLOUDINARY_SECRET'),
-# }
-# DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+# ==============================================================================
+# 8. ALMACENAMIENTO EN LA NUBE (AWS S3) - ARCHIVOS MULTIMEDIA / PDFS
+# ==============================================================================
+if 'AWS_ACCESS_KEY_ID' in os.environ:
+    # Estas variables se inyectarán después desde el panel de Render
+    AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
+    AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'us-east-1')
+    
+    # Reglas estrictas de privacidad
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_DEFAULT_ACL = 'private'  # Evita que cualquiera vea los certificados o facturas
+    AWS_QUERYSTRING_AUTH = True  # Genera URLs firmadas temporales para lectura
+    AWS_S3_SIGNATURE_VERSION = 's3v4'
+    
+    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+else:
+    # Entorno local de desarrollo
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
