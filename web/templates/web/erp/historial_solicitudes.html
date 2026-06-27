@@ -1,47 +1,247 @@
 {% extends 'web/base.html' %}
+{% load static %}
+
+{% block extra_head %}
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+{% endblock %}
+
 {% block content %}
-<div class="container py-5" style="margin-top: 80px;">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="fw-bold"><i class="bi bi-clock-history text-info me-2"></i> Historial de Solicitudes de Compra</h3>
-        <a href="{% url 'dashboard_erp' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Volver</a>
+<style>
+    /* =========================================
+       TRUE DARK MODE - PREMIUM APP STYLE
+       ========================================= */
+    :root {
+        --pm-bg: #0d1117;
+        --pm-surface: #161b22;
+        --pm-surface-hover: #1f242c;
+        --pm-border: #30363d;
+        --pm-text: #f0f6fc;
+        --pm-text-muted: #8b949e;
+        
+        --pm-amber: #e6a817; 
+        --pm-blue: #388bfd;
+        --pm-green: #238636;
+        --pm-red: #da3633;
+        --pm-purple: #bc8cff;
+        
+        --font-display: 'Barlow Condensed', sans-serif;
+        --font-body: 'Barlow', sans-serif;
+    }
+
+    body { background-color: var(--pm-bg) !important; color: var(--pm-text) !important; font-family: var(--font-body); }
+    .erp-container { margin-top: 90px; max-width: 1400px; padding-bottom: 60px; }
+
+    /* Animación de entrada */
+    .fade-up { animation: fadeUpAnim 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; transform: translateY(15px); }
+    @keyframes fadeUpAnim { to { opacity: 1; transform: translateY(0); } }
+
+    /* Contenedor Principal */
+    .card-master { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    .card-header-custom { background: rgba(9, 13, 19, 0.7); border-bottom: 1px solid var(--pm-border); padding: 1.2rem 1.5rem; }
+    
+    /* Formularios y Filtros */
+    .form-control-dark {
+        background-color: rgba(0,0,0,0.3) !important; border: 1px solid var(--pm-border) !important;
+        color: var(--pm-text) !important; border-radius: 8px; padding: 0.6rem 1rem; font-size: 0.9rem; transition: 0.2s;
+    }
+    .form-control-dark:focus { border-color: var(--pm-blue) !important; box-shadow: 0 0 0 3px rgba(56,139,253,0.15) !important; }
+    ::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; } /* Para que el icono del calendario sea blanco */
+
+    /* Píldoras de Filtro (Estados) */
+    .filter-track { display: flex; overflow-x: auto; gap: 8px; padding-bottom: 4px; scrollbar-width: none; }
+    .filter-track::-webkit-scrollbar { display: none; }
+    .filter-pill {
+        padding: 6px 16px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; color: var(--pm-text-muted);
+        border: 1px solid var(--pm-border); background: transparent; white-space: nowrap; transition: all 0.2s; text-decoration: none; cursor: pointer;
+    }
+    .filter-pill:hover { background: var(--pm-surface-hover); color: var(--pm-text); }
+    .filter-pill.active { background: rgba(56,139,253,0.1); color: var(--pm-blue); border-color: var(--pm-blue); }
+
+    /* Botones */
+    .btn-neo { background: var(--pm-blue); color: white; font-weight: 600; border-radius: 8px; padding: 0.6rem 1.2rem; border: none; transition: 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-neo:hover { background: #2563eb; transform: translateY(-1px); color: white;}
+    .btn-neo-outline { border: 1px solid var(--pm-border); color: var(--pm-text); background: rgba(255,255,255,0.02); font-weight: 600; border-radius: 8px; padding: 0.6rem 1.2rem; transition: 0.2s; text-decoration: none;}
+    .btn-neo-outline:hover { background: var(--pm-surface-hover); border-color: var(--pm-text-muted); color: white;}
+
+    /* Tabla Elegante */
+    .table-modern { width: 100%; margin-bottom: 0; color: var(--pm-text); border-collapse: separate; border-spacing: 0;}
+    .table-modern th { background: rgba(9, 13, 19, 0.4); text-transform: uppercase; font-family: var(--font-display); font-size: 0.85rem; letter-spacing: 1px; color: var(--pm-text-muted); border-bottom: 1px solid var(--pm-border); padding: 16px 20px; border-top: none; font-weight: 600;}
+    .table-modern td { vertical-align: middle; border-bottom: 1px solid var(--pm-border); padding: 16px 20px; color: var(--pm-text); }
+    .table-modern tr:hover td { background-color: var(--pm-surface-hover); }
+    .table-modern tr:last-child td { border-bottom: none; }
+
+    /* Badges Suaves */
+    .badge-soft { padding: 6px 12px; font-weight: 600; font-size: 0.75rem; border-radius: 8px; display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.5px;}
+    .badge-soft-warning { background: rgba(230,168,23,0.1); color: var(--pm-amber); border: 1px solid rgba(230,168,23,0.2); }
+    .badge-soft-success { background: rgba(35,134,54,0.15); color: #4ade80; border: 1px solid rgba(35,134,54,0.3); }
+    .badge-soft-info    { background: rgba(56,139,253,0.15); color: #79c0ff; border: 1px solid rgba(56,139,253,0.3); }
+    .badge-soft-secondary { background: rgba(255,255,255,0.05); color: var(--pm-text-muted); border: 1px solid var(--pm-border); }
+
+    /* Paginación Neo */
+    .pagination-neo { display: flex; list-style: none; margin: 0; padding: 1.5rem; gap: 6px; justify-content: center; border-top: 1px solid var(--pm-border); background: rgba(0,0,0,0.2);}
+    .pagination-neo .page-link { background: var(--pm-surface); border: 1px solid var(--pm-border); color: var(--pm-text); border-radius: 6px; padding: 8px 16px; font-size: 0.9rem; text-decoration: none; transition: all 0.2s; font-weight: 600;}
+    .pagination-neo .page-link:hover { background: var(--pm-surface-hover); border-color: var(--pm-text-muted); }
+    .pagination-neo .active .page-link { background: var(--pm-blue); color: #fff; border-color: var(--pm-blue); }
+    .pagination-neo .disabled .page-link { opacity: 0.4; pointer-events: none; }
+
+    .mobile-label { display: none; }
+
+    /* Adaptación Móvil Extrema */
+    @media (max-width: 768px) {
+        .erp-container { margin-top: 80px; padding-left: 10px !important; padding-right: 10px !important; }
+        
+        .header-actions { flex-direction: column; width: 100%; gap: 10px; }
+        .header-actions .btn-neo-outline { width: 100%; text-align: center; }
+
+        .search-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+        
+        .table-modern thead { display: none; }
+        .table-modern tbody { display: flex; flex-direction: column; gap: 12px; padding: 10px; background: rgba(0,0,0,0.2);}
+        .table-modern tbody tr { display: flex; flex-direction: column; background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; padding: 5px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);}
+        .table-modern td { padding: 12px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; align-items: flex-start; gap: 5px;}
+        .table-modern td:last-child { border-bottom: none; align-items: stretch;}
+        .mobile-label { display: block; font-size: 0.65rem; color: var(--pm-text-muted); text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;}
+        
+        .btn-sm { padding: 10px; font-size: 0.9rem; justify-content: center;}
+    }
+</style>
+
+<div class="container-fluid px-2 px-xl-5 erp-container fade-up">
+    
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-end mb-4 pb-3 border-bottom gap-3" style="border-color: var(--pm-border)!important;">
+        <div>
+            <a href="{% url 'dashboard_erp' %}" class="text-decoration-none mb-2 d-inline-block text-secondary" style="font-size: 0.85rem; transition: 0.2s;">
+                <i class="bi bi-arrow-left me-1"></i> Dashboard Principal
+            </a>
+            <h2 class="text-white mb-0 fw-bold fs-2" style="font-family: var(--font-display); letter-spacing: 0.5px;">
+                <i class="bi bi-clock-history text-info me-2"></i> HISTORIAL DE COTIZACIONES
+            </h2>
+            <p class="text-secondary mb-0 mt-1" style="font-size: 0.9rem;">Consulta de trazabilidad y resoluciones de solicitudes de compra.</p>
+        </div>
     </div>
 
-    <div class="card shadow-sm border-0">
+    <div class="card-master">
+        
+        <div class="card-header-custom">
+            <form method="GET" class="m-0" id="formFiltros">
+                <div class="filter-track mb-3">
+                    <label class="text-muted small fw-bold me-2 align-self-center text-uppercase" style="letter-spacing: 0.5px;">Estado:</label>
+                    <button type="submit" name="estado" value="" class="filter-pill {% if not estado_actual %}active{% endif %}">Todos</button>
+                    <button type="submit" name="estado" value="ENVIADO_A_COMPRAS" class="filter-pill {% if estado_actual == 'ENVIADO_A_COMPRAS' %}active{% endif %}">Por Cotizar</button>
+                    <button type="submit" name="estado" value="COTIZADO" class="filter-pill {% if estado_actual == 'COTIZADO' %}active{% endif %}">En Revisión Admin</button>
+                    <button type="submit" name="estado" value="REVISADO_ADMIN" class="filter-pill {% if estado_actual == 'REVISADO_ADMIN' %}active{% endif %}">Autorizados</button>
+                    <button type="submit" name="estado" value="PROCESADO" class="filter-pill {% if estado_actual == 'PROCESADO' %}active{% endif %}">Procesados (Cerrados)</button>
+                </div>
+
+                <div class="row g-2 align-items-end">
+                    <div class="col-12 col-md-4 col-lg-3">
+                        <label class="form-label text-muted small fw-bold text-uppercase mb-1" style="letter-spacing: 0.5px;"><i class="bi bi-calendar-event me-1"></i> Desde</label>
+                        <input type="date" name="fecha_inicio" class="form-control-dark w-100" value="{{ fecha_inicio|default:'' }}">
+                    </div>
+                    <div class="col-12 col-md-4 col-lg-3">
+                        <label class="form-label text-muted small fw-bold text-uppercase mb-1" style="letter-spacing: 0.5px;"><i class="bi bi-calendar-check me-1"></i> Hasta</label>
+                        <input type="date" name="fecha_fin" class="form-control-dark w-100" value="{{ fecha_fin|default:'' }}">
+                    </div>
+                    <div class="col-12 col-md-4 col-lg-2">
+                        <button type="submit" class="btn-neo w-100 justify-content-center">
+                            <i class="bi bi-search"></i> Filtrar Fechas
+                        </button>
+                    </div>
+                    <div class="col-12 col-md-12 col-lg-4 text-md-end mt-3 mt-lg-0">
+                        <a href="{% url 'historial_solicitudes' %}" class="btn-neo-outline w-100 w-lg-auto text-center" style="font-size: 0.85rem;">
+                            <i class="bi bi-eraser me-1"></i> Limpiar Filtros
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+
         <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0 align-middle">
-                    <thead class="table-dark">
+            <div class="table-responsive m-0 border-0 rounded-0">
+                <table class="table-modern">
+                    <thead>
                         <tr>
-                            <th class="ps-4">Folio</th>
-                            <th>Fecha</th>
-                            <th>Estado</th>
-                            <th class="text-end pe-4">Acciones</th>
+                            <th class="ps-4">Código / Folio</th>
+                            <th>Fecha de Emisión</th>
+                            <th>Estado Actual</th>
+                            <th class="text-end pe-4">Auditoría</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for solicitud in solicitudes %}
+                        {% for solicitud in page_obj %}
                         <tr>
-                            <td class="ps-4 fw-bold">{{ solicitud.folio }}</td>
-                            <td>{{ solicitud.fecha_creacion|date:"d M Y" }}</td>
-                            <td>
-                                <span class="badge {% if solicitud.estado == 'PROCESADO' %}bg-success{% elif solicitud.estado == 'COTIZADO' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
-                                    {{ solicitud.estado }}
-                                </span>
+                            <td class="ps-md-4">
+                                <span class="mobile-label">Documento</span>
+                                <div class="fw-bold text-white fs-6">
+                                    <i class="bi bi-file-earmark-text text-secondary me-2 d-none d-md-inline"></i>{{ solicitud.folio }}
+                                </div>
                             </td>
-                            <td class="text-end pe-4">
-                                <a href="{% url 'detalle_solicitud_procesada' solicitud.id %}" class="btn btn-sm btn-primary">
-                                    <i class="bi bi-eye"></i> Ver Resultados
+                            
+                            <td>
+                                <span class="mobile-label">Fecha de Emisión</span>
+                                <div class="text-light"><i class="bi bi-calendar3 me-2 text-secondary"></i>{{ solicitud.fecha_creacion|date:"d M Y - H:i" }}</div>
+                            </td>
+                            
+                            <td>
+                                <span class="mobile-label">Estado de la Solicitud</span>
+                                {% if solicitud.estado == 'PROCESADO' %}
+                                    <span class="badge-soft badge-soft-success"><i class="bi bi-check-all"></i> Cerrado y Comprado</span>
+                                {% elif solicitud.estado == 'COTIZADO' %}
+                                    <span class="badge-soft badge-soft-warning"><i class="bi bi-eye"></i> Revisión Gerencial</span>
+                                {% elif solicitud.estado == 'REVISADO_ADMIN' %}
+                                    <span class="badge-soft badge-soft-info"><i class="bi bi-check2-circle"></i> Aprobado (Por Ejecutar)</span>
+                                {% elif solicitud.estado == 'ENVIADO_A_COMPRAS' %}
+                                    <span class="badge-soft badge-soft-secondary"><i class="bi bi-hourglass-split"></i> Falta Ofertar Precio</span>
+                                {% else %}
+                                    <span class="badge-soft badge-soft-secondary">{{ solicitud.get_estado_display }}</span>
+                                {% endif %}
+                            </td>
+                            
+                            <td class="text-md-end pe-md-4">
+                                <span class="mobile-label mb-2">Acciones</span>
+                                <a href="{% url 'detalle_solicitud_procesada' solicitud.id %}" class="btn btn-sm btn-neo" style="background: rgba(56,139,253,0.15); color: #79c0ff; border: 1px solid rgba(56,139,253,0.3);">
+                                    <i class="bi bi-search"></i> Ver Detalles
                                 </a>
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="4" class="text-center py-4 text-muted">No hay historial de solicitudes.</td>
+                            <td colspan="4" class="text-center py-5">
+                                <i class="bi bi-search text-muted" style="font-size: 3rem;"></i>
+                                <div class="mt-3 text-white fw-bold fs-5">No hay resultados</div>
+                                <div class="text-secondary small mt-1">No se encontraron solicitudes con los filtros aplicados.</div>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+
+            {% if page_obj.has_other_pages %}
+            <ul class="pagination-neo">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if estado_actual %}&estado={{ estado_actual }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}">
+                            <i class="bi bi-chevron-left"></i> Anterior
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i> Anterior</span></li>
+                {% endif %}
+
+                <li class="page-item active"><span class="page-link px-4">{{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if estado_actual %}&estado={{ estado_actual }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}">
+                            Siguiente <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">Siguiente <i class="bi bi-chevron-right"></i></span></li>
+                {% endif %}
+            </ul>
+            {% endif %}
         </div>
     </div>
 </div>

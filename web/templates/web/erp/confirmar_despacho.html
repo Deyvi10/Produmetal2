@@ -16,31 +16,50 @@
     .erp-container { max-width: 900px; padding-bottom: 80px; margin-top: 30px;}
 
     .card-master { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); overflow: hidden; margin-bottom: 20px; }
+    .card-warning { border-color: #fde68a; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.05); }
 
     .ticket-header { background: linear-gradient(135deg, #1e8449 0%, #28a745 100%); color: white; padding: 25px; border-radius: 12px; box-shadow: 0 8px 20px rgba(40, 167, 69, 0.2); }
     .ticket-header.bg-parcial { background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%); box-shadow: 0 8px 20px rgba(217, 119, 6, 0.2); }
 
-    .table-despacho { width: 100%; margin-bottom: 0; color: var(--pm-text); }
-    .table-despacho th { background: #f8f9fa; color: #586069; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; padding: 14px 20px; border-bottom: 2px solid var(--pm-border); }
-    .table-despacho td { padding: 16px 20px; border-bottom: 1px solid var(--pm-border); vertical-align: middle; }
+    /* Estilos base compartidos para ambas tablas */
+    .table-erp { width: 100%; margin-bottom: 0; color: var(--pm-text); }
+    .table-erp th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; padding: 14px 20px; border-bottom: 2px solid var(--pm-border); }
+    .table-erp td { padding: 16px 20px; border-bottom: 1px solid var(--pm-border); vertical-align: middle; }
     
+    /* Variaciones de cabecera */
+    .thead-despacho th { background: #f8f9fa; color: #586069; }
+    .thead-pendientes th { background: #fffbeb; color: #b45309; border-bottom-color: #fde68a; }
+
+    /* Badges */
     .qty-badge { background: rgba(40, 167, 69, 0.1); color: #1a7f37; border: 1px solid rgba(40, 167, 69, 0.2); font-size: 1.1rem; font-weight: 800; padding: 6px 16px; border-radius: 20px; display: inline-block; }
+    .qty-badge-warning { background: rgba(245, 158, 11, 0.1); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.2); font-size: 1.1rem; font-weight: 800; padding: 6px 16px; border-radius: 20px; display: inline-block; }
+    
     .bodega-badge { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-size: 0.8rem; font-weight: 800; padding: 4px 12px; border-radius: 8px; display: inline-flex; align-items: center; gap: 4px;}
+    .estado-badge { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; font-size: 0.8rem; font-weight: 800; padding: 4px 12px; border-radius: 8px; display: inline-flex; align-items: center; gap: 4px;}
 
     .btn-success-custom { background: var(--pm-success); color: white; font-weight: bold; border-radius: 8px; padding: 14px 24px; border: none; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
     .btn-success-custom:hover { background: #22863a; transform: translateY(-2px); box-shadow: 0 8px 15px rgba(40, 167, 69, 0.3); color: white;}
 
     .mobile-label { display: none; }
 
+    /* Adaptación Móvil de Alta Calidad */
     @media (max-width: 768px) {
         .erp-container { padding-top: 10px; }
-        .card-master { border: none; box-shadow: none; background: transparent; }
-        .table-despacho thead { display: none; }
-        .table-despacho tbody { display: flex; flex-direction: column; gap: 12px; }
-        .table-despacho tbody tr { display: flex; flex-direction: column; background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; padding: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.03);}
-        .table-despacho td { padding: 12px 15px; border-bottom: 1px solid #f1f4f9; display: flex; flex-direction: column; gap: 6px; align-items: flex-start !important;}
-        .table-despacho td:last-child { border-bottom: none; align-items: stretch !important; }
+        .card-master { border: none; box-shadow: none; background: transparent; margin-bottom: 10px;}
+        .table-erp thead { display: none; }
+        .table-erp tbody { display: flex; flex-direction: column; gap: 12px; }
+        .table-erp tbody tr { display: flex; flex-direction: column; background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; padding: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.03);}
+        
+        /* Fila específica para items pendientes en móvil */
+        tr.row-pendiente { border-color: #fde68a !important; background-color: #fffdf5 !important; }
+
+        .table-erp td { padding: 12px 15px; border-bottom: 1px solid #f1f4f9; display: flex; flex-direction: column; gap: 6px; align-items: flex-start !important;}
+        tr.row-pendiente td { border-bottom-color: #fef3c7; }
+        .table-erp td:last-child { border-bottom: none; align-items: stretch !important; }
+        
         .mobile-label { display: block; font-size: 0.7rem; text-transform: uppercase; color: #586069; font-weight: 800; letter-spacing: 0.5px;}
+        .mobile-label-warning { color: #b45309; }
+        
         .desktop-footer { display: none !important; }
         .mobile-bottom-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--pm-surface); padding: 15px; box-shadow: 0 -4px 15px rgba(0,0,0,0.08); z-index: 1000; border-top: 1px solid var(--pm-border); }
     }
@@ -59,8 +78,8 @@
             </div>
             <div class="text-md-end mt-2 mt-md-0">
                 <div class="fw-bold fs-3">#{{ ticket.folio }}</div>
-                {% if ticket.estado == 'PARCIALMENTE_DESPACHADO' %}
-                    <span class="badge bg-white text-dark shadow-sm px-3 py-2 fs-6 mt-1 rounded-pill"><i class="bi bi-pie-chart-fill text-warning me-1"></i> Entrega Parcial</span>
+                {% if items_pendientes %}
+                    <span class="badge bg-white text-dark shadow-sm px-3 py-2 fs-6 mt-1 rounded-pill"><i class="bi bi-pie-chart-fill text-warning me-1"></i> Faltan Materiales</span>
                 {% else %}
                     <span class="badge bg-white text-success shadow-sm px-3 py-2 fs-6 mt-1 rounded-pill"><i class="bi bi-check-circle-fill me-1"></i> Lista Completa</span>
                 {% endif %}
@@ -72,16 +91,19 @@
         <i class="bi bi-shield-lock-fill fs-3 text-info me-3 mt-1"></i>
         <div>
             <h6 class="fw-bold text-dark mb-1">Ruteo de Bodega Estricto Activado</h6>
-            <p class="small text-dark mb-0">Esta es una orden de entrega física. El sistema descontará el stock única y exclusivamente de la bodega destino que el solicitante requirió para cada ítem. Acércate a la percha correspondiente.</p>
+            <p class="small text-dark mb-0">Esta es una orden de entrega física. El sistema descontará el stock única y exclusivamente de la bodega destino requerida. Acércate a la percha correspondiente.</p>
         </div>
     </div>
 
     <form method="POST">
         {% csrf_token %}
+        
+        {% if items %}
+        <h5 class="fw-bold text-dark mb-3 d-none d-md-block"><i class="bi bi-box-arrow-right text-success me-2"></i>Listos para Despachar</h5>
         <div class="card-master bg-white">
             <div class="table-responsive m-0 border-0">
-                <table class="table-despacho">
-                    <thead>
+                <table class="table-erp">
+                    <thead class="thead-despacho">
                         <tr>
                             <th class="ps-4">Material / Suministro</th>
                             <th>Ubicación (Extraer de)</th>
@@ -116,18 +138,83 @@
                 </table>
             </div>
         </div>
+        {% endif %}
 
-        <div class="desktop-footer d-flex justify-content-end mt-4">
-            <button type="submit" class="btn-success-custom px-5 shadow-sm" onclick="this.disabled=true; this.form.submit();">
-                <i class="bi bi-check-all fs-4 me-2"></i> Confirmar Entrega del Material
-            </button>
+
+        {% if items_pendientes %}
+        <div class="alert border-0 shadow-sm rounded-3 d-flex align-items-start p-3 mt-4 mb-3" style="background-color: #fffbeb;">
+            <i class="bi bi-hourglass-split fs-3 text-warning me-3 mt-1"></i>
+            <div>
+                <h6 class="fw-bold mb-1" style="color: #b45309;">Materiales en Proceso de Compra</h6>
+                <p class="small mb-0" style="color: #92400e;">Estos ítems pertenecen a este ticket y están siendo gestionados por Compras. El requerimiento se mantendrá abierto hasta que recibas y despaches estos materiales.</p>
+            </div>
         </div>
 
-        <div class="mobile-bottom-bar d-md-none">
-            <button type="submit" class="btn-success-custom w-100 shadow-lg py-3" onclick="this.disabled=true; this.form.submit();">
-                <i class="bi bi-check-all fs-4 me-2"></i> Confirmar Entrega Física
-            </button>
+        <div class="card-master bg-white card-warning">
+            <div class="table-responsive m-0 border-0">
+                <table class="table-erp">
+                    <thead class="thead-pendientes">
+                        <tr>
+                            <th class="ps-4">Material Faltante</th>
+                            <th>Estado Actual</th>
+                            <th class="text-center pe-4">Cantidad Pendiente</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items_pendientes %}
+                        <tr class="row-pendiente">
+                            <td class="ps-md-4">
+                                <span class="mobile-label mobile-label-warning">Ítem Faltante</span>
+                                <div class="fw-bold fs-6" style="color: #92400e;">{{ item.material.nombre }}</div>
+                                <div class="small mt-1" style="color: #d97706;"><i class="bi bi-upc-scan me-1"></i> SKU: {{ item.material.sku }}</div>
+                            </td>
+                            
+                            <td>
+                                <span class="mobile-label mobile-label-warning mt-2">Estado</span>
+                                <div class="estado-badge shadow-sm">
+                                    <i class="bi bi-cart"></i> Esperando Proveedor
+                                </div>
+                            </td>
+
+                            <td class="text-md-center pe-md-4">
+                                <span class="mobile-label mobile-label-warning mt-2 mb-2">Pendiente por entregar</span>
+                                <div class="qty-badge-warning shadow-sm w-100 w-md-auto text-center">
+                                    {{ item.cantidad_solicitada|floatformat:"0" }} <span style="font-size: 0.75rem; text-transform: uppercase; font-weight: normal; margin-left: 3px;">UNID.</span>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
+        {% endif %}
+
+
+        {% if items %}
+            <div class="desktop-footer d-flex justify-content-end mt-4">
+                <button type="submit" class="btn-success-custom px-5 shadow-sm" onclick="this.disabled=true; this.form.submit();">
+                    <i class="bi bi-check-all fs-4 me-2"></i> Confirmar Entrega del Material
+                </button>
+            </div>
+
+            <div class="mobile-bottom-bar d-md-none">
+                <button type="submit" class="btn-success-custom w-100 shadow-lg py-3" onclick="this.disabled=true; this.form.submit();">
+                    <i class="bi bi-check-all fs-4 me-2"></i> Confirmar Entrega Física
+                </button>
+            </div>
+        {% else %}
+            <div class="alert alert-warning text-center mt-4">
+                <i class="bi bi-info-circle me-2"></i> No hay ítems listos para despachar en este momento. Vuelve cuando Compras haya ingresado el material.
+            </div>
+            <div class="desktop-footer d-flex justify-content-center mt-3">
+                <a href="{% url 'dashboard_erp' %}" class="btn btn-secondary px-5 py-2 fw-bold">Volver al Dashboard</a>
+            </div>
+            <div class="mobile-bottom-bar d-md-none">
+                <a href="{% url 'dashboard_erp' %}" class="btn btn-secondary w-100 shadow-lg py-3 fw-bold">Volver al Dashboard</a>
+            </div>
+        {% endif %}
+        
     </form>
 </div>
 {% endblock %}

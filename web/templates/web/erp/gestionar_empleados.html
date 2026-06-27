@@ -3,146 +3,140 @@
 {% block content %}
 <style>
     /* =========================================
-       TRUE DARK MODE - ELEGANTE Y ALTO CONTRASTE
+       TRUE DARK MODE - SEGURIDAD Y RRHH
        ========================================= */
     :root {
-        --dark-bg: #121212;         
-        --dark-surface: #1e1e1e;    
-        --dark-hover: #2a2a2a;      
+        --dark-bg: #0a0a0a;         
+        --dark-surface: #171717;    
+        --dark-hover: #262626;      
         --dark-border: #333333;     
         
         --text-white: #ffffff;      
-        --text-light: #cccccc;      
+        --text-light: #a3a3a3;      
         
-        --blue-primary: #0d6efd;    
-        --blue-hover: #0b5ed7;
-        --green-success: #198754;
-        --red-danger: #dc3545;
-        --yellow-warning: #ffc107;
+        --blue-primary: #3b82f6;    
+        --blue-hover: #2563eb;
+        --green-success: #10b981;
+        --red-danger: #ef4444;
+        --yellow-warning: #f59e0b;
+        --gray-muted: #52525b;
     }
 
-    body {
-        background-color: var(--dark-bg) !important;
-        color: var(--text-white) !important;
-    }
+    body { background-color: var(--dark-bg) !important; color: var(--text-white) !important; }
 
     .card-elegant {
         background-color: var(--dark-surface);
         border: 1px solid var(--dark-border);
         border-radius: 12px;
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
         overflow: hidden;
     }
 
-    .table-elegant { width: 100%; margin: 0; color: var(--text-white); }
+    /* Tabla Rediseñada */
+    .table-elegant { width: 100%; margin: 0; color: var(--text-white); border-collapse: separate; border-spacing: 0;}
     .table-elegant th {
-        background-color: #171717;
-        color: var(--text-light);
-        font-size: 0.85rem;
-        font-weight: bold;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        padding: 1rem 1.5rem;
-        border-bottom: 2px solid var(--dark-border);
+        background-color: #111111; color: var(--text-light); font-size: 0.75rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 1px; padding: 1.2rem 1.5rem; border-bottom: 1px solid var(--dark-border);
     }
     .table-elegant td {
-        padding: 1rem 1.5rem;
-        vertical-align: middle;
-        border-bottom: 1px solid var(--dark-border);
-        color: var(--text-white);
+        padding: 1.2rem 1.5rem; vertical-align: middle; border-bottom: 1px solid var(--dark-border); color: var(--text-white);
     }
-    .table-elegant tbody tr:hover td {
-        background-color: var(--dark-hover);
-    }
+    .table-elegant tbody tr { transition: background-color 0.2s; }
+    .table-elegant tbody tr:hover td { background-color: var(--dark-hover); }
 
+    /* Badges Minimalistas */
     .badge-custom {
-        padding: 0.5rem 1rem;
-        border-radius: 50px;
-        font-weight: 600;
-        font-size: 0.8rem;
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
+        padding: 6px 12px; border-radius: 8px; font-weight: 600; font-size: 0.75rem;
+        display: inline-flex; align-items: center; gap: 6px; letter-spacing: 0.3px;
     }
-    .bg-blue-custom { background-color: rgba(13, 110, 253, 0.15); color: #6ea8fe; border: 1px solid #0d6efd; }
-    .bg-green-custom { background-color: rgba(25, 135, 84, 0.15); color: #75b798; border: 1px solid #198754; }
-    .bg-red-custom { background-color: rgba(220, 53, 69, 0.15); color: #ea868f; border: 1px solid #dc3545; }
-    .bg-gray-custom { background-color: rgba(255, 255, 255, 0.1); color: var(--text-light); border: 1px solid var(--dark-border); }
-    .bg-warning-custom { background-color: rgba(255, 193, 7, 0.15); color: #ffda6a; border: 1px solid #ffc107; }
+    .bg-blue-custom { background-color: rgba(59, 130, 246, 0.1); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.2); }
+    .bg-green-custom { background-color: rgba(16, 185, 129, 0.1); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.2); }
+    .bg-red-custom { background-color: rgba(239, 68, 68, 0.1); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.2); }
+    .bg-gray-custom { background-color: rgba(255, 255, 255, 0.05); color: var(--text-light); border: 1px solid var(--dark-border); }
+    .bg-warning-custom { background-color: rgba(245, 158, 11, 0.1); color: #fcd34d; border: 1px solid rgba(245, 158, 11, 0.2); }
 
+    /* Formularios Oscuros */
     .form-control-dark, .form-select-dark {
-        background-color: var(--dark-bg) !important;
-        border: 1px solid var(--dark-border) !important;
-        color: var(--text-white) !important;
-        border-radius: 8px;
-        padding: 0.75rem 1rem;
-        font-size: 1rem;
+        background-color: var(--dark-bg) !important; border: 1px solid var(--dark-border) !important;
+        color: var(--text-white) !important; border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.95rem; transition: all 0.2s;
     }
     .form-control-dark:focus, .form-select-dark:focus {
-        border-color: var(--blue-primary) !important;
-        box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25) !important;
-        outline: none;
+        border-color: var(--blue-primary) !important; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15) !important; outline: none;
     }
+    
+    /* Reglas de ayuda de Django (Contraseñas) */
+    .django-help-text {
+        font-size: 0.75rem; color: var(--text-light); background: rgba(255,255,255,0.02);
+        padding: 10px; border-radius: 8px; border: 1px solid var(--dark-border); margin-top: 8px;
+    }
+    .django-help-text ul { margin-bottom: 0; padding-left: 15px; }
 
-    .modal-content {
-        background-color: var(--dark-surface);
-        border: 1px solid var(--dark-border);
-        border-radius: 12px;
-    }
-    .modal-header { border-bottom: 1px solid var(--dark-border); }
-    .modal-footer { border-top: 1px solid var(--dark-border); }
-    
-    .text-title { color: var(--text-white); font-weight: bold; }
-    .text-subtitle { color: var(--text-light); font-size: 0.9rem; }
-    .form-label { color: var(--text-light); font-weight: bold; font-size: 0.85rem; text-transform: uppercase; margin-bottom: 0.5rem; }
+    /* Modales */
+    .modal-content { background-color: var(--dark-surface); border: 1px solid var(--dark-border); border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 1); }
+    .modal-header { border-bottom: 1px solid var(--dark-border); padding: 1.5rem; }
+    .modal-footer { border-top: 1px solid var(--dark-border); padding: 1.5rem; }
+    .form-label { color: var(--text-light); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.5px;}
 
-    .btn-blue {
-        background-color: var(--blue-primary);
-        color: #ffffff;
-        font-weight: bold;
-        border-radius: 8px;
-        padding: 0.6rem 1.5rem;
-        border: none;
-        transition: 0.2s;
+    /* Botones y Acciones */
+    .btn-neo {
+        background-color: var(--blue-primary); color: #ffffff; font-weight: 600; font-size: 0.9rem;
+        border-radius: 8px; padding: 0.6rem 1.5rem; border: none; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px;
     }
-    .btn-blue:hover { background-color: var(--blue-hover); color: #ffffff; }
+    .btn-neo:hover { background-color: var(--blue-hover); transform: translateY(-1px); color: white;}
     
-    .btn-icon {
-        background-color: transparent;
-        color: var(--blue-primary);
-        border: 1px solid var(--blue-primary);
-        border-radius: 8px;
-        width: 38px; height: 38px;
-        display: inline-flex; align-items: center; justify-content: center;
-        transition: 0.2s;
-    }
-    .btn-icon:hover { background-color: var(--blue-primary); color: #ffffff; }
+    .action-grid { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-start; }
+    @media (min-width: 768px) { .action-grid { justify-content: flex-end; } }
     
-    .btn-icon-danger {
-        background-color: transparent;
-        color: #ea868f;
-        border: 1px solid #dc3545;
-        border-radius: 8px;
-        width: 38px; height: 38px;
-        display: inline-flex; align-items: center; justify-content: center;
-        transition: 0.2s;
+    .btn-micro {
+        width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center;
+        border-radius: 8px; background: transparent; transition: all 0.2s; border: 1px solid transparent; font-size: 1rem;
     }
-    .btn-icon-danger:hover { background-color: rgba(220, 53, 69, 0.15); color: #ffb3b8; }
+    .btn-micro.edit { color: var(--blue-primary); border-color: rgba(59, 130, 246, 0.3); }
+    .btn-micro.edit:hover { background-color: rgba(59, 130, 246, 0.1); border-color: var(--blue-primary); }
+    
+    .btn-micro.suspend { color: var(--yellow-warning); border-color: rgba(245, 158, 11, 0.3); }
+    .btn-micro.suspend:hover { background-color: rgba(245, 158, 11, 0.1); border-color: var(--yellow-warning); }
+    
+    .btn-micro.activate { color: var(--green-success); border-color: rgba(16, 185, 129, 0.3); }
+    .btn-micro.activate:hover { background-color: rgba(16, 185, 129, 0.1); border-color: var(--green-success); }
+    
+    .btn-micro.unlock { color: var(--red-danger); border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.05);}
+    .btn-micro.unlock:hover { background-color: var(--red-danger); color: white; border-color: var(--red-danger); }
+
+    /* Input group para contraseñas */
+    .input-group-dark .input-group-text {
+        background-color: transparent; border: 1px solid var(--dark-border); color: var(--text-light);
+        border-left: none; cursor: pointer; transition: all 0.2s;
+    }
+    .input-group-dark .input-group-text:hover { color: var(--text-white); background-color: rgba(255,255,255,0.05); }
+    .input-group-dark .form-control-dark { border-right: none; }
+    .input-group-dark .form-control-dark:focus + .input-group-text { border-color: var(--blue-primary); box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15) !important;}
+
+    .mobile-label { display: none; }
+
+    @media (max-width: 768px) {
+        .table-elegant thead { display: none; }
+        .table-elegant tbody tr { display: flex; flex-direction: column; background-color: var(--dark-surface); border: 1px solid var(--dark-border); border-radius: 12px; margin-bottom: 1rem; }
+        .table-elegant td { display: flex; flex-direction: column; align-items: flex-start; padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .table-elegant td:last-child { border-bottom: none; }
+        .mobile-label { display: block; font-size: 0.65rem; color: var(--gray-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 6px;}
+        .action-grid { width: 100%; justify-content: space-between; }
+    }
 </style>
 
-<div class="container py-5" style="margin-top: 70px; max-width: 1300px;">
+<div class="container-fluid py-4" style="margin-top: 75px; max-width: 1400px;">
     
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4 pb-3 border-bottom gap-3" style="border-color: var(--dark-border)!important;">
         <div>
-            <a href="{% url 'dashboard_erp' %}" class="text-decoration-none mb-2 d-inline-block" style="color: var(--text-light); font-weight: bold; font-size: 0.9rem;">
-                <i class="bi bi-arrow-left me-1"></i> Volver al Panel
+            <a href="{% url 'dashboard_erp' %}" class="text-decoration-none mb-2 d-inline-block text-secondary" style="font-size: 0.85rem; transition: 0.2s;">
+                <i class="bi bi-arrow-left me-1"></i> Dashboard Principal
             </a>
-            <h2 class="text-title mb-0 fs-2">Gestión de Personal y Seguridad</h2>
-            <p class="text-subtitle mb-0 mt-1">Administra accesos, roles y audita intentos de intrusión por usuario.</p>
+            <h2 class="text-white mb-0 fw-bold fs-2">Gestión de Accesos y Seguridad</h2>
+            <p class="text-secondary mb-0 mt-1" style="font-size: 0.9rem;">Administra credenciales, audita bloqueos IP y gestiona estados del personal.</p>
         </div>
         <div>
-            <button class="btn-blue d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalNuevoEmpleado">
-                <i class="bi bi-person-plus-fill fs-5"></i> Agregar Empleado
+            <button class="btn-neo" data-bs-toggle="modal" data-bs-target="#modalNuevoEmpleado">
+                <i class="bi bi-person-plus-fill"></i> Registrar Empleado
             </button>
         </div>
     </div>
@@ -153,13 +147,13 @@
                 <div class="alert alert-dismissible fade show d-flex align-items-center p-3 rounded-3" 
                      style="background-color: var(--dark-surface); border: 1px solid var(--dark-border); border-left: 4px solid {% if message.tags == 'error' %}var(--red-danger){% elif message.tags == 'warning' %}var(--yellow-warning){% else %}var(--green-success){% endif %}; color: var(--text-white);">
                     {% if message.tags == 'error' %}
-                        <i class="bi bi-x-circle-fill me-3" style="color: var(--red-danger); font-size: 1.2rem;"></i>
+                        <i class="bi bi-x-circle-fill me-3 text-danger fs-5"></i>
                     {% elif message.tags == 'warning' %}
-                        <i class="bi bi-exclamation-triangle-fill me-3" style="color: var(--yellow-warning); font-size: 1.2rem;"></i>
+                        <i class="bi bi-exclamation-triangle-fill me-3 text-warning fs-5"></i>
                     {% else %}
-                        <i class="bi bi-check-circle-fill me-3" style="color: var(--green-success); font-size: 1.2rem;"></i>
+                        <i class="bi bi-check-circle-fill me-3 text-success fs-5"></i>
                     {% endif %}
-                    <div class="flex-grow-1 fw-bold" style="font-size: 0.95rem;">{{ message }}</div>
+                    <div class="flex-grow-1 fw-semibold" style="font-size: 0.9rem;">{{ message }}</div>
                     <button type="button" class="btn-close btn-close-white opacity-50" data-bs-dismiss="alert"></button>
                 </div>
             {% endfor %}
@@ -167,154 +161,209 @@
     {% endif %}
 
     <div class="card-elegant">
-        <div class="table-responsive">
+        <div class="table-responsive m-0">
             <table class="table-elegant">
                 <thead>
                     <tr>
-                        <th style="width: 30%;">Usuario e Información de Seguridad</th>
-                        <th style="width: 25%;">Nombres y Correo</th>
-                        <th style="width: 15%;">Rol Asignado</th>
-                        <th style="width: 20%;">Ubicación / Bodega</th>
-                        <th class="text-center" style="width: 10%;">Acciones</th>
+                        <th style="width: 25%;">Empleado y Cuenta</th>
+                        <th style="width: 20%;">Estado y Seguridad</th>
+                        <th style="width: 20%;">Rol Asignado</th>
+                        <th style="width: 20%;">Bodega / Percha</th>
+                        <th class="text-end" style="width: 15%;">Panel de Control</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for emp in empleados %}
                     <tr>
                         <td>
-                            <div class="d-flex align-items-start gap-3">
-                                <div class="rounded-circle d-flex justify-content-center align-items-center mt-1" 
-                                     style="width: 45px; height: 45px; background-color: var(--dark-bg); border: 2px solid {% if emp.esta_bloqueado %}var(--red-danger){% else %}var(--dark-border){% endif %}; color: var(--text-white); font-weight: bold; font-size: 1.2rem;">
+                            <span class="mobile-label">Empleado y Cuenta</span>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="rounded-circle d-flex justify-content-center align-items-center flex-shrink-0" 
+                                     style="width: 42px; height: 42px; background-color: var(--dark-bg); border: 1px solid {% if not emp.is_active %}var(--dark-border){% else %}rgba(255,255,255,0.2){% endif %}; color: {% if not emp.is_active %}var(--gray-muted){% else %}var(--text-white){% endif %}; font-weight: bold; font-size: 1.1rem;">
                                     {{ emp.username|make_list|first|upper }}
                                 </div>
                                 <div>
-                                    <div class="fw-bold fs-6">{{ emp.username }}</div>
-                                    
-                                    {% if emp.esta_bloqueado %}
-                                        <div class="mt-2 p-2 rounded" style="background-color: rgba(220, 53, 69, 0.05); border: 1px solid rgba(220, 53, 69, 0.2);">
-                                            <span class="badge-custom bg-red-custom mb-1" style="font-size: 0.7rem; padding: 0.2rem 0.5rem;">
-                                                <i class="bi bi-shield-lock-fill"></i> BLOQUEADO: {{ emp.datos_bloqueo.failures_since_start }} FALLOS
-                                            </span>
-                                            <div style="font-size: 0.75rem; color: #ea868f;">
-                                                <i class="bi bi-router"></i> IP Origen: <strong>{{ emp.datos_bloqueo.ip_address }}</strong><br>
-                                                <i class="bi bi-clock"></i> Último intento: {{ emp.datos_bloqueo.attempt_time|date:"d/m/Y H:i" }}
-                                            </div>
-                                        </div>
-                                    {% else %}
-                                        <span class="badge-custom bg-gray-custom mt-1" style="font-size: 0.7rem; padding: 0.2rem 0.5rem;">
-                                            <i class="bi bi-shield-check"></i> Seguro
-                                        </span>
-                                    {% endif %}
+                                    <div class="fw-bold fs-6 {% if not emp.is_active %}text-muted text-decoration-line-through{% endif %}">
+                                        {{ emp.first_name }} {{ emp.last_name }}
+                                    </div>
+                                    <div style="color: var(--text-light); font-size: 0.8rem; margin-top: 2px;">
+                                        <i class="bi bi-person me-1"></i>{{ emp.username }}<br>
+                                        <i class="bi bi-envelope me-1"></i>{{ emp.email|default:"Sin correo" }}
+                                    </div>
                                 </div>
                             </div>
                         </td>
                         
                         <td>
-                            <div class="fw-bold" style="font-size: 0.95rem;">{{ emp.first_name }} {{ emp.last_name }}</div>
-                            <div style="color: var(--text-light); font-size: 0.85rem; margin-top: 2px;">
-                                <i class="bi bi-envelope"></i> {{ emp.email|default:"Sin correo registrado" }}
+                            <span class="mobile-label">Estado y Seguridad</span>
+                            <div class="d-flex flex-column gap-2 align-items-start">
+                                {% if emp.is_active %}
+                                    <span class="badge-custom bg-green-custom"><i class="bi bi-check-circle"></i> Cuenta Activa</span>
+                                {% else %}
+                                    <span class="badge-custom bg-gray-custom"><i class="bi bi-person-x"></i> Cuenta Suspendida</span>
+                                {% endif %}
+
+                                {% if emp.esta_bloqueado %}
+                                    <div class="w-100 mt-1 p-2 rounded" style="background-color: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2);">
+                                        <div class="fw-bold text-danger mb-1" style="font-size: 0.75rem;">
+                                            <i class="bi bi-shield-lock-fill"></i> BLOQUEADO: {{ emp.datos_bloqueo.failures_since_start }} FALLOS
+                                        </div>
+                                        <div style="font-size: 0.7rem; color: #fca5a5; line-height: 1.2;">
+                                            IP: <strong>{{ emp.datos_bloqueo.ip_address }}</strong><br>
+                                            Intento: {{ emp.datos_bloqueo.attempt_time|date:"d/m/y H:i" }}
+                                        </div>
+                                    </div>
+                                {% endif %}
                             </div>
                         </td>
                         
                         <td>
+                            <span class="mobile-label">Rol Asignado</span>
                             {% if emp.is_superuser %}
-                                <span class="badge-custom bg-red-custom">
-                                    <i class="bi bi-shield-lock-fill"></i> Administrador
-                                </span>
+                                <span class="badge-custom bg-red-custom"><i class="bi bi-shield-shaded"></i> Administrador Total</span>
                             {% else %}
                                 {% for group in emp.groups.all %}
-                                    <span class="badge-custom bg-blue-custom">
-                                        <i class="bi bi-person-badge"></i> {{ group.name }}
-                                    </span>
+                                    <span class="badge-custom bg-blue-custom"><i class="bi bi-person-badge"></i> {{ group.name }}</span>
                                 {% empty %}
-                                    <span class="badge-custom bg-gray-custom">Sin Rol</span>
+                                    <span class="badge-custom bg-gray-custom">Sin Rol Definido</span>
                                 {% endfor %}
                             {% endif %}
                         </td>
                         
                         <td>
+                            <span class="mobile-label">Ubicación / Bodega</span>
                             {% for group in emp.groups.all %}
                                 {% if group.name == 'Bodeguero' %}
                                     {% if emp.perfil.bodega_asignada %}
-                                        <span class="badge-custom bg-green-custom">
-                                            <i class="bi bi-box-seam"></i> {{ emp.perfil.bodega_asignada.nombre }}
+                                        <span class="badge-custom bg-gray-custom" style="border-color: rgba(255,255,255,0.15);">
+                                            <i class="bi bi-shop"></i> {{ emp.perfil.bodega_asignada.nombre }}
                                         </span>
                                     {% else %}
-                                        <span class="text-warning fw-bold small"><i class="bi bi-exclamation-triangle-fill"></i> Falta asignar bodega</span>
+                                        <span class="text-warning fw-bold small"><i class="bi bi-exclamation-triangle-fill me-1"></i> Faltan permisos físicos</span>
                                     {% endif %}
                                 {% endif %}
                             {% endfor %}
                             {% if emp.is_superuser %}
-                                <span style="color: var(--text-light); font-size: 0.9rem; font-weight: bold;">Acceso Total</span>
+                                <span class="text-secondary small fw-semibold"><i class="bi bi-globe me-1"></i> Todas las Bodegas</span>
                             {% endif %}
                         </td>
 
-                        <td class="text-center">
-                            <div class="d-flex justify-content-center gap-2">
-                                {% for group in emp.groups.all %}
-                                    {% if group.name == 'Bodeguero' %}
-                                        <button class="btn-icon" title="Asignar Bodega" data-bs-toggle="modal" data-bs-target="#modalBodega{{ emp.id }}">
-                                            <i class="bi bi-geo-alt-fill"></i>
-                                        </button>
-
-                                        <div class="modal fade text-start" id="modalBodega{{ emp.id }}" tabindex="-1" aria-hidden="true">
-                                            <div class="modal-dialog modal-dialog-centered">
-                                                <div class="modal-content">
-                                                    <div class="modal-header">
-                                                        <h5 class="text-title mb-0 fs-4">Asignar Bodega a {{ emp.username }}</h5>
-                                                        <button type="button" class="btn-close btn-close-white opacity-75" data-bs-dismiss="modal"></button>
-                                                    </div>
-                                                    <form method="POST">
-                                                        {% csrf_token %}
-                                                        <input type="hidden" name="asignar_bodega" value="1">
-                                                        <input type="hidden" name="user_id" value="{{ emp.id }}">
-                                                        
-                                                        <div class="modal-body">
-                                                            <div class="mb-4">
-                                                                <label class="form-label">Selecciona la Bodega</label>
-                                                                <select name="bodega_id" class="form-select-dark w-100">
-                                                                    <option value="">-- Ninguna (Quitar Asignación) --</option>
-                                                                    {% for bod in bodegas %}
-                                                                        <option value="{{ bod.id }}" {% if emp.perfil.bodega_asignada.id == bod.id %}selected{% endif %}>
-                                                                            {{ bod.nombre }}
-                                                                        </option>
-                                                                    {% endfor %}
-                                                                </select>
-                                                            </div>
-                                                            <div class="p-3 rounded-3" style="background-color: rgba(13, 110, 253, 0.1); border: 1px solid var(--blue-primary);">
-                                                                <p class="mb-0" style="color: var(--text-white); font-size: 0.9rem;">
-                                                                    <i class="bi bi-info-circle-fill" style="color: var(--blue-primary);"></i>
-                                                                    El empleado solo podrá despachar materiales ubicados en esta bodega.
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                        <div class="modal-footer">
-                                                            <button type="button" class="btn text-white fw-bold" data-bs-dismiss="modal">Cancelar</button>
-                                                            <button type="submit" class="btn-blue">Guardar Cambios</button>
-                                                        </div>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    {% endif %}
-                                {% endfor %}
-
+                        <td>
+                            <span class="mobile-label">Panel de Control</span>
+                            <div class="action-grid">
+                                
                                 {% if emp.esta_bloqueado %}
-                                    <form action="{% url 'desbloquear_empleado' emp.username %}" method="POST" style="display:inline;">
+                                    <form action="{% url 'desbloquear_empleado' emp.username %}" method="POST" class="m-0">
                                         {% csrf_token %}
-                                        <button type="submit" class="btn-icon-danger" title="Desbloquear Acceso IP: {{ emp.datos_bloqueo.ip_address }}" onclick="return confirm('¿Restaurar acceso a {{ emp.username }} tras {{ emp.datos_bloqueo.failures_since_start }} intentos fallidos?');">
+                                        <button type="submit" class="btn-micro unlock" title="Desbloquear IP del Usuario" onclick="return confirm('¿Restaurar acceso a {{ emp.username }} tras {{ emp.datos_bloqueo.failures_since_start }} intentos fallidos?');">
                                             <i class="bi bi-unlock-fill"></i>
                                         </button>
                                     </form>
                                 {% endif %}
+
+                                <button type="button" class="btn-micro edit" title="Cambiar Contraseña Segura" data-bs-toggle="modal" data-bs-target="#modalCambiarClave{{ emp.id }}">
+                                    <i class="bi bi-key"></i>
+                                </button>
+
+                                {% for group in emp.groups.all %}
+                                    {% if group.name == 'Bodeguero' %}
+                                    <button class="btn-micro edit" title="Asignar Bodega Física" data-bs-toggle="modal" data-bs-target="#modalBodega{{ emp.id }}">
+                                        <i class="bi bi-geo-alt"></i>
+                                    </button>
+                                    {% endif %}
+                                {% endfor %}
+
+                                <form action="{% url 'alternar_estado_empleado' emp.id %}" method="POST" class="m-0">
+                                    {% csrf_token %}
+                                    {% if emp.is_active %}
+                                        <button type="submit" class="btn-micro suspend" title="Suspender Usuario" onclick="return confirm('¿Estás seguro de suspender a {{ emp.username }}? No podrá iniciar sesión en el sistema.');">
+                                            <i class="bi bi-person-dash"></i>
+                                        </button>
+                                    {% else %}
+                                        <button type="submit" class="btn-micro activate" title="Reactivar Usuario" onclick="return confirm('¿Deseas reactivar el acceso para {{ emp.username }}?');">
+                                            <i class="bi bi-person-check"></i>
+                                        </button>
+                                    {% endif %}
+                                </form>
+
                             </div>
                         </td>
                     </tr>
+
+                    <div class="modal fade" id="modalCambiarClave{{ emp.id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <div class="modal-header border-bottom-0 pb-0">
+                                    <div>
+                                        <h5 class="text-white fw-bold mb-1 fs-5">Actualizar Credenciales</h5>
+                                        <p class="text-secondary small mb-0">Forzar cambio de clave para: <span class="text-white">{{ emp.username }}</span></p>
+                                    </div>
+                                    <button type="button" class="btn-close btn-close-white opacity-50" data-bs-dismiss="modal"></button>
+                                </div>
+                                <form action="{% url 'cambiar_clave_admin' emp.id %}" method="POST" class="form-cambiar-clave">
+                                    {% csrf_token %}
+                                    <div class="modal-body py-4">
+                                        <div class="alert bg-warning-custom border-0 p-2 mb-4 d-flex align-items-center gap-2">
+                                            <i class="bi bi-info-circle-fill text-warning"></i>
+                                            <span class="small text-white">Asegúrate de proporcionar una contraseña segura (letras, números y símbolos).</span>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label">Nueva Contraseña</label>
+                                            <input type="password" name="new_password" class="form-control-dark w-100 pass-input" required minlength="8" placeholder="Escribe la nueva clave...">
+                                        </div>
+                                        <div>
+                                            <label class="form-label">Confirmar Contraseña</label>
+                                            <input type="password" name="confirm_password" class="form-control-dark w-100 pass-confirm" required minlength="8" placeholder="Repite la clave...">
+                                            <div class="pass-error text-danger small mt-2 fw-bold" style="display: none;">Las contraseñas no coinciden.</div>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer border-top-0 pt-0">
+                                        <button type="button" class="btn text-secondary fw-bold px-4" data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn-neo">Aplicar Cambio</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal fade" id="modalBodega{{ emp.id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <div class="modal-header border-bottom-0 pb-0">
+                                    <h5 class="text-white fw-bold mb-0 fs-5">Ruteo de Bodega: {{ emp.username }}</h5>
+                                    <button type="button" class="btn-close btn-close-white opacity-50" data-bs-dismiss="modal"></button>
+                                </div>
+                                <form method="POST">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="asignar_bodega" value="1">
+                                    <input type="hidden" name="user_id" value="{{ emp.id }}">
+                                    <div class="modal-body py-4">
+                                        <label class="form-label">Ubicación Física Permitida</label>
+                                        <select name="bodega_id" class="form-select-dark w-100">
+                                            <option value="">-- Quitar Asignación (Ninguna) --</option>
+                                            {% for bod in bodegas %}
+                                                <option value="{{ bod.id }}" {% if emp.perfil.bodega_asignada.id == bod.id %}selected{% endif %}>
+                                                    {{ bod.nombre }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="modal-footer border-top-0 pt-0">
+                                        <button type="button" class="btn text-secondary fw-bold" data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn-neo">Guardar Perfil</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
                     {% empty %}
                     <tr>
                         <td colspan="5" class="text-center py-5">
-                            <i class="bi bi-people text-muted" style="font-size: 3rem;"></i>
-                            <h5 class="mt-3 text-white fw-bold">No hay empleados registrados</h5>
+                            <i class="bi bi-shield-x text-muted" style="font-size: 3.5rem;"></i>
+                            <h5 class="mt-3 text-white fw-bold">Registro Vacío</h5>
+                            <p class="text-secondary">No existen empleados en el sistema todavía.</p>
                         </td>
                     </tr>
                     {% endfor %}
@@ -328,40 +377,35 @@
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="text-title mb-0 fs-4">Registrar Nuevo Empleado</h5>
-                <button type="button" class="btn-close btn-close-white opacity-75" data-bs-dismiss="modal"></button>
+                <div>
+                    <h5 class="text-white fw-bold mb-1 fs-4">Alta de Personal</h5>
+                    <p class="text-secondary small mb-0">Rellena los datos para habilitar un nuevo acceso al ERP.</p>
+                </div>
+                <button type="button" class="btn-close btn-close-white opacity-50" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST">
+            <form method="POST" id="formCrearUsuario">
                 {% csrf_token %}
-                <div class="modal-body">
+                <div class="modal-body p-4">
                     <div class="row g-4">
                         {% for field in form %}
-                        <div class="col-12 col-md-6">
+                        <div class="col-12 col-md-6 field-wrapper">
                             <label class="form-label">{{ field.label }}</label>
                             {{ field }}
-                            {% if field.help_text %}
-                                <div style="color: #888888; font-size: 0.8rem; margin-top: 5px;">{{ field.help_text|striptags }}</div>
-                            {% endif %}
+                            
                             {% if field.errors %}
                                 <div class="text-danger small mt-1 fw-bold">{{ field.errors|striptags }}</div>
                             {% endif %}
+                            
+                            {% if field.help_text %}
+                                <div class="django-help-text d-none">{{ field.help_text|safe }}</div>
+                            {% endif %}
                         </div>
                         {% endfor %}
-
-                        <div class="col-12 mt-2 border-top pt-4" style="border-color: var(--dark-border)!important;">
-                            <label class="form-label text-white fs-6">Asignación de Rol</label>
-                            <select name="grupo" class="form-select-dark w-100" required>
-                                <option value="" disabled selected>Seleccione el perfil de acceso...</option>
-                                {% for g in grupos %}
-                                    <option value="{{ g.id }}">{{ g.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn text-white fw-bold" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn-blue">Crear Usuario</button>
+                <div class="modal-footer bg-dark rounded-bottom-4 border-0">
+                    <button type="button" class="btn text-secondary fw-bold px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn-neo px-5">Generar Credenciales</button>
                 </div>
             </form>
         </div>
@@ -370,13 +414,90 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        
+        /* 1. ESTILIZADO DINÁMICO DEL FORMULARIO DE DJANGO */
+        // Estilizar los inputs de texto
         const modalInputs = document.querySelectorAll('#modalNuevoEmpleado input');
         modalInputs.forEach(input => {
             input.classList.add('form-control-dark', 'w-100');
-            if (input.type === 'password' || input.type === 'text' || input.type === 'email') {
-                input.placeholder = "Escribe aquí...";
+            if (input.type === 'text' || input.type === 'email') {
+                input.placeholder = "Completar campo...";
             }
         });
+
+        // Estilizar el Select del Rol para que coincida con el Dark Mode
+        const modalSelects = document.querySelectorAll('#modalNuevoEmpleado select');
+        modalSelects.forEach(select => {
+            select.classList.remove('form-select'); 
+            select.classList.add('form-select-dark', 'w-100');
+        });
+
+        // Mostrar texto de ayuda solo si el usuario hace foco en la contraseña
+        const passWrappers = document.querySelectorAll('.field-wrapper');
+        passWrappers.forEach(wrap => {
+            const input = wrap.querySelector('input[type="password"]');
+            const helpText = wrap.querySelector('.django-help-text');
+            if(input && helpText) {
+                input.addEventListener('focus', () => helpText.classList.remove('d-none'));
+                input.addEventListener('blur', () => helpText.classList.add('d-none'));
+            }
+        });
+
+        /* 2. INYECCIÓN DEL BOTÓN OJO PARA CONTRASEÑAS (Tanto Crear como Editar) */
+        document.querySelectorAll('input[type="password"]').forEach(input => {
+            // Evitamos inyectar dos veces si ya está en un input-group
+            if (input.parentNode.classList.contains('input-group-dark')) return;
+
+            // Envolver input
+            const wrapper = document.createElement('div');
+            wrapper.className = 'input-group input-group-dark flex-nowrap';
+            input.parentNode.insertBefore(wrapper, input);
+            wrapper.appendChild(input);
+            
+            // Crear botón de ojito
+            const btn = document.createElement('span');
+            btn.className = 'input-group-text';
+            btn.innerHTML = '<i class="bi bi-eye"></i>';
+            
+            // Lógica de visibilidad
+            btn.addEventListener('click', () => {
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    btn.innerHTML = '<i class="bi bi-eye-slash" style="color:var(--blue-primary)"></i>';
+                } else {
+                    input.type = 'password';
+                    btn.innerHTML = '<i class="bi bi-eye"></i>';
+                }
+            });
+            wrapper.appendChild(btn);
+        });
+
+        /* 3. VALIDACIÓN FRONTEND: CONFIRMACIÓN DE CLAVE AL CAMBIAR */
+        const formsCambiarClave = document.querySelectorAll('.form-cambiar-clave');
+        formsCambiarClave.forEach(form => {
+            const pwd1 = form.querySelector('.pass-input');
+            const pwd2 = form.querySelector('.pass-confirm');
+            const errorMsg = form.querySelector('.pass-error');
+
+            form.addEventListener('submit', function(e) {
+                if (pwd1.value !== pwd2.value) {
+                    e.preventDefault(); // Detiene el envío
+                    errorMsg.style.display = 'block';
+                    pwd2.style.borderColor = 'var(--red-danger)';
+                    pwd2.focus();
+                } else {
+                    errorMsg.style.display = 'none';
+                    pwd2.style.borderColor = 'var(--dark-border)';
+                }
+            });
+
+            // Ocultar error al escribir
+            pwd2.addEventListener('input', () => {
+                errorMsg.style.display = 'none';
+                pwd2.style.borderColor = 'var(--dark-border)';
+            });
+        });
+
     });
 </script>
 {% endblock %}

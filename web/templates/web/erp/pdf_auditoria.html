@@ -4,16 +4,24 @@
     <meta charset="UTF-8">
     <title>Auditoría de Inventario - ProduMetal CM</title>
     <style>
+        /* =======================================================
+           SOLUCIÓN PARA PAGINACIÓN EN XHTML2PDF
+           Usamos @frame en lugar de @bottom-right
+           ======================================================= */
         @page {
             size: a4 portrait;
             margin: 1.5cm;
-            @bottom-right {
-                content: "Página " counter(page) " de " counter(pages);
-                font-family: Arial, sans-serif;
-                font-size: 8px;
-                color: #718096;
+            margin-bottom: 2cm; /* Dejamos espacio para el footer */
+            
+            @frame footer {
+                -pdf-frame-content: footer_content;
+                bottom: 1cm;
+                margin-left: 1.5cm;
+                margin-right: 1.5cm;
+                height: 1cm;
             }
         }
+        
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             font-size: 10px;
@@ -38,14 +46,14 @@
 
         /* Encabezado Corporativo */
         .logo-container { width: 85px; }
-        .logo { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; }
+        .logo { width: 80px; height: 80px; }
         .company-info { padding-left: 15px; font-size: 10px; color: #4a5568; }
         .company-name { font-size: 20px; font-weight: bold; color: #1a202c; letter-spacing: -0.5px; margin: 0 0 4px 0; }
-        .company-subtitle { font-size: 11px; font-weight: 600; color: #805ad5; /* Púrpura Corporativo para Auditoría */ margin: 0 0 6px 0; text-transform: uppercase; }
+        .company-subtitle { font-size: 11px; font-weight: 600; color: #805ad5; margin: 0 0 6px 0; text-transform: uppercase; }
 
         /* Recuadro del Folio / Control Interno */
         .voucher-box {
-            border: 1px solid #cbd5e0; background-color: #f7fafc; border-radius: 6px;
+            border: 1px solid #cbd5e0; background-color: #f7fafc;
             padding: 12px; text-align: center; width: 220px;
         }
         .voucher-title {
@@ -97,9 +105,7 @@
         .text-right { text-align: right; }
         .bold { font-weight: bold; }
 
-        /* =======================================================
-           BLOQUE DE FIRMAS DINÁMICO
-           ======================================================= */
+        /* Firmas */
         .signatures-container { margin-top: 50px; width: 100%; page-break-inside: avoid; }
         .signature-table { width: 100%; border-collapse: collapse; }
         .signature-table td { width: 50%; text-align: center; padding: 0 40px; vertical-align: top; }
@@ -113,6 +119,10 @@
     </style>
 </head>
 <body>
+
+    <div id="footer_content" style="text-align: right; font-family: Arial, sans-serif; font-size: 8px; color: #718096;">
+        Página <pdf:pagenumber> de <pdf:pagecount>
+    </div>
 
     <table class="table-layout">
         <tr>
@@ -154,7 +164,7 @@
     </table>
 
     {% if salidas %}
-    <div class="table-title title-salidas">📤 Salidas (Despachos a Proyectos / Obras)</div>
+    <div class="table-title title-salidas">Salidas (Despachos a Proyectos / Obras)</div>
     <table class="data-table">
         <thead>
             <tr>
@@ -184,7 +194,7 @@
     {% endif %}
 
     {% if ingresos %}
-    <div class="table-title title-ingresos">📥 Ingresos (Recepción de Compras / Abastecimiento)</div>
+    <div class="table-title title-ingresos">Ingresos (Recepción de Compras / Abastecimiento)</div>
     <table class="data-table">
         <thead>
             <tr>
@@ -214,7 +224,7 @@
     {% endif %}
 
     {% if ajustes %}
-    <div class="table-title title-ajustes">⚙️ Ajustes Manuales (Correcciones y Mermas)</div>
+    <div class="table-title title-ajustes">Ajustes Manuales (Correcciones y Mermas)</div>
     <table class="data-table">
         <thead>
             <tr>
@@ -242,7 +252,7 @@
     {% endif %}
 
     {% if not ingresos and not salidas and not ajustes %}
-    <div style="text-align: center; margin-top: 60px; padding: 30px; border: 1px dashed #cbd5e0; background-color: #f7fafc; border-radius: 6px;">
+    <div style="text-align: center; margin-top: 60px; padding: 30px; border: 1px dashed #cbd5e0; background-color: #f7fafc;">
         <h3 style="color: #4a5568; margin: 0 0 5px 0;">No se encontraron movimientos</h3>
         <p style="color: #718096; font-size: 11px; margin: 0;">Los parámetros aplicados en este reporte no arrojaron resultados en la base de datos.</p>
     </div>

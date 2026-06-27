@@ -124,6 +124,13 @@
 
     .mobile-label { display: none; }
 
+    /* Estilos para la Paginación */
+    .pagination-neo { display: flex; list-style: none; margin: 0; padding: 0; gap: 5px; }
+    .pagination-neo .page-link { background: rgba(255,255,255,0.05); border: 1px solid var(--panel-border); color: var(--text-primary); border-radius: 6px; padding: 6px 12px; font-size: 0.85rem; text-decoration: none; transition: all 0.2s; }
+    .pagination-neo .page-link:hover { background: var(--accent-blue); color: white; border-color: var(--accent-blue); }
+    .pagination-neo .active .page-link { background: var(--accent-blue); color: white; border-color: var(--accent-blue); }
+    .pagination-neo .disabled .page-link { opacity: 0.5; pointer-events: none; }
+
     /* =========================================
        DISEÑO ADAPTABLE MÓVIL (APP STYLE)
        ========================================= */
@@ -266,10 +273,15 @@
                                 </span>
                                 <span class="text-secondary" style="font-size: 0.75rem;">{{ mat.unidad_medida }} (Red Total)</span>
                             </div>
+                            
                             <div class="d-flex flex-wrap gap-1">
                                 {% for stock in mat.stocks_bodegas.all %}
                                     {% if stock.cantidad > 0 %}
-                                        {% if rol == 'Administrador' or rol == 'Solicitante' or stock.bodega.id == request.user.perfil.bodega_asignada.id %}
+                                        {% if stock.bodega.id == request.user.perfil.bodega_asignada.id %}
+                                            <span class="badge-micro badge-blue border-0">
+                                                <i class="bi bi-shop text-primary me-1"></i>{{ stock.bodega.nombre }}: <strong class="text-white ms-1">{{ stock.cantidad|floatformat:"0" }}</strong>
+                                            </span>
+                                        {% else %}
                                             <span class="badge-micro badge-gray border-0" style="background: rgba(255,255,255,0.04);">
                                                 <i class="bi bi-box-seam text-secondary me-1"></i>{{ stock.bodega.nombre }}: <strong class="text-white ms-1">{{ stock.cantidad|floatformat:"0" }}</strong>
                                             </span>

@@ -9,7 +9,7 @@ from django.core.paginator import Paginator
 from .forms import MaterialForm
 from decimal import Decimal
 from axes.utils import reset
-
+from datetime import datetime, timedelta
 # =======================================================
 # IMPORTACIONES DE MODELOS Y FORMULARIOS
 # =======================================================
@@ -166,11 +166,27 @@ def dashboard_erp(request):
     context = {}
 
     Bodega.objects.get_or_create(nombre='Bodega Central', defaults={'is_principal': True})
+    
+    # 1. CAPTURAMOS LOS FILTROS Y LA PÁGINA DESDE LA URL
+    estado_filtro = request.GET.get('estado')
+    page_number = request.GET.get('page')
 
     if es_admin(usuario):
         context['rol'] = 'Administrador'
-        # El admin debe ver todo ticket que tenga al menos un ítem PENDIENTE (independiente de si está parcialmente despachado)
-        context['tickets_pendientes'] = Requerimiento.objects.filter(detalles__estado_item='PENDIENTE').distinct().order_by('fecha_solicitud')
+        
+        # Base query: Tickets que necesitan atención del Admin
+        qs_tickets = Requerimiento.objects.filter(
+            estado__in=['PENDIENTE', 'EN_COMPRAS', 'PARCIALMENTE_DESPACHADO']
+        ).distinct().order_by('-fecha_solicitud')
+        
+        # Aplicamos filtro si el admin hizo clic en alguna píldora
+        if estado_filtro:
+            qs_tickets = qs_tickets.filter(estado=estado_filtro)
+            
+        # Paginación (10 tickets por página)
+        paginator_tickets = Paginator(qs_tickets, 10)
+        context['tickets_pendientes'] = paginator_tickets.get_page(page_number)
+        
         context['ultimos_movimientos'] = MovimientoInventario.objects.all().order_by('-fecha_hora')[:5]
         context['cotizaciones_pendientes'] = SolicitudCompra.objects.filter(estado='COTIZADO').order_by('fecha_creacion')
         context['alertas_oc'] = OrdenCompra.objects.filter(estado='RECIBIDA_PARCIAL')
@@ -179,26 +195,56 @@ def dashboard_erp(request):
         context['rol'] = 'Bodeguero'
         bodega_asignada = getattr(usuario.perfil, 'bodega_asignada', None) if hasattr(usuario, 'perfil') else None
         
-        # El bodeguero SOLO ve tickets que tengan ítems aprobados y que pertenezcan a SU bodega
         if bodega_asignada:
-            context['tickets_por_despachar'] = Requerimiento.objects.filter(detalles__estado_item='APROBADO_BODEGA', detalles__bodega_destino=bodega_asignada).distinct()
+            # AQUÍ ESTÁ EL FIX DEL PRIMER PROBLEMA: Muestra aprobados Y los que faltan llegar de compras
+            qs_tickets = Requerimiento.objects.filter(
+                detalles__estado_item__in=['APROBADO_BODEGA', 'EN_COMPRAS'], 
+                detalles__bodega_destino=bodega_asignada
+            ).distinct().order_by('fecha_solicitud')
+            
+            if estado_filtro:
+                qs_tickets = qs_tickets.filter(estado=estado_filtro)
+                
+            paginator_tickets = Paginator(qs_tickets, 10)
+            context['tickets_por_despachar'] = paginator_tickets.get_page(page_number)
         else:
-            context['tickets_por_despachar'] = Requerimiento.objects.none()
+            # Paginador vacío para que no explote el HTML si no tiene bodega
+            context['tickets_por_despachar'] = Paginator(Requerimiento.objects.none(), 10).get_page(1)
             
         context['mis_compras_pendientes'] = OrdenCompra.objects.filter(estado__in=['EMITIDA', 'RECIBIDA_PARCIAL'])
         context['alertas_stock'] = Material.objects.filter(stock_actual__lte=F('stock_minimo'))
 
     elif es_comprador(usuario):
         context['rol'] = 'Compras'
-        context['solicitudes_compras'] = SolicitudCompra.objects.filter(estado__in=['ENVIADO_A_COMPRAS', 'REVISADO_ADMIN']).order_by('-fecha_creacion')
+        
+        qs_solicitudes = SolicitudCompra.objects.filter(
+            estado__in=['ENVIADO_A_COMPRAS', 'REVISADO_ADMIN']
+        ).order_by('-fecha_creacion')
+        
+        # Filtro cruzado: El HTML manda 'NUEVO', pero en BD se llama 'ENVIADO_A_COMPRAS'
+        if estado_filtro:
+            if estado_filtro == 'NUEVO':
+                qs_solicitudes = qs_solicitudes.filter(estado='ENVIADO_A_COMPRAS')
+            else:
+                qs_solicitudes = qs_solicitudes.filter(estado=estado_filtro)
+                
+        paginator_solicitudes = Paginator(qs_solicitudes, 10)
+        context['solicitudes_compras'] = paginator_solicitudes.get_page(page_number)
+        
         context['alertas_oc'] = OrdenCompra.objects.filter(estado='RECIBIDA_PARCIAL')
 
     else:
+        # SOLICITANTES
         context['rol'] = 'Solicitante'
-        context['mis_requerimientos'] = Requerimiento.objects.filter(solicitante=usuario).order_by('-fecha_solicitud')
+        qs_requerimientos = Requerimiento.objects.filter(solicitante=usuario).order_by('-fecha_solicitud')
+        
+        if estado_filtro:
+            qs_requerimientos = qs_requerimientos.filter(estado=estado_filtro)
+            
+        paginator_req = Paginator(qs_requerimientos, 10)
+        context['mis_requerimientos'] = paginator_req.get_page(page_number)
 
     return render(request, 'web/erp/dashboard.html', context)
-
 # --- GESTIÓN DE REQUERIMIENTOS (SOLICITANTES) ---
 
 @login_required(login_url='login')
@@ -328,17 +374,19 @@ def despachar_requerimiento(request, req_id):
     es_super = request.user.is_superuser
     bodega_del_usuario = getattr(request.user.perfil, 'bodega_asignada', None) if hasattr(request.user, 'perfil') else None
 
-    # Filtrado Estricto de ítems a despachar
     if es_super:
         items_a_despachar = ticket.detalles.filter(estado_item='APROBADO_BODEGA')
+        items_pendientes = ticket.detalles.filter(estado_item='EN_COMPRAS')
     else:
         if not bodega_del_usuario:
             messages.error(request, "No tienes bodega asignada para operar.")
             return redirect('dashboard_erp')
         items_a_despachar = ticket.detalles.filter(estado_item='APROBADO_BODEGA', bodega_destino=bodega_del_usuario)
+        items_pendientes = ticket.detalles.filter(estado_item='EN_COMPRAS', bodega_destino=bodega_del_usuario)
 
-    if not items_a_despachar.exists():
-        messages.warning(request, "No tienes autorización para despachar materiales de este ticket en tu bodega.")
+    # Si NO hay ítems listos para despachar, Y TAMPOCO hay ítems esperando a compras, ahí recién lo bloqueamos
+    if not items_a_despachar.exists() and not items_pendientes.exists():
+        messages.warning(request, "El ticket ya no tiene materiales pendientes en tu bodega.")
         return redirect('dashboard_erp')
 
     if request.method == 'POST':
@@ -380,6 +428,7 @@ def despachar_requerimiento(request, req_id):
     return render(request, 'web/erp/confirmar_despacho.html', {
         'ticket': ticket,
         'items': items_a_despachar,
+        'items_pendientes': items_pendientes,
     })
     
 # =======================================================
@@ -758,12 +807,29 @@ def recibir_orden_compra(request, oc_id):
             
             # Si el Stock Libre (Real - Apartado) alcanza para cubrir este ítem antiguo...
             if stock_libre >= Decimal(str(req_item.cantidad_solicitada)):
-                # ...Lo liberamos para que el bodeguero pueda despacharlo inmediatamente
                 req_item.estado_item = 'APROBADO_BODEGA'
                 req_item.motivo_rechazo = "✅ Material recibido del proveedor. Liberado para despacho a obra."
                 req_item.save()
+                req_item.requerimiento.actualizar_estado_general()
                 
-                # Despertamos al Ticket Maestro para que reaparezca en el Dashboard del Bodeguero
+            elif stock_libre > 0: # <-- NUEVA MAGIA: Si llegó una parte de la compra
+                cant_faltante = req_item.cantidad_solicitada - stock_libre
+                
+                # Despertamos la cantidad que sí llegó
+                req_item.cantidad_solicitada = stock_libre
+                req_item.estado_item = 'APROBADO_BODEGA'
+                req_item.motivo_rechazo = "✅ Recepción parcial del proveedor. Liberado para despacho."
+                req_item.save()
+
+                # El faltante sigue "dormido" esperando que llegue el resto
+                DetalleRequerimiento.objects.create(
+                    requerimiento=req_item.requerimiento,
+                    material=req_item.material,
+                    cantidad_solicitada=cant_faltante,
+                    bodega_destino=req_item.bodega_destino,
+                    estado_item='EN_COMPRAS',
+                    motivo_rechazo="Faltante sigue pendiente de entrega del proveedor."
+                )
                 req_item.requerimiento.actualizar_estado_general()
         # ========================================================================
 
@@ -1411,7 +1477,30 @@ def alternar_estado_empleado(request, empleado_id):
     estado = "restaurado" if empleado.is_active else "suspendido"
     messages.success(request, f"El acceso del usuario '{empleado.username}' ha sido {estado} correctamente.")
     return redirect('gestionar_empleados')
-
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def cambiar_clave_admin(request, empleado_id):
+    """
+    Permite al Administrador forzar el cambio de contraseña de cualquier usuario
+    desde el panel de gestión de empleados.
+    """
+    if request.method == 'POST':
+        empleado = get_object_or_404(User, id=empleado_id)
+        nueva_clave = request.POST.get('new_password')
+        confirmar_clave = request.POST.get('confirm_password')
+        
+        # Validaciones de seguridad backend
+        if not nueva_clave or nueva_clave != confirmar_clave:
+            messages.error(request, "Error de seguridad: Las contraseñas no coinciden o están vacías.")
+        elif len(nueva_clave) < 8:
+            messages.error(request, "Error de seguridad: La contraseña debe tener al menos 8 caracteres.")
+        else:
+            # Encriptar y guardar la nueva contraseña
+            empleado.set_password(nueva_clave)
+            empleado.save()
+            messages.success(request, f"¡Éxito! Se ha actualizado la contraseña del usuario '{empleado.username}'.")
+            
+    return redirect('gestionar_empleados')
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
 @transaction.atomic
@@ -1521,6 +1610,38 @@ def configuracion_erp(request):
     })
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
+def editar_categoria(request, cat_id):
+    categoria = get_object_or_404(Categoria, id=cat_id)
+    if request.method == 'POST':
+        nombre = request.POST.get('nombre')
+        prefijo = request.POST.get('prefijo')
+        if nombre and prefijo:
+            categoria.nombre = nombre
+            categoria.prefijo = prefijo
+            categoria.save()
+            messages.success(request, f"Categoría '{nombre}' actualizada correctamente.")
+        else:
+            messages.error(request, "El nombre y el prefijo son obligatorios.")
+    return redirect('configuracion_erp')
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def editar_bodega(request, bodega_id):
+    bodega = get_object_or_404(Bodega, id=bodega_id)
+    if request.method == 'POST':
+        nombre = request.POST.get('nombre')
+        ubicacion = request.POST.get('ubicacion')
+        if nombre:
+            bodega.nombre = nombre
+            bodega.ubicacion = ubicacion
+            bodega.save()
+            messages.success(request, f"La información de la bodega '{nombre}' fue actualizada. (El historial se mantiene intacto).")
+        else:
+            messages.error(request, "El nombre de la bodega no puede estar vacío.")
+    return redirect('configuracion_erp')
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
 def crear_categoria(request):
     """
     Vista para crear una nueva categoría en el catálogo maestro.
@@ -1573,23 +1694,36 @@ def alternar_estado_categoria(request, categoria_id):
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
 def trazabilidad_requerimientos(request):
-    """
-    Panel de control maestro para el Administrador.
-    Permite ver el ciclo de vida completo de cada solicitud ordenada por fecha.
-    """
-    # Traemos todos los tickets ordenados del más reciente al más antiguo
+    """Muestra el rastreo completo de todos los tickets en el sistema, con filtros y paginación."""
     requerimientos = Requerimiento.objects.all().order_by('-fecha_solicitud')
     
-    # Filtro opcional por estado
+    # 1. Capturar parámetros de búsqueda
     estado_filtro = request.GET.get('estado')
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+    
+    # 2. Aplicar Filtros
     if estado_filtro:
         requerimientos = requerimientos.filter(estado=estado_filtro)
         
-    return render(request, 'web/erp/trazabilidad.html', {
-        'requerimientos': requerimientos,
-        'estado_actual': estado_filtro
-    })
+    if fecha_inicio:
+        requerimientos = requerimientos.filter(fecha_solicitud__gte=fecha_inicio)
+        
+    if fecha_fin:
+        # Cubrir todo el día hasta las 23:59
+        requerimientos = requerimientos.filter(fecha_solicitud__lte=f"{fecha_fin} 23:59:59")
+        
+    # 3. Paginación (10 tickets por página para no sobrecargar el celular)
+    paginator = Paginator(requerimientos, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
 
+    return render(request, 'web/erp/trazabilidad.html', {
+        'page_obj': page_obj,
+        'estado_actual': estado_filtro,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+    })
 @login_required(login_url='login')
 @user_passes_test(lambda u: es_bodeguero(u) or es_admin(u), login_url='dashboard_erp')
 @transaction.atomic
@@ -1799,10 +1933,35 @@ def eliminar_item_solicitud(request, item_id):
 @login_required(login_url='login')
 @user_passes_test(lambda u: es_comprador(u) or es_admin(u), login_url='dashboard_erp')
 def historial_solicitudes(request):
-    """Muestra todas las solicitudes de compra históricas para Admin y Compras"""
+    """Muestra todas las solicitudes de compra históricas filtradas y paginadas"""
     solicitudes = SolicitudCompra.objects.all().order_by('-fecha_creacion')
+    
+    # 1. Capturar parámetros de búsqueda
+    estado_filtro = request.GET.get('estado')
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+    
+    # 2. Aplicar Filtros
+    if estado_filtro:
+        solicitudes = solicitudes.filter(estado=estado_filtro)
+        
+    if fecha_inicio:
+        solicitudes = solicitudes.filter(fecha_creacion__gte=fecha_inicio)
+        
+    if fecha_fin:
+        # Añadimos 23:59:59 al día final para que incluya todo lo de ese día
+        solicitudes = solicitudes.filter(fecha_creacion__lte=f"{fecha_fin} 23:59:59")
+        
+    # 3. Paginación (Mostramos 15 registros por página)
+    paginator = Paginator(solicitudes, 15)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
     return render(request, 'web/erp/historial_solicitudes.html', {
-        'solicitudes': solicitudes,
+        'page_obj': page_obj,
+        'estado_actual': estado_filtro,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
         'rol': 'Administrador' if es_admin(request.user) else 'Compras'
     })
 

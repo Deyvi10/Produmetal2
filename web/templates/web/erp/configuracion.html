@@ -2,119 +2,357 @@
 
 {% block content %}
 <style>
-    /* Transiciones y sombras para darle un toque premium */
-    .hover-card { transition: transform 0.3s ease, box-shadow 0.3s ease; border: none; }
-    .hover-card:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.1)!important; }
-    .btn-transition { transition: all 0.2s ease-in-out; }
-    .btn-transition:active { transform: scale(0.95); }
-    .list-item-hover { transition: background-color 0.2s ease; border-left: 4px solid transparent; }
-    .list-item-hover:hover { background-color: #f8f9fa; border-left-color: #0d6efd; }
-    .form-control { border-radius: 8px; }
+    /* =========================================
+       TRUE DARK MODE - ALTO CONTRASTE Y COMPACTO
+       ========================================= */
+    :root {
+        --bg-black: #000000;         
+        --surface-dark: #0f0f0f;    
+        --surface-hover: #1a1a1a;      
+        --border-color: #333333;     
+        
+        --text-main: #ffffff;      
+        --text-muted: #f4f4f5; /* Blanco humo, 100% legible */
+        
+        --accent-blue: #3b82f6;    
+        --accent-green: #10b981;
+        --accent-red: #ef4444;
+        --accent-amber: #f59e0b;
+    }
+
+    body { background-color: var(--bg-black) !important; color: var(--text-main) !important; }
+    .erp-container { margin-top: 75px; max-width: 1200px; padding-bottom: 50px; }
+
+    .fade-up { animation: fadeUpAnim 0.4s ease forwards; opacity: 0; transform: translateY(10px); }
+    @keyframes fadeUpAnim { to { opacity: 1; transform: translateY(0); } }
+
+    /* =========================================
+       TARJETAS Y FORMULARIOS (MINIMALISTAS)
+       ========================================= */
+    .card-neo {
+        background-color: var(--surface-dark);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        display: flex; flex-direction: column;
+    }
+    
+    .card-header-neo {
+        padding: 0.8rem 1rem; border-bottom: 1px solid var(--border-color);
+        background: #000000; display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .form-wrapper { padding: 1rem; background: var(--bg-black); border-bottom: 1px solid var(--border-color); }
+
+    .form-control-dark {
+        background-color: #000000 !important; border: 1px solid var(--border-color) !important;
+        color: var(--text-main) !important; border-radius: 6px; padding: 0.4rem 0.8rem; font-size: 0.85rem; width: 100%; transition: all 0.2s;
+    }
+    .form-control-dark:focus { border-color: var(--accent-blue) !important; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3) !important; outline: none; }
+    
+    /* Textos Blancos y Legibles */
+    .form-wrapper label, .modal-body label { 
+        color: var(--text-main); font-size: 0.75rem; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; margin-bottom: 4px; display: block; 
+    }
+    .helptext { display: none; }
+
+    /* SWITCH ESTILO IOS */
+    input[type="checkbox"] {
+        appearance: none; -webkit-appearance: none; width: 40px; height: 20px; background: #27272a; border-radius: 30px; position: relative; cursor: pointer; outline: none; border: 1px solid #3f3f46; display: block; margin-top: 2px;
+    }
+    input[type="checkbox"]::after {
+        content: ''; position: absolute; top: 1px; left: 2px; width: 16px; height: 16px; background: #ffffff; border-radius: 50%; transition: transform 0.2s ease;
+    }
+    input[type="checkbox"]:checked { background: var(--accent-green); border-color: var(--accent-green); }
+    input[type="checkbox"]:checked::after { transform: translateX(20px); }
+
+    /* =========================================
+       ACORDEONES COMPACTOS
+       ========================================= */
+    .btn-collapse-toggle {
+        background: #000; border: 1px solid var(--border-color); color: var(--text-main);
+        width: calc(100% - 2rem); margin: 0 auto 1rem auto; padding: 0.6rem 1rem; border-radius: 8px;
+        font-weight: bold; text-transform: uppercase; font-size: 0.75rem;
+        display: flex; justify-content: space-between; align-items: center; cursor: pointer;
+    }
+    .btn-collapse-toggle[aria-expanded="true"] { border-color: var(--accent-blue); color: var(--accent-blue);}
+
+    .list-group-neo { display: flex; flex-direction: column; gap: 6px; padding: 0 1rem 1rem 1rem; }
+    .list-item-neo {
+        background-color: #000; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.6rem 0.8rem;
+        display: flex; justify-content: space-between; align-items: center;
+    }
+
+    /* =========================================
+       BOTONES Y BADGES ACHICADOS
+       ========================================= */
+    .btn-neo { background-color: var(--accent-blue); color: #ffffff; font-weight: bold; font-size: 0.8rem; border-radius: 6px; padding: 0.5rem 1rem; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 5px; text-transform: uppercase;}
+    .btn-neo:hover { background-color: var(--accent-blue-hover); color: white; }
+    
+    .btn-micro { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; background: #000; border: 1px solid var(--border-color); font-size: 0.9rem; }
+    .btn-micro.edit { color: var(--accent-blue); }
+    .btn-micro.toggle-on { color: var(--accent-green); }
+    .btn-micro.toggle-off { color: var(--accent-red); }
+
+    .badge-custom { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 0.65rem; display: inline-flex; align-items: center; gap: 4px; text-transform: uppercase; color: #fff;}
+    .bg-green-custom { background-color: var(--accent-green); }
+    .bg-red-custom { background-color: var(--accent-red); }
+    .bg-warning-custom { background-color: var(--accent-amber); color: #000;}
+    .bg-gray-custom { background-color: #333; border: 1px solid #555; }
+
+    /* Modales Pequeños */
+    .modal-content { background-color: var(--surface-dark); border: 1px solid #444; border-radius: 12px; }
+    .modal-header { border-bottom: 1px solid var(--border-color); padding: 1rem; background: #000; border-top-left-radius: 12px; border-top-right-radius: 12px;}
+    .modal-footer { border-top: 1px solid var(--border-color); padding: 0.8rem; background: #000; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;}
+
+    @media (max-width: 768px) {
+        .erp-container { margin-top: 65px; padding-left: 8px !important; padding-right: 8px !important; }
+        .list-item-neo { flex-direction: column; align-items: flex-start; gap: 8px; }
+        .list-item-neo > div:last-child { width: 100%; display: flex; justify-content: flex-end; border-top: 1px solid #222; padding-top: 8px;}
+        .btn-neo { width: 100%; }
+        .form-control-dark { font-size: 16px; /* Evita zoom en iOS */ }
+    }
 </style>
 
-<div class="container mt-4 mb-5">
-    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
-        <h2 class="mb-0 fw-bold text-dark">
-            <i class="bi bi-sliders text-primary me-2"></i>Configuración del Sistema
-        </h2>
-        <a href="{% url 'inventario_actual' %}" class="btn btn-outline-secondary shadow-sm btn-transition fw-semibold">
-            <i class="bi bi-arrow-left-circle me-2"></i>Regresar al Inventario
-        </a>
+<div class="container-fluid px-2 px-xl-5 erp-container fade-up">
+    
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 pb-2 border-bottom gap-2" style="border-color: var(--border-color)!important;">
+        <div>
+            <h2 class="text-white mb-0 fw-bold fs-4"><i class="bi bi-sliders text-primary me-2"></i>Ajustes Maestros</h2>
+        </div>
+        <div class="d-flex gap-2 w-100 w-md-auto">
+            <a href="{% url 'inventario_actual' %}" class="btn btn-neo" style="background-color: #222; border: 1px solid #444;">
+                <i class="bi bi-box-seam"></i> Inventario
+            </a>
+            <a href="{% url 'dashboard_erp' %}" class="btn btn-neo">
+                <i class="bi bi-house-door"></i> Dashboard
+            </a>
+        </div>
     </div>
 
     {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm rounded-3" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        {% endfor %}
+        <div class="mb-3">
+            {% for message in messages %}
+                <div class="alert alert-dismissible fade show p-2 px-3 rounded-2" 
+                     style="background-color: #000; border: 1px solid var(--border-color); border-left: 3px solid {% if message.tags == 'error' %}var(--accent-red){% elif message.tags == 'warning' %}var(--accent-amber){% else %}var(--accent-green){% endif %}; color: #fff;">
+                    <span class="fw-bold" style="font-size: 0.8rem;">{{ message }}</span>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" style="padding: 0.6rem;"></button>
+                </div>
+            {% endfor %}
+        </div>
     {% endif %}
 
-    <div class="row g-4">
-        <div class="col-lg-6">
-            <div class="card shadow-sm hover-card h-100 rounded-4">
-                <div class="card-header bg-primary text-white py-3 rounded-top-4">
-                    <h5 class="mb-0 fw-bold"><i class="bi bi-tags-fill me-2"></i>Gestión de Categorías</h5>
+    <div class="row g-3">
+        <!-- ================= CATEGORÍAS ================= -->
+        <div class="col-12 col-lg-6 fade-up delay-1">
+            <div class="card-neo">
+                <div class="card-header-neo" style="border-top: 2px solid var(--accent-blue);">
+                    <h5 class="mb-0 fw-bold text-white fs-6"><i class="bi bi-tags text-primary me-2"></i>Categorías</h5>
                 </div>
-                <div class="card-body p-4">
-                    <form method="POST" action="{% url 'configuracion_erp' %}" class="bg-light p-3 rounded-3 mb-4 border">
+                
+                <div class="form-wrapper">
+                    <form method="POST" action="{% url 'configuracion_erp' %}">
                         {% csrf_token %}
-                        {{ form_categoria.as_p }}
-                        <div class="text-end mt-3">
-                            <button type="submit" name="form_categoria" class="btn btn-primary px-4 btn-transition shadow-sm fw-bold">
-                                <i class="bi bi-save me-1"></i> Guardar Categoría
-                            </button>
+                        <div class="row g-2 neo-form-group align-items-end">
+                            <div class="col-12 col-md-5">
+                                <label>Nombre Categoría</label>
+                                {{ form_categoria.nombre }}
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label>Prefijo (SKU)</label>
+                                {{ form_categoria.prefijo }}
+                            </div>
+                            <div class="col-12 col-md-3 mt-2 mt-md-0">
+                                <button type="submit" name="form_categoria" class="btn-neo w-100">Crear</button>
+                            </div>
                         </div>
                     </form>
-                    
-                    <h6 class="fw-bold text-secondary mb-3"><i class="bi bi-list-ul me-2"></i>Categorías Registradas:</h6>
-                    <ul class="list-group list-group-flush border-top">
+                </div>
+
+                <div class="btn-collapse-toggle mt-3" data-bs-toggle="collapse" data-bs-target="#collapseCategorias">
+                    <span><i class="bi bi-folder2-open me-2"></i> Ver Creadas ({{ categorias.count }})</span>
+                    <i class="bi bi-chevron-down"></i>
+                </div>
+                
+                <div class="collapse" id="collapseCategorias">
+                    <div class="list-group-neo border-top" style="border-color: var(--border-color) !important; padding-top: 1rem;">
                         {% for cat in categorias %}
-                            <li class="list-group-item list-item-hover d-flex justify-content-between align-items-center py-3">
-                                <div>
-                                    <strong class="d-block text-dark fs-5">{{ cat.nombre }}</strong>
-                                    <span class="text-muted small">Prefijo: <span class="badge bg-secondary">{{ cat.prefijo }}</span></span>
+                            <div class="list-item-neo">
+                                <div class="flex-grow-1">
+                                    <strong class="d-block text-white fs-6 mb-1">{{ cat.nombre }}</strong>
+                                    <div class="d-flex gap-1">
+                                        <span class="badge-custom bg-gray-custom">PREF: {{ cat.prefijo }}</span>
+                                        {% if cat.is_active %}
+                                            <span class="badge-custom bg-green-custom"><i class="bi bi-check"></i> Activa</span>
+                                        {% else %}
+                                            <span class="badge-custom bg-red-custom"><i class="bi bi-x"></i> Inactiva</span>
+                                        {% endif %}
+                                    </div>
                                 </div>
-                                <div class="d-flex align-items-center gap-2">
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn-micro edit" data-bs-toggle="modal" data-bs-target="#modalEditarCat{{ cat.id }}"><i class="bi bi-pencil"></i></button>
                                     {% if cat.is_active %}
-                                        <span class="badge bg-success-subtle text-success border border-success rounded-pill px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i> Activa</span>
-                                        <a href="{% url 'alternar_categoria' cat.id %}" class="btn btn-sm btn-outline-danger btn-transition" title="Desactivar">
-                                            <i class="bi bi-power"></i>
-                                        </a>
+                                        <a href="{% url 'alternar_categoria' cat.id %}" class="btn-micro toggle-off"><i class="bi bi-power"></i></a>
                                     {% else %}
-                                        <span class="badge bg-danger-subtle text-danger border border-danger rounded-pill px-3 py-2"><i class="bi bi-x-circle-fill me-1"></i> Inactiva</span>
-                                        <a href="{% url 'alternar_categoria' cat.id %}" class="btn btn-sm btn-outline-success btn-transition" title="Activar">
-                                            <i class="bi bi-power"></i>
-                                        </a>
+                                        <a href="{% url 'alternar_categoria' cat.id %}" class="btn-micro toggle-on"><i class="bi bi-power"></i></a>
                                     {% endif %}
                                 </div>
-                            </li>
+                            </div>
                         {% empty %}
-                            <li class="list-group-item text-muted text-center py-4 bg-light rounded">No hay categorías registradas aún.</li>
+                            <div class="text-center py-3 text-muted fw-bold small">Sin registros.</div>
                         {% endfor %}
-                    </ul>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-lg-6">
-            <div class="card shadow-sm hover-card h-100 rounded-4">
-                <div class="card-header bg-dark text-white py-3 rounded-top-4">
-                    <h5 class="mb-0 fw-bold"><i class="bi bi-box-seam-fill me-2"></i>Gestión de Bodegas</h5>
+        <!-- ================= BODEGAS ================= -->
+        <div class="col-12 col-lg-6 fade-up delay-2">
+            <div class="card-neo">
+                <div class="card-header-neo" style="border-top: 2px solid var(--accent-amber);">
+                    <h5 class="mb-0 fw-bold text-white fs-6"><i class="bi bi-shop text-warning me-2"></i>Bodegas</h5>
                 </div>
-                <div class="card-body p-4">
-                    <form method="POST" action="{% url 'configuracion_erp' %}" class="bg-light p-3 rounded-3 mb-4 border">
+                
+                <div class="form-wrapper">
+                    <form method="POST" action="{% url 'configuracion_erp' %}">
                         {% csrf_token %}
-                        {{ form_bodega.as_p }}
-                        <div class="text-end mt-3">
-                            <button type="submit" name="form_bodega" class="btn btn-dark px-4 btn-transition shadow-sm fw-bold">
-                                <i class="bi bi-save me-1"></i> Guardar Bodega
-                            </button>
+                        <div class="row g-2 neo-form-group align-items-end">
+                            <div class="col-12 col-md-5">
+                                <label>Nombre Bodega</label>
+                                {{ form_bodega.nombre }}
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label>Ubicación</label>
+                                {{ form_bodega.ubicacion }}
+                            </div>
+                            <div class="col-12 col-md-3 mt-2 mt-md-0 d-flex flex-column align-items-start">
+                                <label>¿Principal?</label>
+                                {{ form_bodega.is_principal }}
+                            </div>
+                            <div class="col-12 mt-2">
+                                <button type="submit" name="form_bodega" class="btn-neo w-100" style="background: var(--accent-amber); color: #000;">Guardar Bodega</button>
+                            </div>
                         </div>
                     </form>
+                </div>
 
-                    <h6 class="fw-bold text-secondary mb-3"><i class="bi bi-buildings me-2"></i>Bodegas Existentes:</h6>
-                    <ul class="list-group list-group-flush border-top">
+                <div class="btn-collapse-toggle mt-3" data-bs-toggle="collapse" data-bs-target="#collapseBodegas" style="border-color: rgba(245,158,11,0.3); color: var(--accent-amber);">
+                    <span><i class="bi bi-buildings me-2"></i> Ver Bodegas ({{ bodegas.count }})</span>
+                    <i class="bi bi-chevron-down"></i>
+                </div>
+
+                <div class="collapse" id="collapseBodegas">
+                    <div class="list-group-neo border-top" style="border-color: var(--border-color) !important; padding-top: 1rem;">
                         {% for bodega in bodegas %}
-                            <li class="list-group-item list-item-hover d-flex justify-content-between align-items-center py-3">
-                                <div>
-                                    <strong class="d-block text-dark fs-5">{{ bodega.nombre }}</strong>
+                            <div class="list-item-neo">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <strong class="text-white fs-6">{{ bodega.nombre }}</strong>
+                                        {% if bodega.is_principal %}
+                                            <span class="badge-custom bg-warning-custom"><i class="bi bi-star-fill"></i> Matriz</span>
+                                        {% endif %}
+                                    </div>
                                     {% if bodega.ubicacion %}
-                                        <span class="text-muted small"><i class="bi bi-geo-alt me-1"></i>{{ bodega.ubicacion }}</span>
+                                        <div class="text-muted small fw-bold"><i class="bi bi-geo-alt text-primary"></i> {{ bodega.ubicacion }}</div>
                                     {% endif %}
                                 </div>
-                                {% if bodega.is_principal %}
-                                    <span class="badge bg-warning text-dark rounded-pill px-3 py-2 shadow-sm"><i class="bi bi-star-fill me-1"></i> Central</span>
-                                {% endif %}
-                            </li>
+                                <div>
+                                    <button type="button" class="btn-micro edit" data-bs-toggle="modal" data-bs-target="#modalEditarBodega{{ bodega.id }}"><i class="bi bi-pencil"></i></button>
+                                </div>
+                            </div>
                         {% empty %}
-                            <li class="list-group-item text-muted text-center py-4 bg-light rounded">No hay bodegas registradas.</li>
+                            <div class="text-center py-3 text-muted fw-bold small">Sin registros.</div>
                         {% endfor %}
-                    </ul>
+                    </div>
                 </div>
             </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ==============================================
+     MODALES AL FONDO
+     ============================================== -->
+{% for cat in categorias %}
+<div class="modal fade" id="modalEditarCat{{ cat.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="text-white fw-bold mb-0 fs-6"><i class="bi bi-pencil-square text-primary me-2"></i>Editar Categoría</h5>
+                <button type="button" class="btn-close btn-close-white opacity-50" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{% url 'editar_categoria' cat.id %}" method="POST">
+                {% csrf_token %}
+                <div class="modal-body p-3">
+                    <div class="mb-3">
+                        <label>Nombre de la Categoría</label>
+                        <input type="text" name="nombre" class="form-control-dark" value="{{ cat.nombre }}" required>
+                    </div>
+                    <div>
+                        <label>Prefijo (Para SKU)</label>
+                        <input type="text" name="prefijo" class="form-control-dark" value="{{ cat.prefijo }}" required maxlength="4">
+                    </div>
+                </div>
+                <div class="modal-footer p-2">
+                    <button type="button" class="btn text-white fw-bold btn-sm" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="submit" class="btn-neo btn-sm">Guardar Cambios</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
+{% endfor %}
+
+{% for bodega in bodegas %}
+<div class="modal fade" id="modalEditarBodega{{ bodega.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="text-white fw-bold mb-0 fs-6"><i class="bi bi-shop text-warning me-2"></i>Editar Bodega</h5>
+                <button type="button" class="btn-close btn-close-white opacity-50" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{% url 'editar_bodega' bodega.id %}" method="POST">
+                {% csrf_token %}
+                <div class="modal-body p-3">
+                    <div class="mb-3">
+                        <label>Identificador / Nombre</label>
+                        <input type="text" name="nombre" class="form-control-dark" value="{{ bodega.nombre }}" required>
+                    </div>
+                    <div>
+                        <label>Ubicación (Opcional)</label>
+                        <input type="text" name="ubicacion" class="form-control-dark" value="{{ bodega.ubicacion|default:'' }}">
+                    </div>
+                </div>
+                <div class="modal-footer p-2">
+                    <button type="button" class="btn text-white fw-bold btn-sm" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="submit" class="btn-neo btn-sm" style="background: var(--accent-amber); color: #000;">Actualizar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const formContainers = document.querySelectorAll('.neo-form-group');
+        formContainers.forEach(container => {
+            const inputs = container.querySelectorAll('input, select, textarea');
+            inputs.forEach(input => {
+                if(input.type !== 'checkbox') {
+                    input.classList.add('form-control-dark');
+                    if(input.tagName === 'INPUT') input.placeholder = "Escribir...";
+                }
+            });
+        });
+
+        // En PC, expandir acordeones automáticamente
+        if(window.innerWidth > 992) {
+            document.getElementById('collapseCategorias').classList.add('show');
+            document.getElementById('collapseBodegas').classList.add('show');
+            document.querySelectorAll('.btn-collapse-toggle').forEach(btn => btn.setAttribute('aria-expanded', 'true'));
+        }
+    });
+</script>
 {% endblock %}

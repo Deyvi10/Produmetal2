@@ -28,7 +28,7 @@ urlpatterns = [
     path('erp/empleados/alternar/<int:empleado_id>/', views.alternar_estado_empleado, name='alternar_estado_empleado'),
     # Nueva ruta integrada para desbloquear desde Recursos Humanos
     path('erp/empleados/desbloquear/<str:username>/', views.desbloquear_empleado, name='desbloquear_empleado'),
-
+    path('erp/empleados/cambiar-clave/<int:empleado_id>/', views.cambiar_clave_admin, name='cambiar_clave_admin'),
     # ==========================================
     # ERP: TICKETS Y REQUERIMIENTOS INTERNOS (SOLICITANTE DE OBRA)
     # ==========================================
@@ -105,4 +105,6 @@ urlpatterns = [
     # ==========================================
     path('erp/configuracion/', views.configuracion_erp, name='configuracion_erp'),
     path('erp/configuracion/categoria/<int:categoria_id>/alternar/', views.alternar_estado_categoria, name='alternar_categoria'), 
+    path('erp/configuracion/categoria/editar/<int:cat_id>/', views.editar_categoria, name='editar_categoria'),
+    path('erp/configuracion/bodega/editar/<int:bodega_id>/', views.editar_bodega, name='editar_bodega'),
 ]
