@@ -19,8 +19,8 @@ from .models import (
     Categoria, PerfilEmpleado
     )
 from .forms import (
-    RequerimientoForm, DetalleRequerimientoForm, RegistroEmpleadoForm, 
-    ProyectoForm, OrdenCompraForm, DetalleOrdenCompraForm, AjusteInventarioForm,
+    RequerimientoForm, DetalleRequerimientoForm, RegistroEmpleadoForm,
+    OrdenCompraForm, DetalleOrdenCompraForm, AjusteInventarioForm,
     VentaMaterialForm, BodegaForm, CategoriaForm
 )
 
@@ -1203,16 +1203,25 @@ def eliminar_material(request, material_id):
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
 def gestionar_proyectos(request):
+    """
+    NOTA: la creación NO usa ProyectoForm directamente sobre el POST completo.
+    ProyectoForm incluye 'is_active' (y 'descripcion'), pero el modal "Nuevo
+    Proyecto" solo pide nombre y centro de costos; al no venir 'is_active' en
+    el POST, un ModelForm lo interpreta como False y el proyecto nacía
+    archivado (sin su bodega de obra automática). Se crea directo con el
+    default del modelo (is_active=True) y solo se pasan los 2 campos reales.
+    """
     proyectos = Proyecto.objects.all().order_by('-fecha_creacion')
     if request.method == 'POST':
-        form = ProyectoForm(request.POST)
-        if form.is_valid():
-            form.save()
+        nombre = request.POST.get('nombre', '').strip()
+        centro_costos = request.POST.get('centro_costos', '').strip()
+        if nombre:
+            Proyecto.objects.create(nombre=nombre, centro_costos=centro_costos)
             messages.success(request, "¡Nuevo proyecto creado con éxito!")
             return redirect('gestionar_proyectos')
-    else:
-        form = ProyectoForm()
-    return render(request, 'web/erp/gestionar_proyectos.html', {'proyectos': proyectos, 'form': form, 'rol': 'Administrador'})
+        else:
+            messages.error(request, "El nombre del proyecto es obligatorio.")
+    return render(request, 'web/erp/gestionar_proyectos.html', {'proyectos': proyectos, 'rol': 'Administrador'})
 
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
@@ -1253,12 +1262,23 @@ def alternar_estado_proyecto(request, proyecto_id):
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
 def editar_proyecto(request, proyecto_id):
+    """
+    Edita solo nombre y centro de costos (los únicos campos que expone el modal).
+    NO usa ProyectoForm aquí a propósito: ese form también incluye 'is_active' y
+    'descripcion', y como el modal no los envía, un ModelForm los pondría en
+    blanco/False y archivaría el proyecto en cada edición de nombre.
+    """
     proyecto = get_object_or_404(Proyecto, id=proyecto_id)
     if request.method == 'POST':
-        form = ProyectoForm(request.POST, instance=proyecto)
-        if form.is_valid():
-            form.save()
+        nombre = request.POST.get('nombre', '').strip()
+        centro_costos = request.POST.get('centro_costos', '').strip()
+        if nombre and centro_costos:
+            proyecto.nombre = nombre
+            proyecto.centro_costos = centro_costos
+            proyecto.save()
             messages.success(request, f"Proyecto '{proyecto.nombre}' actualizado.")
+        else:
+            messages.error(request, "El nombre y el código de centro de costos son obligatorios.")
     return redirect('gestionar_proyectos')
 
 @login_required(login_url='login')
@@ -1458,27 +1478,7 @@ def gestionar_empleados(request):
             emp.datos_bloqueo = None
 
     if request.method == 'POST':
-        # 1. LÓGICA PARA ASIGNAR BODEGA AL BODEGUERO
-        if 'asignar_bodega' in request.POST:
-            user_id = request.POST.get('user_id')
-            bodega_id = request.POST.get('bodega_id')
-            
-            usuario_mod = get_object_or_404(User, id=user_id)
-            # Obtenemos o creamos el perfil para que no dé error si es un usuario antiguo
-            perfil, created = PerfilEmpleado.objects.get_or_create(usuario=usuario_mod)
-            
-            if bodega_id:
-                bodega_seleccionada = get_object_or_404(Bodega, id=bodega_id)
-                perfil.bodega_asignada = bodega_seleccionada
-                messages.success(request, f"✅ Bodega '{bodega_seleccionada.nombre}' asignada a {usuario_mod.username}.")
-            else:
-                perfil.bodega_asignada = None
-                messages.success(request, f"✅ Se quitó la asignación de bodega para {usuario_mod.username}.")
-                
-            perfil.save()
-            return redirect('gestionar_empleados')
-
-        # 2. LÓGICA ORIGINAL PARA CREAR UN NUEVO EMPLEADO
+        # LÓGICA PARA CREAR UN NUEVO EMPLEADO (editar rol/bodega de uno existente se hace en editar_empleado)
         form = RegistroEmpleadoForm(request.POST)
         if form.is_valid():
             user = form.save()
@@ -1503,13 +1503,18 @@ def gestionar_empleados(request):
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
 def editar_empleado(request, empleado_id):
-    """Permite al Admin corregir los datos y el rol/grupo de un empleado ya existente."""
+    """
+    Permite al Admin corregir, en un solo paso, los datos, el rol/grupo Y la
+    bodega asignada de un empleado ya existente (incluye convertir a alguien
+    en Bodeguero y asignarle bodega en la misma acción).
+    """
     empleado = get_object_or_404(User, id=empleado_id)
     if request.method == 'POST':
         first_name = request.POST.get('first_name', '').strip()
         last_name = request.POST.get('last_name', '').strip()
         email = request.POST.get('email', '').strip()
         grupo_id = request.POST.get('grupo_id')
+        bodega_id = request.POST.get('bodega_id')
 
         if not first_name or not last_name:
             messages.error(request, "El nombre y apellido son obligatorios.")
@@ -1527,7 +1532,11 @@ def editar_empleado(request, empleado_id):
                 grupo = get_object_or_404(Group, id=grupo_id)
                 empleado.groups.add(grupo)
 
-        messages.success(request, f"✅ Datos y rol de '{empleado.username}' actualizados correctamente.")
+            perfil, _ = PerfilEmpleado.objects.get_or_create(usuario=empleado)
+            perfil.bodega_asignada = get_object_or_404(Bodega, id=bodega_id) if bodega_id else None
+            perfil.save()
+
+        messages.success(request, f"✅ Datos, rol y bodega de '{empleado.username}' actualizados correctamente.")
     return redirect('gestionar_empleados')
 
 @login_required(login_url='login')
@@ -1715,7 +1724,12 @@ def configuracion_erp(request):
     if 'form_categoria' in request.POST:
         form_c = CategoriaForm(request.POST)
         if form_c.is_valid():
-            form_c.save()
+            # Este formulario rápido solo pide nombre/prefijo; CategoriaForm también
+            # incluye 'is_active' y, al no venir en el POST, un ModelForm lo dejaría
+            # en False (categoría archivada desde su creación). Se fuerza activa.
+            categoria = form_c.save(commit=False)
+            categoria.is_active = True
+            categoria.save()
             messages.success(request, "Categoría creada exitosamente.")
             return redirect('configuracion_erp')
 

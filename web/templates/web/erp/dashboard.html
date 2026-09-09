@@ -174,9 +174,12 @@
                 <div class="text-muted small fw-bold text-uppercase mb-2 d-none d-md-block">
                     <i class="bi bi-calendar-event me-1 text-white"></i> {% now "l, d \d\e F Y" %}
                 </div>
-                <a href="{% url 'logout' %}" class="btn-logout d-inline-flex align-items-center">
-                    <i class="bi bi-power me-1"></i> Cerrar Sesión
-                </a>
+                <form action="{% url 'logout' %}" method="POST" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-logout d-inline-flex align-items-center" style="background: transparent;">
+                        <i class="bi bi-power me-1"></i> Cerrar Sesión
+                    </button>
+                </form>
             </div>
         </div>
     </div>
