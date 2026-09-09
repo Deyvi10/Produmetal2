@@ -26,11 +26,37 @@ from .forms import (
 
 # IMPORTS PARA GENERACIÓN DE PDF
 from django.template.loader import get_template
-from django.http import HttpResponse
+from django.http import HttpResponse, FileResponse, Http404
 from xhtml2pdf import pisa
 import os
 from django.conf import settings
 from django.utils import timezone
+
+# =======================================================
+# ARCHIVOS SUBIDOS (cotizaciones, facturas, certificados) SIN S3
+# =======================================================
+
+@login_required(login_url='login')
+def servir_archivo_media(request, path):
+    """
+    Sirve /media/<path> solo a usuarios autenticados, en vez de exponerlo
+    públicamente (django.views.static.serve no exige ningún login). Los
+    archivos aquí son documentos de negocio (cotizaciones de proveedores,
+    facturas, certificados de calidad); no hay razón para que sean
+    accesibles sin sesión. Solo se usa cuando no hay S3 configurado
+    (ver produmental_config/urls.py); con S3, las URLs firmadas de AWS ya
+    hacen su propio control de acceso.
+    """
+    base_dir = os.path.realpath(settings.MEDIA_ROOT)
+    target = os.path.realpath(os.path.join(base_dir, path))
+
+    # Blindaje contra path traversal (ej. ?path=../../produmental_config/settings.py)
+    if os.path.commonpath([base_dir, target]) != base_dir:
+        raise Http404("Archivo no encontrado.")
+    if not os.path.isfile(target):
+        raise Http404("Archivo no encontrado.")
+
+    return FileResponse(open(target, 'rb'))
 
 # =======================================================
 # VISTAS DE LA PÁGINA WEB PÚBLICA

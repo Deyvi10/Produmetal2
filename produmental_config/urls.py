@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
-from django.views.static import serve as serve_static_file
+from web.views import servir_archivo_media
 
 urlpatterns = [
     path('portal-gerencial-produmetalcm-2026/', admin.site.urls), # Panel de administrador
@@ -13,10 +13,14 @@ if not settings.USING_S3_STORAGE:
     # certificados) quedan en disco local bajo MEDIA_ROOT. Sin esta ruta,
     # Django nunca sirve /media/*: cualquier enlace a un archivo subido
     # devuelve 404 "Not Found" aunque el archivo exista en el servidor.
+    # Se sirve con un view propio (login requerido) en vez de
+    # django.views.static.serve: esos archivos son documentos de negocio
+    # (cotizaciones, facturas, certificados) y no deben quedar públicos
+    # para cualquiera que adivine o comparta la URL.
     # Nota: en Render el disco es efímero (se borra en cada deploy); para
     # que los archivos persistan de verdad hay que configurar las
     # variables AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / etc. en el
     # panel de Render, no solo servir este directorio.
     urlpatterns += [
-        path('media/<path:path>', serve_static_file, {'document_root': settings.MEDIA_ROOT}),
+        path('media/<path:path>', servir_archivo_media),
     ]
