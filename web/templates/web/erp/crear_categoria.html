@@ -1,19 +1,27 @@
 {% extends 'web/base.html' %}
 
 {% block content %}
+<style>
+    body { background-color: var(--pm-bg); color: var(--pm-text); }
+    .card-pm { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; }
+    .card-pm .card-body { color: var(--pm-text); }
+    .form-label { color: var(--pm-text-muted) !important; }
+    .form-text { color: var(--pm-text-muted) !important; }
+    .form-control, .form-select { background-color: var(--pm-bg) !important; border-color: var(--pm-border) !important; color: var(--pm-text) !important; }
+</style>
 <div class="container mt-4 d-flex justify-content-center">
-    <div class="card shadow-lg" style="width: 100%; max-width: 600px; border-radius: 12px;">
+    <div class="card card-pm shadow-lg" style="width: 100%; max-width: 600px;">
         <div class="card-header bg-primary text-white py-3" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
             <h5 class="mb-0 fw-bold"><i class="bi bi-tags-fill me-2"></i> {{ titulo }}</h5>
         </div>
         <div class="card-body p-4">
             <form method="POST" novalidate>
                 {% csrf_token %}
-                
+
                 {% for field in form %}
                     <div class="mb-3">
-                        <label class="form-label fw-semibold text-secondary">{{ field.label }}</label>
-                        
+                        <label class="form-label fw-semibold">{{ field.label }}</label>
+
                         {% if field.field.widget.input_type == "checkbox" %}
                             <div class="form-check form-switch mt-1">
                                 {{ field }}
@@ -24,13 +32,13 @@
                         {% else %}
                             {{ field }}
                             {% if field.help_text %}
-                                <div class="form-text text-muted style="font-size: 0.85rem;">{{ field.help_text }}</div>
+                                <div class="form-text" style="font-size: 0.85rem;">{{ field.help_text }}</div>
                             {% endif %}
                         {% endif %}
                     </div>
                 {% endfor %}
 
-                <hr class="my-4">
+                <hr class="my-4" style="border-color: var(--pm-border);">
 
                 <div class="d-flex justify-content-end gap-2">
                     <a href="{% url 'inventario_actual' %}" class="btn btn-light border px-4">Cancelar</a>

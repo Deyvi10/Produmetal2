@@ -4,7 +4,7 @@
 {% block content %}
 <style>
     
-    body { background-color: var(--pm-bg); }
+    body { background-color: var(--pm-bg); color: var(--pm-text); }
     .fade-in { animation: fadeIn 0.4s ease-in-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -12,20 +12,26 @@
     .card-master { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); overflow: hidden; }
 
     .table-req { margin-bottom: 0; color: var(--pm-text); vertical-align: middle; width: 100%; }
-    .table-req th { color: var(--pm-text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; padding: 16px 20px; border-bottom: 2px solid var(--pm-border); background: #f8f9fa; }
-    .table-req td { padding: 16px 20px; border-bottom: 1px solid var(--pm-border); background: var(--pm-surface); transition: background 0.2s ease; }
-    .table-req tr:hover td { background-color: #f8f9fa; }
+    .table-req th { color: var(--pm-text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; padding: 16px 20px; border-bottom: 2px solid var(--pm-border); background: var(--pm-surface-hover); }
+    .table-req td { padding: 16px 20px; border-bottom: 1px solid var(--pm-border); background: var(--pm-surface); color: var(--pm-text); transition: background 0.2s ease; }
+    .table-req tr:hover td { background-color: var(--pm-surface-hover); }
 
-    .form-control-solid, .form-select-solid { background: #f1f4f9 !important; border: 1px solid #d1d5da !important; color: #24292e !important; border-radius: 8px; padding: 12px; font-weight: 500; width: 100%; min-height: 48px; }
-    .form-control-solid:focus, .form-select-solid:focus { border-color: var(--pm-info) !important; box-shadow: 0 0 0 3px rgba(3, 102, 214, 0.2); outline: none; background: #ffffff !important; }
+    .form-control-solid, .form-select-solid { background: var(--pm-bg) !important; border: 1px solid var(--pm-border) !important; color: var(--pm-text) !important; border-radius: 8px; padding: 12px; font-weight: 500; width: 100%; min-height: 48px; }
+    .form-control-solid:focus, .form-select-solid:focus { border-color: var(--pm-blue) !important; box-shadow: 0 0 0 3px var(--pm-blue-soft); outline: none; background: var(--pm-surface) !important; }
+    .form-control-solid::placeholder { color: var(--pm-text-muted); opacity: 0.8; }
 
     .stock-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; }
-    .pill-success { background: #e6ffed; color: #1a7f37; border: 1px solid #2ea043; }
-    .pill-danger { background: #ffebe9; color: #cf222e; border: 1px solid #ff7b72; }
-    .badge-parcial { background: rgba(253, 126, 20, 0.15); color: var(--pm-orange); border: 1px solid rgba(253, 126, 20, 0.3); font-weight: bold; }
+    .pill-success { background: var(--pm-green-soft); color: var(--pm-green); border: 1px solid var(--pm-green); }
+    .pill-danger { background: var(--pm-red-soft); color: var(--pm-red); border: 1px solid var(--pm-red); }
+    .badge-parcial { background: var(--pm-amber-soft); color: var(--pm-amber); border: 1px solid var(--pm-amber); font-weight: bold; }
+    .badge-decidido { background: var(--pm-surface-hover); color: var(--pm-text); border: 1px solid var(--pm-border); }
+    .nota-auditada { color: var(--pm-text-muted); background: var(--pm-surface-hover); border-radius: 6px; }
 
-    .btn-manual { background: var(--pm-success); color: white; font-weight: bold; border-radius: 8px; padding: 12px 24px; border: none; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; width: 100%; }
-    .btn-manual:hover { background: #22863a; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(40, 167, 69, 0.3); color: white;}
+    .info-box { background: var(--pm-blue-soft); border: 1px solid var(--pm-blue); }
+    .info-box h5, .info-box p { color: var(--pm-text) !important; }
+
+    .btn-manual { background: var(--pm-green); color: white; font-weight: bold; border-radius: 8px; padding: 12px 24px; border: none; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; width: 100%; }
+    .btn-manual:hover { filter: brightness(1.1); transform: translateY(-2px); box-shadow: 0 6px 12px var(--pm-green-soft); color: white;}
 
     .mobile-label { display: none; }
 
@@ -35,7 +41,7 @@
         .table-req thead { display: none; }
         .table-req tbody { display: flex; flex-direction: column; gap: 16px; }
         .table-req tbody tr { display: flex; flex-direction: column; background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); padding: 5px; }
-        .table-req td { padding: 12px 15px; border-bottom: 1px solid #f1f4f9; display: flex; flex-direction: column; gap: 6px; }
+        .table-req td { padding: 12px 15px; border-bottom: 1px solid var(--pm-border); display: flex; flex-direction: column; gap: 6px; }
         .table-req td:last-child { border-bottom: none; }
         .mobile-label { display: block; font-size: 0.7rem; text-transform: uppercase; color: var(--pm-text-muted); font-weight: 800; letter-spacing: 0.5px;}
         .mobile-bottom-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--pm-surface); padding: 15px; box-shadow: 0 -4px 15px rgba(0,0,0,0.1); z-index: 1000; border-top: 1px solid var(--pm-border); }
@@ -51,7 +57,7 @@
                 <i class="bi bi-arrow-left me-1"></i> Dashboard Principal
             </a>
             <div class="d-flex flex-wrap align-items-center gap-2">
-                <h2 class="fw-bold text-dark mb-0">Ticket <span class="text-primary">#{{ requerimiento.folio }}</span></h2>
+                <h2 class="fw-bold mb-0">Ticket <span class="text-primary">#{{ requerimiento.folio }}</span></h2>
                 {% if requerimiento.estado == 'PARCIALMENTE_DESPACHADO' %}
                     <span class="badge badge-parcial px-3 py-2 rounded-pill fs-6 shadow-sm"><i class="bi bi-pie-chart-fill me-1"></i> Parcialmente en Proceso</span>
                 {% elif requerimiento.estado == 'PENDIENTE' %}
@@ -67,10 +73,10 @@
         </div>
     </div>
 
-    <div class="alert alert-info shadow-sm border-0 d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 rounded-3 p-4 gap-3">
+    <div class="alert info-box shadow-sm d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 rounded-3 p-4 gap-3">
         <div>
-            <h5 class="fw-bold text-dark mb-2"><i class="bi bi-diagram-3-fill text-primary me-2"></i> Ruteo Logístico Estricto</h5>
-            <p class="mb-0 text-dark" style="font-size: 0.9rem;">
+            <h5 class="fw-bold mb-2"><i class="bi bi-diagram-3-fill text-primary me-2"></i> Ruteo Logístico Estricto</h5>
+            <p class="mb-0" style="font-size: 0.9rem;">
                 Si aprueba el despacho físico, el sistema dividirá automáticamente las cantidades. Lo existente en la bodega vinculada se aprobará, y <strong>los faltantes se mantendrán en estado "Pendiente"</strong> para que usted decida más tarde si comprar o traspasar.
             </p>
         </div>
@@ -94,7 +100,7 @@
                         <tr>
                             <td>
                                 <span class="mobile-label">Ítem Solicitado</span>
-                                <div class="fw-bold text-dark fs-6">{{ item.material.nombre }}</div>
+                                <div class="fw-bold fs-6">{{ item.material.nombre }}</div>
                                 <div class="text-muted small mt-1"><i class="bi bi-upc-scan"></i> SKU: {{ item.material.sku }}</div>
                                 <div class="text-muted small mt-1 fw-bold">Pedidas: {{ item.cantidad_solicitada|floatformat:"0" }}</div>
                             </td>
@@ -117,7 +123,7 @@
                             <td class="text-md-center">
                                 <span class="mobile-label">Acción a tomar</span>
                                 {% if item.estado_item != 'PENDIENTE' %}
-                                    <span class="badge bg-light text-dark border w-100 py-3 fs-6">{{ item.get_estado_item_display }}</span>
+                                    <span class="badge badge-decidido w-100 py-3 fs-6">{{ item.get_estado_item_display }}</span>
                                 {% else %}
                                     <select name="decision_{{ item.id }}" class="form-select-solid fw-bold">
                                         <option value="PENDIENTE" selected>⏳ Pendiente</option>
@@ -133,7 +139,7 @@
                                 {% if item.estado_item == 'PENDIENTE' %}
                                     <input type="text" name="motivo_{{ item.id }}" class="form-control-solid" placeholder="Añadir nota...">
                                 {% else %}
-                                    <span class="text-muted small fw-bold d-block p-2 bg-light rounded">{{ item.motivo_rechazo|default:"Auditado." }}</span>
+                                    <span class="nota-auditada small fw-bold d-block p-2">{{ item.motivo_rechazo|default:"Auditado." }}</span>
                                 {% endif %}
                             </td>
                         </tr>
@@ -142,7 +148,7 @@
                 </table>
             </div>
             
-            <div class="card-footer bg-light p-4 border-top d-flex justify-content-end align-items-center">
+            <div class="card-footer p-4 border-top d-flex justify-content-end align-items-center" style="background: var(--pm-surface-hover); border-color: var(--pm-border) !important;">
                 <div style="max-width: 300px; width: 100%;">
                     <button type="submit" class="btn-manual shadow-sm">
                         <i class="bi bi-save2-fill me-2"></i> Guardar Revisión

@@ -94,15 +94,6 @@
         </div>
     </div>
 
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm rounded-3 border-0" role="alert">
-                <i class="bi bi-info-circle-fill me-2"></i>{{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        {% endfor %}
-    {% endif %}
-
     <div class="row g-4">
         
         <div class="col-12 col-lg-5 col-xl-4">
@@ -215,7 +206,7 @@
                 
                 {% if detalles %}
                 <div class="card-footer desktop-footer bg-light border-top p-4 rounded-bottom-4 text-end">
-                    <form method="POST" action="{% url 'procesar_ticket' requerimiento.id 'enviar' %}" class="d-inline">
+                    <form method="POST" action="{% url 'finalizar_requerimiento_solicitante' requerimiento.id %}" class="d-inline">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-success btn-lg fw-bold px-5 shadow-sm btn-bounce" onclick="this.disabled=true; this.form.submit();">
                             <i class="bi bi-send-check-fill me-2"></i> Finalizar y Enviar Requerimiento
@@ -230,7 +221,7 @@
 
 {% if detalles %}
 <div class="mobile-bottom-bar d-none">
-    <form method="POST" action="{% url 'procesar_ticket' requerimiento.id 'enviar' %}" class="w-100">
+    <form method="POST" action="{% url 'finalizar_requerimiento_solicitante' requerimiento.id %}" class="w-100">
         {% csrf_token %}
         <button type="submit" class="btn btn-success w-100 fw-bold shadow-lg py-3 rounded-3" style="font-size: 1.1rem;" onclick="this.disabled=true; this.form.submit();">
             <i class="bi bi-send-check-fill me-2"></i> Finalizar Solicitud

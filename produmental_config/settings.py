@@ -153,7 +153,12 @@ if not DEBUG:
 # ==============================================================================
 # 8. ALMACENAMIENTO EN LA NUBE (AWS S3) - ARCHIVOS MULTIMEDIA / PDFS
 # ==============================================================================
-if 'AWS_ACCESS_KEY_ID' in os.environ:
+# USING_S3_STORAGE indica si los archivos subidos (cotizaciones, facturas,
+# certificados) se sirven vía S3 (URLs propias, firmadas) o vía disco local
+# (necesita que Django sirva /media/ el mismo, ver produmental_config/urls.py).
+USING_S3_STORAGE = 'AWS_ACCESS_KEY_ID' in os.environ
+
+if USING_S3_STORAGE:
     # Estas variables se inyectarán después desde el panel de Render
     AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
     AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')

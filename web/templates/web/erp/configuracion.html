@@ -116,18 +116,6 @@
         </div>
     </div>
 
-    {% if messages %}
-        <div class="mb-3">
-            {% for message in messages %}
-                <div class="alert alert-dismissible fade show p-2 px-3 rounded-2" 
-                     style="background-color: #000; border: 1px solid var(--border-color); border-left: 3px solid {% if message.tags == 'error' %}var(--accent-red){% elif message.tags == 'warning' %}var(--accent-amber){% else %}var(--accent-green){% endif %}; color: #fff;">
-                    <span class="fw-bold" style="font-size: 0.8rem;">{{ message }}</span>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" style="padding: 0.6rem;"></button>
-                </div>
-            {% endfor %}
-        </div>
-    {% endif %}
-
     <div class="row g-3">
         <!-- ================= CATEGORÍAS ================= -->
         <div class="col-12 col-lg-6 fade-up delay-1">

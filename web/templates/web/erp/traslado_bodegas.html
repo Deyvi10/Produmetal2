@@ -2,6 +2,15 @@
 {% load static %}
 
 {% block content %}
+<style>
+    body { background-color: var(--pm-bg); color: var(--pm-text); }
+    .card-pm { background: var(--pm-surface); }
+    .card-pm .form-label { color: var(--pm-text); }
+    .card-pm .form-control, .card-pm .form-select, .card-pm textarea { background-color: var(--pm-bg) !important; border-color: var(--pm-border) !important; color: var(--pm-text) !important; }
+    .card-pm .input-group-text { background-color: var(--pm-surface-hover) !important; border-color: var(--pm-border) !important; color: var(--pm-text-muted) !important; }
+    .card-pm hr { border-color: var(--pm-border) !important; opacity: 1; }
+    .text-muted { color: var(--pm-text-muted) !important; }
+</style>
 <div class="container py-4">
     <div class="d-flex align-items-center mb-4">
         <a href="{% url 'inventario_actual' %}" class="btn btn-outline-secondary rounded-circle me-3" style="width: 45px; height: 45px; display: flex; align-items: center; justify-content: center;">
@@ -13,7 +22,7 @@
         </div>
     </div>
 
-    <div class="card shadow-sm border-0 rounded-4">
+    <div class="card card-pm shadow-sm border-0 rounded-4">
         <div class="card-body p-4">
             
             <div class="alert alert-info d-flex align-items-center rounded-3 mb-4" role="alert">

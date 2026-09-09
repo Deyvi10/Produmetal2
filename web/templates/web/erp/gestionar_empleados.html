@@ -125,25 +125,6 @@
         </div>
     </div>
 
-    {% if messages %}
-        <div class="mb-4">
-            {% for message in messages %}
-                <div class="alert alert-dismissible fade show d-flex align-items-center p-3 rounded-3" 
-                     style="background-color: var(--dark-surface); border: 1px solid var(--dark-border); border-left: 4px solid {% if message.tags == 'error' %}var(--red-danger){% elif message.tags == 'warning' %}var(--yellow-warning){% else %}var(--green-success){% endif %}; color: var(--text-white);">
-                    {% if message.tags == 'error' %}
-                        <i class="bi bi-x-circle-fill me-3 text-danger fs-5"></i>
-                    {% elif message.tags == 'warning' %}
-                        <i class="bi bi-exclamation-triangle-fill me-3 text-warning fs-5"></i>
-                    {% else %}
-                        <i class="bi bi-check-circle-fill me-3 text-success fs-5"></i>
-                    {% endif %}
-                    <div class="flex-grow-1 fw-semibold" style="font-size: 0.9rem;">{{ message }}</div>
-                    <button type="button" class="btn-close btn-close-white opacity-50" data-bs-dismiss="alert"></button>
-                </div>
-            {% endfor %}
-        </div>
-    {% endif %}
-
     <div class="card-elegant">
         <div class="table-responsive m-0">
             <table class="table-elegant">

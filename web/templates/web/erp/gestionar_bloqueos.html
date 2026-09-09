@@ -1,30 +1,32 @@
 {% extends 'web/base.html' %}
 
 {% block content %}
+<style>
+    body { background-color: var(--pm-bg); color: var(--pm-text); }
+    .card-pm { background: var(--pm-surface); border: 1px solid var(--pm-border); }
+    .table-pm { color: var(--pm-text); }
+    .table-pm thead { background: var(--pm-bg); }
+    .table-pm th { color: var(--pm-text-muted) !important; border-color: var(--pm-border) !important; }
+    .table-pm td { border-color: var(--pm-border) !important; }
+    .table-pm tr:hover td { background: var(--pm-surface-hover); }
+    .text-muted { color: var(--pm-text-muted) !important; }
+</style>
 <div class="container mt-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="fas fa-shield-alt text-danger"></i> Centro de Seguridad</h2>
         <a href="{% url 'dashboard_erp' %}" class="btn btn-secondary">Volver al Dashboard</a>
     </div>
 
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        {% endfor %}
-    {% endif %}
 
-    <div class="card shadow-sm">
+    <div class="card card-pm shadow-sm">
         <div class="card-header bg-dark text-white">
             <h5 class="mb-0">Usuarios con Intentos Fallidos / Bloqueados</h5>
         </div>
         <div class="card-body p-0">
             {% if intentos %}
             <div class="table-responsive">
-                <table class="table table-hover mb-0 text-center align-middle">
-                    <thead class="table-light">
+                <table class="table table-pm table-hover mb-0 text-center align-middle">
+                    <thead>
                         <tr>
                             <th>Usuario Involucrado</th>
                             <th>IP de Origen</th>

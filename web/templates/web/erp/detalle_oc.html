@@ -26,16 +26,11 @@
                 <p class="mb-0 text-muted small">Proveedor: <strong class="text-white">{{ oc.proveedor }}</strong> · Emitida: {{ oc.fecha_creacion|date:"d M, Y H:i" }} por {{ oc.creado_por.get_full_name|default:oc.creado_por.username }}</p>
             </div>
         </div>
-        <a href="{% url 'imprimir_pdf_oc' oc.id %}" target="_blank" class="btn btn-outline-light border-secondary">
-            <i class="bi bi-file-pdf"></i> Ver PDF Oficial
+        <a href="{% url 'imprimir_pdf_oc' oc.id %}" target="_blank" class="btn btn-outline-light border-secondary" title="Genera el documento oficial de esta Orden de Compra">
+            <i class="bi bi-printer-fill"></i> Imprimir Orden de Compra
         </a>
     </div>
 
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }} border-0 shadow-sm rounded-3">{{ message }}</div>
-        {% endfor %}
-    {% endif %}
 
     <div class="row g-3 mb-4">
         <div class="col-6 col-md-3">

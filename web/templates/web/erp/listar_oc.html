@@ -66,20 +66,6 @@
         </a>
     </div>
 
-    {% if messages %}
-        <div class="mb-4">
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} alert-dismissible fade show border-0 shadow-sm rounded-3 d-flex align-items-center" role="alert" style="background: var(--pm-surface); border-left: 4px solid var(--pm-amber) !important; color: var(--pm-text);">
-                    {% if message.tags == 'success' %}<i class="bi bi-check-circle-fill text-success fs-5 me-3"></i>{% endif %}
-                    {% if message.tags == 'warning' %}<i class="bi bi-exclamation-triangle-fill text-warning fs-5 me-3"></i>{% endif %}
-                    {% if message.tags == 'danger' %}<i class="bi bi-shield-fill-x text-danger fs-5 me-3"></i>{% endif %}
-                    <div class="flex-grow-1 fw-medium" style="font-size: 0.95rem;">{{ message }}</div>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
-                </div>
-            {% endfor %}
-        </div>
-    {% endif %}
-
     <div class="card card-minimal overflow-hidden">
         
         <div class="filtros-bar">
@@ -179,8 +165,8 @@
                                     {% endif %}
                                 {% endif %}
 
-                                <a href="{% url 'imprimir_pdf_oc' oc.id %}" target="_blank" class="btn btn-sm btn-outline-secondary btn-minimal px-3 py-1 border-secondary text-white" title="Imprimir O.C.">
-                                    <i class="bi bi-file-pdf"></i> <span class="d-none d-xl-inline">Ver PDF</span>
+                                <a href="{% url 'imprimir_pdf_oc' oc.id %}" target="_blank" class="btn btn-sm btn-outline-secondary btn-minimal px-3 py-1 border-secondary text-white" title="Imprimir Orden de Compra (documento oficial)">
+                                    <i class="bi bi-printer-fill"></i> <span class="d-none d-xl-inline">Imprimir OC</span>
                                 </a>
 
                                 {% if oc.estado == 'EMITIDA' %}

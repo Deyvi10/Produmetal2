@@ -2,8 +2,17 @@
 {% load static %}
 
 {% block content %}
+<style>
+    body { background-color: var(--pm-bg); color: var(--pm-text); }
+    .card-pm { background: var(--pm-surface) !important; }
+    .card-pm .bg-light { background: var(--pm-surface-hover) !important; }
+    .card-pm .text-dark { color: var(--pm-text) !important; }
+    .card-pm .text-secondary, .card-pm .text-muted { color: var(--pm-text-muted) !important; }
+    .card-pm .form-control, .card-pm .form-select, .card-pm .input-group-text { background-color: var(--pm-bg) !important; border-color: var(--pm-border) !important; color: var(--pm-text) !important; }
+    h5.text-secondary { color: var(--pm-text-muted) !important; }
+</style>
 <div class="container py-4">
-    
+
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div class="d-flex align-items-center">
             <a href="{% url 'dashboard_erp' %}" class="btn btn-outline-secondary rounded-circle me-3" style="width: 45px; height: 45px; display: flex; align-items: center; justify-content: center;">
@@ -26,7 +35,7 @@
         <h5 class="fw-bold mb-3 text-secondary"><i class="fas fa-list-check me-2"></i>Materiales a Validar</h5>
         
         {% for item in items %}
-        <div class="card shadow-sm border-0 rounded-4 mb-3 position-relative overflow-hidden">
+        <div class="card card-pm shadow-sm border-0 rounded-4 mb-3 position-relative overflow-hidden">
             <div class="position-absolute top-0 start-0 h-100 bg-primary" style="width: 5px;"></div>
             
             <div class="card-body p-3 ps-4">
@@ -90,7 +99,7 @@
         </div>
         {% endfor %}
 
-        <div class="card shadow-sm border-0 bg-light rounded-4 my-4">
+        <div class="card card-pm shadow-sm border-0 bg-light rounded-4 my-4">
             <div class="card-body p-4">
                 <h6 class="fw-bold text-dark mb-2">
                     <i class="fas fa-plus-circle text-primary me-2"></i>¿Aprovechar flete o compra masiva? Añade stock extra:

@@ -35,6 +35,7 @@ urlpatterns = [
     # ==========================================
     path('erp/nuevo-ticket/', views.crear_requerimiento, name='crear_requerimiento'),
     path('erp/ticket/<int:req_id>/materiales/', views.añadir_materiales, name='añadir_materiales'),
+    path('erp/ticket/<int:req_id>/finalizar/', views.finalizar_requerimiento_solicitante, name='finalizar_requerimiento_solicitante'),
     path('erp/ticket/<int:req_id>/pdf/', views.imprimir_pdf_ticket, name='imprimir_pdf_ticket'),
     path('erp/ticket/<int:req_id>/procesar/<str:accion>/', views.procesar_ticket, name='procesar_ticket'),
     path('erp/requerimiento/revisar/<int:req_id>/', views.revisar_requerimiento_items, name='revisar_requerimiento_items'),

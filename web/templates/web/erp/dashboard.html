@@ -167,17 +167,6 @@
         </div>
     </div>
 
-    {% if messages %}
-        <div class="mb-3 fade-up delay-1">
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} alert-dismissible fade show border-0 rounded-3 d-flex align-items-center p-3 mb-2" role="alert" style="background: var(--pm-surface); border-left: 4px solid var(--pm-amber) !important; color: var(--pm-text); font-size: 0.9rem;">
-                    <div class="flex-grow-1 fw-medium ps-2">{{ message }}</div>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
-                </div>
-            {% endfor %}
-        </div>
-    {% endif %}
-
     {% if rol == 'Administrador' %}
     <div class="action-card-grid mb-4 fade-up delay-1">
         <a href="{% url 'inventario_actual' %}" class="action-card card-amber">

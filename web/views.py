@@ -298,6 +298,22 @@ def añadir_materiales(request, req_id):
     return render(request, 'web/erp/añadir_materiales.html', context)
 
 @login_required(login_url='login')
+@user_passes_test(es_solicitante, login_url='dashboard_erp')
+def finalizar_requerimiento_solicitante(request, req_id):
+    """
+    Botón "Finalizar y Enviar Requerimiento" del solicitante. El ticket ya
+    queda PENDIENTE (visible para Admin) desde que se crea; esta acción solo
+    confirma que terminó de añadir materiales y lo regresa a su panel.
+    """
+    requerimiento = get_object_or_404(Requerimiento, id=req_id, solicitante=request.user)
+    if not requerimiento.detalles.exists():
+        messages.error(request, f"El ticket {requerimiento.folio} no tiene materiales agregados todavía.")
+        return redirect('añadir_materiales', req_id=requerimiento.id)
+
+    messages.success(request, f"Ticket {requerimiento.folio} enviado a gerencia para su revisión.")
+    return redirect('dashboard_erp')
+
+@login_required(login_url='login')
 @transaction.atomic
 def actualizar_item_ticket(request, item_id):
     item = get_object_or_404(DetalleRequerimiento, id=item_id)
