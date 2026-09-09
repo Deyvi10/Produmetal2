@@ -126,8 +126,11 @@
                     <thead>
                         <tr>
                             <th>Material / SKU</th>
+                            <th>Origen</th>
                             <th>Cantidad Aceptada</th>
                             <th>Proveedor Asignado</th>
+                            <th class="text-end">P. Unitario</th>
+                            <th class="text-end">Subtotal</th>
                             <th>Dictamen Gerencial</th>
                         </tr>
                     </thead>
@@ -137,6 +140,17 @@
                             <td>
                                 <div class="fw-bold text-dark fs-6">{{ item.material.nombre }}</div>
                                 <div class="text-muted small mt-1"><i class="bi bi-upc-scan"></i> SKU: {{ item.material.sku }}</div>
+                                {% if item.archivo_cotizacion %}
+                                    <a href="{{ item.archivo_cotizacion.url }}" target="_blank" class="small"><i class="bi bi-file-earmark-pdf text-danger"></i> PDF Cotización</a>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                <span class="mobile-label">Origen</span>
+                                <div class="small text-dark">
+                                    {{ item.solicitud.requerimiento_origen.proyecto.nombre|default:"Stock General" }}
+                                </div>
+                                <div class="small text-muted">Bodega: {{ item.bodega_destino.nombre|default:"Sin definir" }}</div>
                             </td>
 
                             <td>
@@ -153,6 +167,16 @@
                                 </div>
                             </td>
 
+                            <td class="text-end">
+                                <span class="mobile-label">P. Unitario</span>
+                                <div class="text-dark fw-semibold">${{ item.precio_unitario|default:"0.00"|floatformat:"2" }}</div>
+                            </td>
+
+                            <td class="text-end">
+                                <span class="mobile-label">Subtotal</span>
+                                <div class="fw-bold" style="color: var(--pm-success);">${{ item.total_estimado|floatformat:"2" }}</div>
+                            </td>
+
                             <td>
                                 <span class="mobile-label">Estado del Ítem</span>
                                 {% if item.estado_aprobacion == 'APROBADO' %}
@@ -166,6 +190,13 @@
                         </tr>
                         {% endfor %}
                     </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="5" class="text-end fw-bold text-uppercase small">TOTAL GENERAL A PAGAR</td>
+                            <td class="text-end fw-bold fs-5" style="color: var(--pm-success);">${{ total_a_pagar|floatformat:"2" }}</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
 

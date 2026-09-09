@@ -352,7 +352,10 @@ def procesar_ticket(request, req_id, accion):
             for detalle in ticket.detalles.filter(estado_item='EN_COMPRAS'):
                 CotizacionItem.objects.get_or_create(
                     solicitud=solicitud, material=detalle.material,
-                    defaults={'cantidad_requerida': detalle.cantidad_solicitada}
+                    defaults={
+                        'cantidad_requerida': detalle.cantidad_solicitada,
+                        'bodega_destino': detalle.bodega_destino,
+                    }
                 )
         
     elif accion == 'rechazar':
@@ -481,10 +484,11 @@ def desglosar_item_cotizacion(request, item_id):
                 item.cantidad_requerida -= cantidad_nueva
                 item.save()
                 
-                # Crear el nuevo clon preservando la solicitud
+                # Crear el nuevo clon preservando la solicitud y la bodega de destino original
                 CotizacionItem.objects.create(
-                    solicitud=item.solicitud, material=item.material, 
-                    cantidad_requerida=cantidad_nueva, estado_aprobacion=item.estado_aprobacion
+                    solicitud=item.solicitud, material=item.material,
+                    cantidad_requerida=cantidad_nueva, estado_aprobacion=item.estado_aprobacion,
+                    bodega_destino=item.bodega_destino
                 )
                 messages.success(request, "Material desglosado correctamente para asignar a otro proveedor.")
             else:
@@ -546,10 +550,12 @@ def revisar_cotizacion(request, solicitud_id):
         
     # Agregamos la lista de materiales por si el Admin quiere añadir cosas nuevas
     materiales_catalogo = Material.objects.filter(is_active=True).order_by('nombre')
+    total_estimado_solicitud = sum((i.total_estimado for i in items), Decimal('0.00'))
     return render(request, 'web/erp/revisar_cotizacion.html', {
-        'solicitud': solicitud, 
+        'solicitud': solicitud,
         'items': items,
-        'materiales_catalogo': materiales_catalogo
+        'materiales_catalogo': materiales_catalogo,
+        'total_estimado_solicitud': total_estimado_solicitud,
     })
 
 @login_required(login_url='login')
@@ -598,12 +604,14 @@ def confirmar_compra_definitiva(request, solicitud_id):
                     observaciones=f"Generada formalmente por Compras desde Solicitud {solicitud.folio}"
                 )
                 
-                # Crear los detalles de la O.C.
+                # Crear los detalles de la O.C. (conservando el vínculo a la cotización y su bodega destino)
                 for item in items_prov:
                     DetalleOrdenCompra.objects.create(
-                        orden=nueva_oc, 
-                        material=item.material, 
-                        cantidad_pedida=item.cantidad_requerida
+                        orden=nueva_oc,
+                        material=item.material,
+                        cantidad_pedida=item.cantidad_requerida,
+                        bodega_destino=item.bodega_destino,
+                        cotizacion_item_origen=item,
                     )
                 
                 # Actualizar el estado del ítem cotizado
@@ -617,9 +625,12 @@ def confirmar_compra_definitiva(request, solicitud_id):
         return redirect('dashboard_erp')
 
     # Si entra por GET, le mostramos la pantalla de resumen antes de confirmar
+    items_pantalla = solicitud.items_cotizados.all()
+    total_a_pagar = sum((i.total_estimado for i in items_pantalla if i.estado_aprobacion == 'APROBADO'), Decimal('0.00'))
     return render(request, 'web/erp/confirmacion_compras.html', {
-        'solicitud': solicitud, 
-        'items': solicitud.items_cotizados.all()
+        'solicitud': solicitud,
+        'items': items_pantalla,
+        'total_a_pagar': total_a_pagar,
     })
 # =======================================================
 # MÓDULO DE INVENTARIO Y ABASTECIMIENTO TRADICIONAL
@@ -690,9 +701,33 @@ def listar_ordenes_compra(request):
 
     return render(request, 'web/erp/listar_oc.html', {
         'ordenes': ordenes,
-        'estados': estados_permitidos, 
+        'estados': estados_permitidos,
         'estado_filtro': estado,
         'rol': rol_actual,
+    })
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: es_bodeguero(u) or es_admin(u) or es_comprador(u), login_url='dashboard_erp')
+def detalle_oc(request, oc_id):
+    """
+    Vista de solo lectura con la trazabilidad completa de una Orden de Compra:
+    de dónde salió cada línea (proyecto/requerimiento/cotización), cuánto cuesta
+    en total, y qué se ha recibido en bodega hasta el momento.
+    """
+    oc = get_object_or_404(OrdenCompra, id=oc_id)
+    detalles = oc.detalles.select_related(
+        'material', 'bodega_destino', 'cotizacion_item_origen',
+        'cotizacion_item_origen__solicitud__requerimiento_origen__proyecto',
+    ).all()
+    recepciones = MovimientoInventario.objects.filter(
+        orden_compra_asociada=oc, tipo='INGRESO'
+    ).select_related('material', 'bodega_origen', 'responsable').order_by('-fecha_hora')
+
+    return render(request, 'web/erp/detalle_oc.html', {
+        'oc': oc,
+        'detalles': detalles,
+        'recepciones': recepciones,
+        'rol': 'Administrador' if es_admin(request.user) else ('Compras' if es_comprador(request.user) else 'Bodeguero'),
     })
 
 @login_required(login_url='login')
@@ -711,16 +746,39 @@ def aprobar_oc(request, oc_id):
 @transaction.atomic
 def recibir_orden_compra(request, oc_id):
     oc = get_object_or_404(OrdenCompra, id=oc_id)
-    detalles = oc.detalles.all()
-    
+    bodega_principal = Bodega.objects.filter(is_principal=True).first()
+    es_administrador = request.user.is_superuser or es_admin(request.user)
+    bodega_bodeguero = getattr(request.user.perfil, 'bodega_asignada', None) if hasattr(request.user, 'perfil') else None
+
+    # SEGURIDAD: un bodeguero SOLO puede ver/recibir las líneas cuya bodega destino
+    # sea la suya. Las líneas sin bodega destino definida (órdenes antiguas o ítems
+    # añadidos manualmente) caen por defecto en la Bodega Central/Principal.
+    todas_las_lineas = list(oc.detalles.select_related('material', 'bodega_destino').all())
+    if es_administrador:
+        detalles = todas_las_lineas
+    else:
+        if not bodega_bodeguero:
+            messages.error(request, "No tienes bodega asignada para recibir mercadería.")
+            return redirect('listar_ordenes_compra')
+        detalles = [
+            d for d in todas_las_lineas
+            if (d.bodega_destino_id or (bodega_principal.id if bodega_principal else None)) == bodega_bodeguero.id
+        ]
+        if not detalles:
+            messages.warning(request, f"La Orden {oc.folio} no tiene materiales destinados a tu bodega ({bodega_bodeguero.nombre}).")
+            return redirect('listar_ordenes_compra')
+
     if request.method == 'POST':
-        # 1. SEGURIDAD: Identificamos la bodega donde se está recibiendo.
-        bodega_id = request.POST.get('bodega_destino')
-        bodega = get_object_or_404(Bodega, id=bodega_id) if bodega_id else Bodega.objects.filter(is_principal=True).first()
-        
-        entrega_incompleta = False
+        # Bodega de respaldo SOLO para líneas sin bodega_destino definida (legado / admin).
+        bodega_fallback_id = request.POST.get('bodega_destino')
+        bodega_fallback = get_object_or_404(Bodega, id=bodega_fallback_id) if bodega_fallback_id else bodega_principal
 
         for item in detalles:
+            bodega = item.bodega_destino or bodega_fallback or bodega_bodeguero
+            if not bodega:
+                messages.error(request, f"No se pudo determinar la bodega destino para {item.material.nombre}.")
+                return redirect('recibir_orden_compra', oc_id=oc.id)
+
             # BLINDAJE 1: Capturar errores y convertir a Decimal (Alta precisión)
             try:
                 valor_texto = request.POST.get(f'recibido_{item.id}', '0').replace(',', '.')
@@ -747,21 +805,18 @@ def recibir_orden_compra(request, oc_id):
                 item.cantidad_recibida = cant_recibida + ingresado
                 item.save()
 
-                if item.cantidad_recibida < cant_pedida:
-                    entrega_incompleta = True
-
                 # BLOQUEO DE CONCURRENCIA PARA RECEPCIÓN SEGURA
                 material = Material.objects.select_for_update().get(id=item.material.id)
 
-                # PRIMERO ACTUALIZAMOS EL STOCK FÍSICO EN LA BODEGA
+                # PRIMERO ACTUALIZAMOS EL STOCK FÍSICO EN LA BODEGA (solo lo realmente recibido)
                 stock_b, _ = StockBodega.objects.select_for_update().get_or_create(bodega=bodega, material=material)
                 cant_bodega = Decimal(str(stock_b.cantidad)) if stock_b.cantidad else Decimal('0.0')
-                
+
                 stock_b.cantidad = cant_bodega + ingresado
                 stock_b.save()
 
                 # LUEGO ACTUALIZAMOS EL MATERIAL (Suma total auto)
-                material.save() 
+                material.save()
 
                 # Registrar el movimiento de Ingreso en Bitácora
                 MovimientoInventario.objects.create(
@@ -770,15 +825,14 @@ def recibir_orden_compra(request, oc_id):
                     observaciones=f"Ingreso físico de proveedor (O.C. #{oc.folio})"
                 )
 
-        # Determinar el estado general de la Orden de Compra
-        if entrega_incompleta:
-            oc.estado = 'RECIBIDA_PARCIAL'
+        # Determinar el estado general de la Orden de Compra en base a TODAS sus líneas
+        # (no solo las de esta bodega): mientras algo siga pendiente en cualquier bodega
+        # destino, la O.C. permanece RECIBIDA_PARCIAL y visible para Bodega/Compras.
+        oc.recalcular_estado_recepcion()
+        if oc.estado == 'RECIBIDA_PARCIAL':
             messages.warning(request, "Entrega parcial registrada en bodega. Queda saldo pendiente con el proveedor.")
         else:
-            oc.estado = 'RECIBIDA'
-            messages.success(request, f"Orden {oc.folio} recibida al 100%. Las perchas de la {bodega.nombre} fueron actualizadas.")
-        
-        oc.save()
+            messages.success(request, f"Orden {oc.folio} recibida al 100%. El stock fue actualizado en bodega.")
 
         # ========================================================================
         # 🧠 MAGIA LOGÍSTICA: EL DESPERTADOR DE TICKETS (FIFO)
@@ -836,7 +890,12 @@ def recibir_orden_compra(request, oc_id):
         return redirect('listar_ordenes_compra')
 
     return render(request, 'web/erp/recibir_stock_form.html', {
-        'oc': oc, 'detalles': detalles, 'bodegas': Bodega.objects.all()
+        'oc': oc,
+        'detalles': detalles,
+        'bodegas': Bodega.objects.all(),
+        'bodega_bodeguero': bodega_bodeguero,
+        'es_administrador': es_administrador,
+        'hay_lineas_ocultas': not es_administrador and len(detalles) < len(todas_las_lineas),
     })
 
 
@@ -1217,37 +1276,65 @@ def eliminar_proyecto_erp(request, proyecto_id):
     return redirect('gestionar_proyectos')
 
 @login_required(login_url='login')
-@user_passes_test(es_admin, login_url='dashboard_erp')
+@user_passes_test(lambda u: es_admin(u) or es_comprador(u), login_url='dashboard_erp')
 def historial_movimientos(request):
-    movimientos_list = MovimientoInventario.objects.all().order_by('-fecha_hora')
-    
+    """
+    Bitácora de auditoría. Para Compras es también la forma de consultar
+    dónde/cuándo/a qué proveedor y para qué proyecto se compró cada material
+    (filtrando por tipo=INGRESO), sin duplicar ninguna vista nueva.
+    """
+    movimientos_list = MovimientoInventario.objects.select_related(
+        'material', 'bodega_origen', 'bodega_destino', 'responsable',
+        'requerimiento_asociado__proyecto', 'orden_compra_asociada'
+    ).order_by('-fecha_hora')
+
     tipo_filtro = request.GET.get('tipo')
     if tipo_filtro:
         movimientos_list = movimientos_list.filter(tipo=tipo_filtro)
-        
+
     mes_filtro = request.GET.get('mes')
     if mes_filtro:
         try:
             year, month = mes_filtro.split('-')
             movimientos_list = movimientos_list.filter(fecha_hora__year=year, fecha_hora__month=month)
         except ValueError:
-            pass 
-            
+            pass
+
     proyecto_id = request.GET.get('proyecto')
     if proyecto_id:
-        movimientos_list = movimientos_list.filter(requerimiento_asociado__proyecto_id=proyecto_id)
+        # Cubre tanto despachos (SALIDA, vía requerimiento) como compras (INGRESO, vía la O.C./cotización)
+        movimientos_list = movimientos_list.filter(
+            Q(requerimiento_asociado__proyecto_id=proyecto_id) |
+            Q(
+                tipo='INGRESO',
+                orden_compra_asociada__detalles__material=F('material'),
+                orden_compra_asociada__detalles__cotizacion_item_origen__solicitud__requerimiento_origen__proyecto_id=proyecto_id,
+            )
+        ).distinct()
+
+    material_q = request.GET.get('material_q', '').strip()
+    if material_q:
+        movimientos_list = movimientos_list.filter(
+            Q(material__nombre__icontains=material_q) | Q(material__sku__icontains=material_q)
+        )
+
+    proveedor_q = request.GET.get('proveedor_q', '').strip()
+    if proveedor_q:
+        movimientos_list = movimientos_list.filter(orden_compra_asociada__proveedor__icontains=proveedor_q)
 
     proyectos_activos = Proyecto.objects.filter(is_active=True).order_by('nombre')
     proyectos_inactivos = Proyecto.objects.filter(is_active=False).order_by('nombre')
-            
-    paginator = Paginator(movimientos_list, 30) 
+
+    paginator = Paginator(movimientos_list, 30)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-        
+
     return render(request, 'web/erp/auditoria.html', {
         'page_obj': page_obj, 'tipo_filtro': tipo_filtro, 'mes_filtro': mes_filtro,
-        'proyecto_id': proyecto_id, 'proyectos_activos': proyectos_activos,
-        'proyectos_inactivos': proyectos_inactivos, 'rol': 'Administrador'
+        'proyecto_id': proyecto_id, 'material_q': material_q, 'proveedor_q': proveedor_q,
+        'proyectos_activos': proyectos_activos,
+        'proyectos_inactivos': proyectos_inactivos,
+        'rol': 'Administrador' if es_admin(request.user) else 'Compras',
     })
 
 
@@ -1282,7 +1369,7 @@ def imprimir_pdf_ticket(request, req_id):
 
 @login_required(login_url='login')
 def imprimir_pdf_oc(request, oc_id):
-    if not es_bodeguero(request.user) and not es_admin(request.user):
+    if not es_bodeguero(request.user) and not es_admin(request.user) and not es_comprador(request.user):
         messages.error(request, "No tienes permiso para imprimir órdenes de compra.")
         return redirect('dashboard_erp')
  
@@ -1304,7 +1391,7 @@ def imprimir_pdf_oc(request, oc_id):
     return response
 
 @login_required(login_url='login')
-@user_passes_test(es_admin, login_url='dashboard_erp')
+@user_passes_test(lambda u: es_admin(u) or es_comprador(u), login_url='dashboard_erp')
 def imprimir_pdf_auditoria(request):
     movimientos = MovimientoInventario.objects.all().order_by('-fecha_hora')
     
@@ -1412,6 +1499,36 @@ def gestionar_empleados(request):
         'bodegas': bodegas,
         'form': form
     })
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def editar_empleado(request, empleado_id):
+    """Permite al Admin corregir los datos y el rol/grupo de un empleado ya existente."""
+    empleado = get_object_or_404(User, id=empleado_id)
+    if request.method == 'POST':
+        first_name = request.POST.get('first_name', '').strip()
+        last_name = request.POST.get('last_name', '').strip()
+        email = request.POST.get('email', '').strip()
+        grupo_id = request.POST.get('grupo_id')
+
+        if not first_name or not last_name:
+            messages.error(request, "El nombre y apellido son obligatorios.")
+            return redirect('gestionar_empleados')
+
+        empleado.first_name = first_name
+        empleado.last_name = last_name
+        empleado.email = email
+        empleado.save()
+
+        # El superusuario mantiene su nivel de acceso total; su rol no se toca desde aquí.
+        if not empleado.is_superuser:
+            empleado.groups.clear()
+            if grupo_id:
+                grupo = get_object_or_404(Group, id=grupo_id)
+                empleado.groups.add(grupo)
+
+        messages.success(request, f"✅ Datos y rol de '{empleado.username}' actualizados correctamente.")
+    return redirect('gestionar_empleados')
 
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
@@ -1631,13 +1748,36 @@ def editar_bodega(request, bodega_id):
     if request.method == 'POST':
         nombre = request.POST.get('nombre')
         ubicacion = request.POST.get('ubicacion')
+        es_principal = request.POST.get('is_principal') == 'on'
         if nombre:
             bodega.nombre = nombre
             bodega.ubicacion = ubicacion
-            bodega.save()
+            bodega.is_principal = es_principal
+            bodega.save()  # el save() del modelo garantiza que solo haya UNA bodega matriz
             messages.success(request, f"La información de la bodega '{nombre}' fue actualizada. (El historial se mantiene intacto).")
         else:
             messages.error(request, "El nombre de la bodega no puede estar vacío.")
+    return redirect('configuracion_erp')
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def eliminar_bodega(request, bodega_id):
+    """
+    Solo permite eliminar bodegas que JAMÁS se usaron: sin stock, sin movimientos,
+    sin compras, sin requerimientos y sin proyectos/empleados vinculados.
+    Si alguna vez se usó, se bloquea y se explica el motivo exacto.
+    """
+    bodega = get_object_or_404(Bodega, id=bodega_id)
+    motivos = bodega.obtener_motivos_bloqueo_eliminacion()
+    if motivos:
+        messages.error(
+            request,
+            f"No se puede eliminar la bodega '{bodega.nombre}': " + " · ".join(motivos)
+        )
+    else:
+        nombre = bodega.nombre
+        bodega.delete()
+        messages.success(request, f"Bodega '{nombre}' eliminada definitivamente (nunca tuvo uso registrado).")
     return redirect('configuracion_erp')
 
 @login_required(login_url='login')
@@ -1970,10 +2110,12 @@ def historial_solicitudes(request):
 def detalle_solicitud_procesada(request, solicitud_id):
     """Vista de Solo Lectura para ver qué aprobó o rechazó el Administrador"""
     solicitud = get_object_or_404(SolicitudCompra, id=solicitud_id)
-    items = solicitud.items_cotizados.all()
+    items = solicitud.items_cotizados.select_related('bodega_destino').prefetch_related('detalles_orden__orden').all()
+    total_general_solicitud = sum((i.total_estimado for i in items), Decimal('0.00'))
     return render(request, 'web/erp/detalle_solicitud_procesada.html', {
-        'solicitud': solicitud, 
-        'items': items
+        'solicitud': solicitud,
+        'items': items,
+        'total_general_solicitud': total_general_solicitud,
     })
 
 # AGREGAR nueva vista

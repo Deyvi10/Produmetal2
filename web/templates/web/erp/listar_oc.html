@@ -125,6 +125,7 @@
                         <th>Proveedor</th>
                         <th>Fecha y Hora</th>
                         <th>Estado Actual</th>
+                        <th class="text-end">Total Compra</th>
                         <th>Nº Factura</th>
                         <th class="text-end pe-4">Acciones Operativas</th>
                     </tr>
@@ -160,27 +161,38 @@
                                 
                                 {{ oc.get_estado_display }}
                             </span>
+                            {% if oc.estado == 'RECIBIDA_PARCIAL' %}
+                                <div class="small text-warning mt-1"><i class="bi bi-hourglass-split"></i> Pendiente: {{ oc.cantidad_pendiente_total|floatformat:"2" }} U</div>
+                            {% endif %}
+                        </td>
+
+                        <td class="text-end fw-bold" style="color: var(--pm-amber);">
+                            ${{ oc.total_general|floatformat:"2" }}
                         </td>
 
                         <td class="text-muted small fw-bold">
                             {{ oc.numero_factura|default:"<span style='color: #4b5563;'>No registrada</span>"|safe }}
                         </td>
-                        
+
                         <td class="text-end pe-4">
                             <div class="d-flex justify-content-end gap-2">
-                                
+
+                                <a href="{% url 'detalle_oc' oc.id %}" class="btn btn-sm btn-outline-light btn-minimal px-3 py-1 border-secondary" title="Ver Trazabilidad Completa">
+                                    <i class="bi bi-diagram-3"></i> <span class="d-none d-xl-inline">Ver Detalle</span>
+                                </a>
+
                                 {% if oc.estado == 'BORRADOR' %}
                                     <a href="{% url 'añadir_items_oc' oc.id %}" class="btn btn-sm btn-outline-info btn-minimal px-3 py-1 border-info" title="Añadir Materiales">
                                         <i class="bi bi-list-check"></i> <span class="d-none d-xl-inline">Editar Ítems</span>
                                     </a>
-                                    
+
                                     {% if rol == 'Administrador' %}
                                     <a href="{% url 'aprobar_oc' oc.id %}" class="btn btn-sm btn-outline-warning btn-minimal px-3 py-1 border-warning text-warning" title="Aprobar Orden" onclick="return confirm('¿Aprobar esta orden de compra?\n\nAl aprobarla, el bodeguero podrá verla en su pantalla y estará autorizado a recibir el material de esta factura.');">
                                         <i class="bi bi-check-circle-fill"></i> <span class="d-none d-xl-inline">Aprobar Orden</span>
                                     </a>
                                     {% endif %}
                                 {% endif %}
-                                
+
                                 <a href="{% url 'imprimir_pdf_oc' oc.id %}" target="_blank" class="btn btn-sm btn-outline-secondary btn-minimal px-3 py-1 border-secondary text-white" title="Imprimir O.C.">
                                     <i class="bi bi-file-pdf"></i> <span class="d-none d-xl-inline">Ver PDF</span>
                                 </a>
@@ -196,7 +208,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center py-5">
+                        <td colspan="7" class="text-center py-5">
                             <i class="bi bi-clipboard-x text-muted" style="font-size: 3rem;"></i>
                             <h5 class="mt-3 text-white" style="font-family: var(--font-display);">Sin Órdenes de Compra</h5>
                             <p class="text-muted small mb-4">No se encontraron órdenes de compra en este estado.</p>

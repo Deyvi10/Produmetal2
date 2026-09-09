@@ -10,19 +10,29 @@
                         Recibir Stock
                     </h5>
                     <p class="card-text small mb-0 opacity-75">Orden: <span class="fw-bold text-white">{{ oc.folio }}</span> | Proveedor: {{ oc.proveedor }}</p>
+                    {% if bodega_bodeguero %}
+                        <p class="card-text small mb-0 opacity-75"><i class="bi bi-shop"></i> Recibiendo para: <strong>{{ bodega_bodeguero.nombre }}</strong></p>
+                    {% endif %}
                 </div>
                 <span class="badge bg-secondary px-2 py-1.5 small">{{ oc.get_estado_display }}</span>
             </div>
         </div>
     </div>
 
+    {% if hay_lineas_ocultas %}
+        <div class="alert alert-info small mb-3">
+            <i class="bi bi-info-circle"></i> Esta orden tiene otros materiales destinados a otras bodegas; solo se muestran los que corresponden a la tuya.
+        </div>
+    {% endif %}
+
     <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
         {% csrf_token %}
-        
+
+        {% if es_administrador %}
         <div class="card border-0 shadow-sm mb-3 rounded-3">
             <div class="card-body p-3">
-                <label class="form-label fw-bold mb-1 small text-secondary">Bodega Física que recibe el material:</label>
-                <select name="bodega_destino" class="form-select form-select-sm fw-bold border-2 border-primary-subtle" required>
+                <label class="form-label fw-bold mb-1 small text-secondary">Bodega de respaldo (solo para ítems sin bodega destino definida):</label>
+                <select name="bodega_destino" class="form-select form-select-sm fw-bold border-2 border-primary-subtle">
                     {% for bodega in bodegas %}
                         <option value="{{ bodega.id }}" {% if bodega.is_principal %}selected{% endif %}>
                             {{ bodega.nombre }} {% if bodega.is_principal %}(Central){% endif %}
@@ -31,19 +41,23 @@
                 </select>
             </div>
         </div>
+        {% endif %}
 
         <div class="card border-0 shadow-sm mb-3 rounded-3 overflow-hidden">
             <div class="card-header bg-light border-0 py-2.5 px-3">
                 <h6 class="mb-0 fw-bold text-secondary small text-uppercase">Desglose de Ítems</h6>
             </div>
-            
+
             <div class="table-responsive">
                 <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.875rem;">
                     <thead class="table-light text-secondary text-uppercase small" style="font-size: 0.75rem;">
                         <tr>
                             <th class="ps-3" style="min-width: 140px;">Material</th>
+                            <th style="min-width: 140px;">Origen (Proyecto/Ticket)</th>
+                            <th style="min-width: 90px;">Bodega</th>
                             <th class="text-center" style="width: 70px;">Pedida</th>
                             <th class="text-center" style="width: 70px;">Recibida</th>
+                            <th class="text-center" style="width: 70px;">Pendiente</th>
                             <th style="min-width: 100px; width: 110px;">Ingresar Ahora</th>
                             <th style="min-width: 150px;">Certificado de Calidad</th>
                         </tr>
@@ -55,23 +69,34 @@
                                 <div class="fw-bold text-dark text-truncate" style="max-width: 180px;">{{ item.material.nombre }}</div>
                                 <div class="text-muted" style="font-size: 0.75rem;">SKU: {{ item.material.sku }}</div>
                             </td>
+                            <td>
+                                {% if item.proyecto_origen %}
+                                    <div class="text-dark text-truncate" style="max-width: 160px;">{{ item.proyecto_origen.nombre }}</div>
+                                    <div class="text-muted" style="font-size: 0.75rem;">{{ item.requerimiento_origen.folio }}</div>
+                                {% else %}
+                                    <span class="text-muted" style="font-size: 0.75rem;">Stock general</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-muted" style="font-size: 0.8rem;">{{ item.bodega_destino.nombre|default:"Sin definir" }}</td>
                             <td class="text-center fw-semibold text-secondary">{{ item.cantidad_pedida }}</td>
                             <td class="text-center text-info fw-semibold">{{ item.cantidad_recibida }}</td>
+                            <td class="text-center fw-bold {% if item.cantidad_pendiente > 0 %}text-warning{% else %}text-success{% endif %}">{{ item.cantidad_pendiente }}</td>
                             <td>
-                                <input type="number" 
-                                       name="recibido_{{ item.id }}" 
-                                       value="{{ item.cantidad_pedida }}" 
-                                       max="{{ item.cantidad_pedida }}" 
+                                <input type="number"
+                                       name="recibido_{{ item.id }}"
+                                       value="{{ item.cantidad_pendiente }}"
+                                       max="{{ item.cantidad_pendiente }}"
                                        min="0"
-                                       step="0.01" 
+                                       step="0.01"
+                                       {% if item.cantidad_pendiente <= 0 %}disabled{% endif %}
                                        class="form-control form-control-sm border-primary text-center fw-bold text-primary p-1"
                                        style="max-width: 90px;">
                             </td>
                             <td class="pe-3">
                                 <div class="input-group input-group-sm">
-                                    <input type="file" 
-                                           name="certificado_{{ item.id }}" 
-                                           accept=".pdf" 
+                                    <input type="file"
+                                           name="certificado_{{ item.id }}"
+                                           accept=".pdf"
                                            class="form-control form-control-sm text-muted"
                                            style="font-size: 0.75rem;">
                                 </div>

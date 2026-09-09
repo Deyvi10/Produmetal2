@@ -256,8 +256,16 @@
                                         <div class="text-muted small fw-bold"><i class="bi bi-geo-alt text-primary"></i> {{ bodega.ubicacion }}</div>
                                     {% endif %}
                                 </div>
-                                <div>
+                                <div class="d-flex gap-1">
                                     <button type="button" class="btn-micro edit" data-bs-toggle="modal" data-bs-target="#modalEditarBodega{{ bodega.id }}"><i class="bi bi-pencil"></i></button>
+                                    {% if bodega.puede_eliminarse %}
+                                        <form action="{% url 'eliminar_bodega' bodega.id %}" method="POST" class="m-0" onsubmit="return confirm('¿Eliminar definitivamente la bodega {{ bodega.nombre }}? Nunca ha sido utilizada, así que esta acción no afecta ningún historial.');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn-micro suspend" title="Eliminar Bodega (nunca usada)"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    {% else %}
+                                        <button type="button" class="btn-micro" style="opacity: 0.4; cursor: not-allowed;" title="No se puede eliminar: ya tiene uso registrado" disabled><i class="bi bi-trash"></i></button>
+                                    {% endif %}
                                 </div>
                             </div>
                         {% empty %}
@@ -319,9 +327,14 @@
                         <label>Identificador / Nombre</label>
                         <input type="text" name="nombre" class="form-control-dark" value="{{ bodega.nombre }}" required>
                     </div>
-                    <div>
+                    <div class="mb-3">
                         <label>Ubicación (Opcional)</label>
                         <input type="text" name="ubicacion" class="form-control-dark" value="{{ bodega.ubicacion|default:'' }}">
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="is_principal" id="principal{{ bodega.id }}" {% if bodega.is_principal %}checked{% endif %}>
+                        <label class="form-check-label" for="principal{{ bodega.id }}">¿Es la bodega matriz/principal?</label>
+                        <div class="text-muted small mt-1">Solo puede haber una; marcarla aquí desmarca automáticamente cualquier otra.</div>
                     </div>
                 </div>
                 <div class="modal-footer p-2">

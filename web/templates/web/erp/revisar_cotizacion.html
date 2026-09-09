@@ -36,14 +36,22 @@
                         <span class="badge bg-light text-dark border mb-1">SKU: {{ item.material.sku }}</span>
                         <h6 class="mb-1 fw-bold text-dark">{{ item.material.nombre }}</h6>
                         <p class="text-muted small mb-0">Proveedor Cotizado: <strong class="text-secondary">{{ item.proveedor_cotizado|default:"Por asignar" }}</strong></p>
+                        <p class="text-muted small mb-0">
+                            Origen: {{ item.solicitud.requerimiento_origen.proyecto.nombre|default:"Stock General" }}
+                            {% if item.solicitud.requerimiento_origen %} · Ticket {{ item.solicitud.requerimiento_origen.folio }}{% endif %}
+                            {% if item.bodega_destino %} · Bodega: {{ item.bodega_destino.nombre }}{% endif %}
+                        </p>
+                        {% if item.archivo_cotizacion %}
+                            <a href="{{ item.archivo_cotizacion.url }}" target="_blank" class="small"><i class="bi bi-file-earmark-pdf text-danger"></i> Ver PDF de cotización</a>
+                        {% endif %}
                     </div>
 
-                    <div class="col-6 col-md-3">
+                    <div class="col-6 col-md-2">
                         <label class="form-label small fw-semibold text-muted mb-1">Cantidad a Comprar:</label>
                         <div class="input-group input-group-sm shadow-sm" style="max-width: 160px;">
-                            <input type="number" step="0.01" class="form-control text-center fw-bold text-primary" 
-                                   name="cantidad_final_{{ item.id }}" 
-                                   value="{{ item.cantidad_requerida }}" 
+                            <input type="number" step="0.01" class="form-control text-center fw-bold text-primary"
+                                   name="cantidad_final_{{ item.id }}"
+                                   value="{{ item.cantidad_requerida }}"
                                    inputmode="decimal" required>
                             <span class="input-group-text bg-light small">U</span>
                         </div>
@@ -53,6 +61,11 @@
                     <div class="col-6 col-md-2 text-end text-md-start">
                         <label class="form-label small fw-semibold text-muted mb-1">P. Unitario Est:</label>
                         <h6 class="fw-bold text-success mb-0">${{ item.precio_unitario|default:"0.00" }}</h6>
+                    </div>
+
+                    <div class="col-6 col-md-1 text-end text-md-start">
+                        <label class="form-label small fw-semibold text-muted mb-1">Subtotal:</label>
+                        <h6 class="fw-bold text-dark mb-0">${{ item.total_estimado|floatformat:"2" }}</h6>
                     </div>
 
                     <div class="col-12 col-md-3 text-md-end">
@@ -104,6 +117,13 @@
                         </button>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 bg-dark text-white rounded-4 mb-3">
+            <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                <span class="fw-bold text-uppercase small">Total General Estimado de la Solicitud:</span>
+                <span class="fw-bold fs-4 text-warning">${{ total_estimado_solicitud|floatformat:"2" }}</span>
             </div>
         </div>
 

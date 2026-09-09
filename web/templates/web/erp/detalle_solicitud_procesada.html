@@ -18,18 +18,32 @@
                             <th class="ps-4">Material</th>
                             <th>Proveedor Oferta</th>
                             <th>Cant. Aprobada</th>
+                            <th class="text-end">P. Unitario</th>
+                            <th class="text-end">Subtotal</th>
                             <th>Decisión Admin</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item in items %}
                         <tr>
-                            <td class="ps-4 fw-bold">{{ item.material.nombre }}</td>
+                            <td class="ps-4 fw-bold">
+                                {{ item.material.nombre }}
+                                {% if item.archivo_cotizacion %}
+                                    <a href="{{ item.archivo_cotizacion.url }}" target="_blank" class="ms-1" title="PDF de cotización"><i class="bi bi-file-earmark-pdf text-danger"></i></a>
+                                {% endif %}
+                            </td>
                             <td>{{ item.proveedor_cotizado|default:"-" }}</td>
                             <td>{{ item.cantidad_requerida }}</td>
+                            <td class="text-end">${{ item.precio_unitario|default:"0.00"|floatformat:"2" }}</td>
+                            <td class="text-end fw-bold">${{ item.total_estimado|floatformat:"2" }}</td>
                             <td>
                                 {% if item.estado_aprobacion == 'COMPRADO' %}
                                     <span class="badge bg-success"><i class="bi bi-check-circle"></i> O.C. Generada</span>
+                                    {% with oc_generada=item.detalles_orden.first.orden %}
+                                        {% if oc_generada %}
+                                            <a href="{% url 'detalle_oc' oc_generada.id %}" class="d-block small mt-1">Ver {{ oc_generada.folio }} →</a>
+                                        {% endif %}
+                                    {% endwith %}
                                 {% elif item.estado_aprobacion == 'RECHAZADO' %}
                                     <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Rechazado</span>
                                     <div class="small text-muted mt-1">Motivo: {{ item.motivo_rechazo }}</div>
@@ -40,6 +54,13 @@
                         </tr>
                         {% endfor %}
                     </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="4" class="text-end fw-bold text-uppercase small">Total General</td>
+                            <td class="text-end fw-bold">${{ total_general_solicitud|floatformat:"2" }}</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
         </div>

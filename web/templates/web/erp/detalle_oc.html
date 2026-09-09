@@ -1,0 +1,183 @@
+{% extends 'web/base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    :root {
+        --pm-bg: #0d1117; --pm-surface: #161b22; --pm-surface-hover: #1c2128;
+        --pm-border: #30363d; --pm-text: #ffffff; --pm-text-muted: #aab6c4;
+        --pm-amber: #e6a817; --pm-blue: #58a6ff; --pm-green: #3fb950; --pm-red: #f85149;
+    }
+    body { background-color: var(--pm-bg) !important; color: var(--pm-text) !important; }
+    .text-muted { color: var(--pm-text-muted) !important; }
+    .erp-container { margin-top: 30px; max-width: 1200px; }
+    .card-minimal { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; }
+    .table-modern { width: 100%; margin-bottom: 0; color: var(--pm-text); }
+    .table-modern th { background: var(--pm-bg); text-transform: uppercase; font-size: 0.78rem; letter-spacing: 0.5px; color: var(--pm-text-muted); border-bottom: 1px solid var(--pm-border); padding: 12px 14px; }
+    .table-modern td { vertical-align: middle; border-bottom: 1px solid var(--pm-border); padding: 12px 14px; }
+    .badge-soft { padding: 5px 10px; font-weight: 600; font-size: 0.72rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; text-transform: uppercase; }
+    .badge-pendiente { background: rgba(230,168,23,0.12); color: var(--pm-amber); border: 1px solid rgba(230,168,23,0.3); }
+    .badge-completo { background: rgba(63,185,80,0.12); color: var(--pm-green); border: 1px solid rgba(63,185,80,0.3); }
+    .info-pill { background: rgba(255,255,255,0.04); border: 1px solid var(--pm-border); border-radius: 8px; padding: 10px 14px; }
+</style>
+
+<div class="container-fluid px-3 px-xl-5 erp-container mb-5">
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <a href="{% url 'listar_ordenes_compra' %}" class="btn btn-outline-secondary text-white border-secondary px-3"><i class="bi bi-arrow-left"></i></a>
+            <div>
+                <h3 class="mb-0 fw-bold">Trazabilidad de <span style="color: var(--pm-amber);">{{ oc.folio }}</span></h3>
+                <p class="mb-0 text-muted small">Proveedor: <strong class="text-white">{{ oc.proveedor }}</strong> · Emitida: {{ oc.fecha_creacion|date:"d M, Y H:i" }} por {{ oc.creado_por.get_full_name|default:oc.creado_por.username }}</p>
+            </div>
+        </div>
+        <a href="{% url 'imprimir_pdf_oc' oc.id %}" target="_blank" class="btn btn-outline-light border-secondary">
+            <i class="bi bi-file-pdf"></i> Ver PDF Oficial
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} border-0 shadow-sm rounded-3">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="info-pill h-100">
+                <div class="text-muted small text-uppercase">Estado</div>
+                <div class="fw-bold fs-6">{{ oc.get_estado_display }}</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="info-pill h-100">
+                <div class="text-muted small text-uppercase">Total General</div>
+                <div class="fw-bold fs-5" style="color: var(--pm-amber);">${{ oc.total_general|floatformat:"2" }}</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="info-pill h-100">
+                <div class="text-muted small text-uppercase">Cantidad Pendiente</div>
+                <div class="fw-bold fs-6 {% if oc.cantidad_pendiente_total > 0 %}text-warning{% else %}text-success{% endif %}">
+                    {{ oc.cantidad_pendiente_total|floatformat:"2" }} U
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="info-pill h-100">
+                <div class="text-muted small text-uppercase">Nº Factura</div>
+                <div class="fw-bold fs-6">{{ oc.numero_factura|default:"Pendiente de entrega" }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card card-minimal overflow-hidden mb-4">
+        <div class="table-responsive">
+            <table class="table table-modern mb-0">
+                <thead>
+                    <tr>
+                        <th>Material</th>
+                        <th>Proyecto / Requerimiento</th>
+                        <th>Bodega Destino</th>
+                        <th class="text-end">Pedido</th>
+                        <th class="text-end">Recibido</th>
+                        <th class="text-end">Pendiente</th>
+                        <th class="text-end">P. Unitario</th>
+                        <th class="text-end">Subtotal</th>
+                        <th>Cotización</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in detalles %}
+                    <tr>
+                        <td>
+                            <div class="fw-bold">{{ d.material.nombre }}</div>
+                            <div class="text-muted small">SKU: {{ d.material.sku }}</div>
+                        </td>
+                        <td>
+                            {% if d.proyecto_origen %}
+                                <div class="fw-semibold"><i class="bi bi-building me-1 text-warning"></i>{{ d.proyecto_origen.nombre }}</div>
+                                <div class="text-muted small">Ticket: {{ d.requerimiento_origen.folio }}</div>
+                            {% else %}
+                                <span class="text-muted small">Compra directa / Stock general</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ d.bodega_destino.nombre|default:"Sin definir" }}</td>
+                        <td class="text-end">{{ d.cantidad_pedida }}</td>
+                        <td class="text-end text-info fw-semibold">{{ d.cantidad_recibida }}</td>
+                        <td class="text-end">
+                            {% if d.cantidad_pendiente > 0 %}
+                                <span class="badge-soft badge-pendiente">{{ d.cantidad_pendiente }} U</span>
+                            {% else %}
+                                <span class="badge-soft badge-completo"><i class="bi bi-check-lg"></i> Completo</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">${{ d.precio_unitario|floatformat:"2" }}</td>
+                        <td class="text-end fw-bold">${{ d.subtotal|floatformat:"2" }}</td>
+                        <td>
+                            {% if d.cotizacion_item_origen.archivo_cotizacion %}
+                                <a href="{{ d.cotizacion_item_origen.archivo_cotizacion.url }}" target="_blank" class="btn btn-sm btn-outline-danger border-0" title="Ver PDF de Cotización">
+                                    <i class="bi bi-file-earmark-pdf"></i>
+                                </a>
+                            {% else %}
+                                <span class="text-muted small">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="9" class="text-center py-4 text-muted">Esta orden no tiene materiales registrados.</td></tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="7" class="text-end fw-bold text-uppercase small text-muted">Total General</td>
+                        <td class="text-end fw-bold fs-5" style="color: var(--pm-amber);">${{ oc.total_general|floatformat:"2" }}</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <div class="card card-minimal overflow-hidden">
+        <div class="p-3 border-bottom" style="border-color: var(--pm-border) !important;">
+            <h6 class="mb-0 fw-bold"><i class="bi bi-box-arrow-in-down me-2 text-success"></i>Historial de Recepciones en Bodega</h6>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-modern mb-0">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Material</th>
+                        <th class="text-end">Cantidad</th>
+                        <th>Bodega</th>
+                        <th>Responsable</th>
+                        <th>Certificado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for mov in recepciones %}
+                    <tr>
+                        <td class="text-nowrap">{{ mov.fecha_hora|date:"d M, Y H:i" }}</td>
+                        <td>{{ mov.material.nombre }}</td>
+                        <td class="text-end text-success fw-bold">+{{ mov.cantidad }}</td>
+                        <td>{{ mov.bodega_origen.nombre|default:"-" }}</td>
+                        <td>{{ mov.responsable.username|default:"-" }}</td>
+                        <td>
+                            {% if mov.certificado_calidad %}
+                                <a href="{{ mov.certificado_calidad.url }}" target="_blank" class="text-info"><i class="bi bi-file-earmark-check"></i></a>
+                            {% else %}
+                                <span class="text-muted small">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center py-4 text-muted">Aún no se ha recibido ningún material de esta orden.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

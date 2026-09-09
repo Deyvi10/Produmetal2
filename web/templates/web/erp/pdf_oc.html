@@ -149,18 +149,18 @@
     <table class="data-table">
         <thead>
             <tr>
-                <th style="width: 15%;">Código SKU</th>
-                <th style="width: 15%;">Categoría</th>
-                <th style="width: 40%;">Descripción del Material</th>
-                <th class="text-center" style="width: 15%;">Cant. Pedida</th>
-                <th class="text-center" style="width: 15%;">Cant. Recibida</th>
+                <th style="width: 12%;">Código SKU</th>
+                <th style="width: 28%;">Descripción del Material</th>
+                <th class="text-center" style="width: 10%;">Cant. Pedida</th>
+                <th class="text-center" style="width: 10%;">Cant. Recibida</th>
+                <th class="text-right" style="width: 15%;">P. Unitario</th>
+                <th class="text-right" style="width: 15%;">Subtotal</th>
             </tr>
         </thead>
         <tbody>
             {% for item in detalles %}
             <tr>
                 <td class="bold text-center" style="color: #4a5568;">{{ item.material.sku }}</td>
-                <td class="text-center">{{ item.material.get_tipo_display|default:"Material" }}</td>
                 <td>{{ item.material.nombre }}</td>
                 <td class="text-center highlight-number">{{ item.cantidad_pedida|floatformat:"0" }}</td>
                 <td class="text-center bold">
@@ -170,13 +170,23 @@
                         <span style="color: #a0aec0;">0</span>
                     {% endif %}
                 </td>
+                <td class="text-right">${{ item.precio_unitario|floatformat:"2" }}</td>
+                <td class="text-right bold">${{ item.subtotal|floatformat:"2" }}</td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="5" class="text-center" style="padding: 20px; color: #a0aec0;">No existen ítems registrados en esta Orden de Compra.</td>
+                <td colspan="6" class="text-center" style="padding: 20px; color: #a0aec0;">No existen ítems registrados en esta Orden de Compra.</td>
             </tr>
             {% endfor %}
         </tbody>
+        {% if detalles %}
+        <tfoot>
+            <tr>
+                <td colspan="5" class="text-right bold" style="background-color: #f7fafc;">TOTAL GENERAL</td>
+                <td class="text-right bold" style="background-color: #f7fafc; color: #27ae60;">${{ oc.total_general|floatformat:"2" }}</td>
+            </tr>
+        </tfoot>
+        {% endif %}
     </table>
 
     <div class="signatures-container">

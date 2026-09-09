@@ -261,6 +261,12 @@
                                     </form>
                                 {% endif %}
 
+                                {% if not emp.is_superuser %}
+                                <button type="button" class="btn-micro edit" title="Editar Datos y Rol" data-bs-toggle="modal" data-bs-target="#modalEditarEmpleado{{ emp.id }}">
+                                    <i class="bi bi-person-gear"></i>
+                                </button>
+                                {% endif %}
+
                                 <button type="button" class="btn-micro edit" title="Cambiar Contraseña Segura" data-bs-toggle="modal" data-bs-target="#modalCambiarClave{{ emp.id }}">
                                     <i class="bi bi-key"></i>
                                 </button>
@@ -289,6 +295,52 @@
                             </div>
                         </td>
                     </tr>
+
+                    {% if not emp.is_superuser %}
+                    <div class="modal fade" id="modalEditarEmpleado{{ emp.id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <div class="modal-header border-bottom-0 pb-0">
+                                    <div>
+                                        <h5 class="text-white fw-bold mb-1 fs-5">Editar Empleado</h5>
+                                        <p class="text-secondary small mb-0">Datos y rol de: <span class="text-white">{{ emp.username }}</span></p>
+                                    </div>
+                                    <button type="button" class="btn-close btn-close-white opacity-50" data-bs-dismiss="modal"></button>
+                                </div>
+                                <form action="{% url 'editar_empleado' emp.id %}" method="POST">
+                                    {% csrf_token %}
+                                    <div class="modal-body py-4">
+                                        <div class="mb-3">
+                                            <label class="form-label">Nombres</label>
+                                            <input type="text" name="first_name" class="form-control-dark w-100" value="{{ emp.first_name }}" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Apellidos</label>
+                                            <input type="text" name="last_name" class="form-control-dark w-100" value="{{ emp.last_name }}" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Correo Electrónico</label>
+                                            <input type="email" name="email" class="form-control-dark w-100" value="{{ emp.email }}">
+                                        </div>
+                                        <div>
+                                            <label class="form-label">Rol / Departamento</label>
+                                            <select name="grupo_id" class="form-select-dark w-100">
+                                                <option value="">-- Sin rol asignado --</option>
+                                                {% for grupo in grupos %}
+                                                    <option value="{{ grupo.id }}" {% if grupo in emp.groups.all %}selected{% endif %}>{{ grupo.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer border-top-0 pt-0">
+                                        <button type="button" class="btn text-secondary fw-bold px-4" data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn-neo">Guardar Cambios</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
 
                     <div class="modal fade" id="modalCambiarClave{{ emp.id }}" tabindex="-1" aria-hidden="true">
                         <div class="modal-dialog modal-dialog-centered">

@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.core.validators import FileExtensionValidator
 from django.utils import timezone
 from simple_history.models import HistoricalRecords
+from decimal import Decimal
 import datetime
 
 # =====================================================================
@@ -12,9 +13,54 @@ class Bodega(models.Model):
     nombre = models.CharField(max_length=100, unique=True)
     ubicacion = models.CharField(max_length=200, blank=True, null=True)
     is_principal = models.BooleanField(default=False)
-    
+
     def __str__(self):
         return self.nombre
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.is_principal:
+            # Solo puede existir UNA bodega matriz a la vez
+            Bodega.objects.exclude(pk=self.pk).update(is_principal=False)
+
+    def obtener_motivos_bloqueo_eliminacion(self):
+        """
+        Recorre TODAS las relaciones existentes de la bodega para determinar
+        si ya fue utilizada. Si la lista vuelve vacía, es seguro eliminarla.
+        """
+        motivos = []
+        if self.is_principal:
+            motivos.append("Es la bodega principal/matriz del sistema.")
+
+        if self.inventario.filter(cantidad__gt=0).exists():
+            motivos.append("Tiene stock físico de materiales registrado.")
+        elif self.inventario.exists():
+            motivos.append("Tiene historial de inventario asociado (registros en cero).")
+
+        if self.movimientos_salida.exists() or self.movimientos_ingreso.exists():
+            motivos.append("Tiene movimientos registrados en la bitácora de auditoría.")
+
+        proyecto = getattr(self, 'proyecto_asociado', None)
+        if proyecto:
+            motivos.append(f"Está vinculada al proyecto '{proyecto.nombre}'.")
+
+        if self.detallerequerimiento_set.exists():
+            motivos.append("Tiene requerimientos internos que la referencian como destino.")
+
+        if self.cotizacionitem_set.exists():
+            motivos.append("Tiene cotizaciones de compra que la referencian.")
+
+        if self.detalleordencompra_set.exists():
+            motivos.append("Tiene órdenes de compra que la referencian como destino.")
+
+        if self.perfilempleado_set.exists():
+            motivos.append("Tiene empleados con esta bodega asignada.")
+
+        return motivos
+
+    @property
+    def puede_eliminarse(self):
+        return len(self.obtener_motivos_bloqueo_eliminacion()) == 0
 
 class Categoria(models.Model):
     nombre = models.CharField(max_length=100)
@@ -406,14 +452,72 @@ class OrdenCompra(models.Model):
     def __str__(self):
         return f"{self.folio} - {self.proveedor} ({self.estado})"
 
+    @property
+    def total_general(self):
+        """Suma el valor real (precio cotizado x cantidad pedida) de todas las líneas."""
+        return sum((d.subtotal for d in self.detalles.all()), Decimal('0.00'))
+
+    @property
+    def cantidad_pendiente_total(self):
+        return sum((d.cantidad_pendiente for d in self.detalles.all()), Decimal('0.00'))
+
+    @property
+    def esta_recibida_completa(self):
+        return all(d.cantidad_recibida >= d.cantidad_pedida for d in self.detalles.all())
+
+    def recalcular_estado_recepcion(self):
+        """
+        Único punto de verdad para decidir si la O.C. sigue Parcial o ya está
+        Recibida al 100%. Se basa en TODAS las líneas, sin importar qué bodeguero
+        haya registrado cada recepción.
+        """
+        if self.estado in ('BORRADOR', 'CANCELADA'):
+            return
+        self.estado = 'RECIBIDA' if self.esta_recibida_completa else 'RECIBIDA_PARCIAL'
+        self.save(update_fields=['estado'])
+
 class DetalleOrdenCompra(models.Model):
     orden = models.ForeignKey(OrdenCompra, related_name='detalles', on_delete=models.CASCADE)
     material = models.ForeignKey(Material, on_delete=models.PROTECT)
     cantidad_pedida = models.DecimalField(max_digits=10, decimal_places=2)
     cantidad_recibida = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     bodega_destino = models.ForeignKey(Bodega, on_delete=models.SET_NULL, null=True, blank=True)
+    cotizacion_item_origen = models.ForeignKey(
+        CotizacionItem, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='detalles_orden',
+        help_text="Línea de cotización de la que nació esta línea de Orden de Compra (trazabilidad)."
+    )
+
     def __str__(self):
         return f"{self.cantidad_pedida} de {self.material.nombre} (OC: {self.orden.folio})"
+
+    @property
+    def precio_unitario(self):
+        if self.cotizacion_item_origen and self.cotizacion_item_origen.precio_unitario:
+            return self.cotizacion_item_origen.precio_unitario
+        return Decimal('0.00')
+
+    @property
+    def subtotal(self):
+        return self.cantidad_pedida * self.precio_unitario
+
+    @property
+    def cantidad_pendiente(self):
+        return self.cantidad_pedida - self.cantidad_recibida
+
+    @property
+    def solicitud_origen(self):
+        return self.cotizacion_item_origen.solicitud if self.cotizacion_item_origen else None
+
+    @property
+    def requerimiento_origen(self):
+        solicitud = self.solicitud_origen
+        return solicitud.requerimiento_origen if solicitud else None
+
+    @property
+    def proyecto_origen(self):
+        requerimiento = self.requerimiento_origen
+        return requerimiento.proyecto if requerimiento else None
 
 # =====================================================================
 # 5. AUDITORÍA Y TRAZABILIDAD DE INVENTARIO LOGÍSTICO
@@ -449,7 +553,18 @@ class MovimientoInventario(models.Model):
 
     def __str__(self):
         return f"{self.tipo} - {self.cantidad} de {self.material.sku}"
-    
+
+    @property
+    def proyecto_relacionado(self):
+        """Proyecto para el que se despachó (SALIDA) o se compró (INGRESO) este material."""
+        if self.tipo == 'SALIDA' and self.requerimiento_asociado:
+            return self.requerimiento_asociado.proyecto
+        if self.tipo == 'INGRESO' and self.orden_compra_asociada:
+            detalle = self.orden_compra_asociada.detalles.filter(material=self.material).first()
+            if detalle:
+                return detalle.proyecto_origen
+        return None
+
 class PerfilEmpleado(models.Model):
     usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='perfil')
     bodega_asignada = models.ForeignKey(Bodega, on_delete=models.SET_NULL, null=True, blank=True, help_text="Bodega sobre la cual el usuario tiene control logístico.")

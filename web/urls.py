@@ -29,6 +29,7 @@ urlpatterns = [
     # Nueva ruta integrada para desbloquear desde Recursos Humanos
     path('erp/empleados/desbloquear/<str:username>/', views.desbloquear_empleado, name='desbloquear_empleado'),
     path('erp/empleados/cambiar-clave/<int:empleado_id>/', views.cambiar_clave_admin, name='cambiar_clave_admin'),
+    path('erp/empleados/editar/<int:empleado_id>/', views.editar_empleado, name='editar_empleado'),
     # ==========================================
     # ERP: TICKETS Y REQUERIMIENTOS INTERNOS (SOLICITANTE DE OBRA)
     # ==========================================
@@ -67,6 +68,7 @@ urlpatterns = [
     path('erp/ordenes-compra/recibir/<int:oc_id>/', views.recibir_orden_compra, name='recibir_orden_compra'),
     path('erp/ordenes-compra/<int:oc_id>/pdf/', views.imprimir_pdf_oc, name='imprimir_pdf_oc'),
     path('erp/ordenes-compra/aprobar/<int:oc_id>/', views.aprobar_oc, name='aprobar_oc'),
+    path('erp/ordenes-compra/<int:oc_id>/detalle/', views.detalle_oc, name='detalle_oc'),
 
     # ==========================================
     # ERP: COTIZACIONES Y PROCESAMIENTO (DEPARTAMENTO DE COMPRAS)
@@ -107,4 +109,5 @@ urlpatterns = [
     path('erp/configuracion/categoria/<int:categoria_id>/alternar/', views.alternar_estado_categoria, name='alternar_categoria'), 
     path('erp/configuracion/categoria/editar/<int:cat_id>/', views.editar_categoria, name='editar_categoria'),
     path('erp/configuracion/bodega/editar/<int:bodega_id>/', views.editar_bodega, name='editar_bodega'),
+    path('erp/configuracion/bodega/eliminar/<int:bodega_id>/', views.eliminar_bodega, name='eliminar_bodega'),
 ]
