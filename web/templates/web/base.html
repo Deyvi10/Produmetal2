@@ -10,10 +10,25 @@
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <link rel="stylesheet" href="{% static 'web/css/estilos.css' %}">
-    
+    {% if '/erp/' in request.path %}
+    <link rel="stylesheet" href="{% static 'web/css/erp-theme.css' %}">
+    <script>
+        /* Aplica el tema guardado ANTES de pintar la página, para no ver un
+           parpadeo del tema equivocado al cargar. */
+        (function () {
+            try {
+                var saved = localStorage.getItem('pm-theme');
+                if (saved === 'light' || saved === 'dark') {
+                    document.documentElement.setAttribute('data-theme', saved);
+                }
+            } catch (e) {}
+        })();
+    </script>
+    {% endif %}
+
     {% block extra_head %}{% endblock %}
 </head>
-<body class="d-flex flex-column min-vh-100">
+<body class="d-flex flex-column min-vh-100{% if '/erp/' in request.path %} erp-body{% endif %}">
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top shadow">
         <div class="container">
@@ -38,6 +53,12 @@
                             <a class="nav-link btn btn-warning text-dark ms-lg-3 px-3 fw-bold shadow-sm" href="{% url 'contacto' %}">Cotizar Ahora</a>
                         </li>
                     {% else %}
+                        <li class="nav-item me-lg-2">
+                            <button type="button" id="pmThemeToggle" class="theme-toggle-btn" title="Cambiar entre modo claro y oscuro">
+                                <i class="bi bi-sun-fill"></i>
+                                <i class="bi bi-moon-stars-fill"></i>
+                            </button>
+                        </li>
                         <li class="nav-item">
                             <a class="nav-link btn btn-outline-warning btn-sm text-warning ms-lg-3 px-3 fw-bold" href="{% url 'dashboard_erp' %}">
                                 <i class="bi bi-grid-1x2-fill me-1"></i> Panel ERP
@@ -125,7 +146,28 @@
             offset: 50
         });
     </script>
-    
+
+    {% if '/erp/' in request.path %}
+    <script>
+        (function () {
+            var toggle = document.getElementById('pmThemeToggle');
+            if (!toggle) return;
+            toggle.addEventListener('click', function () {
+                var root = document.documentElement;
+                var current = root.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+                var next = current === 'light' ? 'dark' : 'light';
+                try { localStorage.setItem('pm-theme', next); } catch (e) {}
+                /* Se recarga en vez de solo cambiar el atributo: algunas páginas
+                   tienen transiciones CSS en tarjetas cuyo color depende de una
+                   variable, y el navegador puede tardar en recalcular todo el
+                   árbol en caliente. Recargar garantiza el tema correcto siempre,
+                   en todas las pantallas, sin excepción. */
+                location.reload();
+            });
+        })();
+    </script>
+    {% endif %}
+
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>

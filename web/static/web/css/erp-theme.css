@@ -1,0 +1,211 @@
+/* =========================================================================
+   SISTEMA DE DISEÑO ÚNICO DEL ERP — PRODUMETAL CM
+   =========================================================================
+   Fuente única de verdad para los colores de TODAS las pantallas /erp/.
+   Define el set de tokens "--pm-*" en modo oscuro (por defecto) y modo
+   claro (activado con [data-theme="light"] en <html>).
+
+   Las plantillas individuales NO deben redefinir estos valores en su
+   propio <style>; si necesitan un alias con otro nombre (--dark-bg,
+   --blue-primary, etc. de plantillas antiguas) deben apuntar con var()
+   a uno de estos tokens, nunca a un color fijo, para que el toggle
+   claro/oscuro funcione en todas partes por igual.
+   ========================================================================= */
+
+:root {
+    /* ---- Modo oscuro (paleta por defecto) ---- */
+    --pm-bg: #0d1117;
+    --pm-surface: #161b22;
+    --pm-surface-2: #1c2128;
+    --pm-surface-hover: #1f242c;
+    --pm-border: #30363d;
+
+    --pm-text: #f0f6fc;
+    --pm-text-muted: #8b949e;
+
+    --pm-amber: #e6a817;
+    --pm-amber-soft: rgba(230, 168, 23, 0.12);
+    --pm-blue: #58a6ff;
+    --pm-blue-soft: rgba(88, 166, 255, 0.12);
+    --pm-green: #3fb950;
+    --pm-green-soft: rgba(63, 185, 80, 0.12);
+    --pm-red: #f85149;
+    --pm-red-soft: rgba(248, 81, 73, 0.12);
+
+    --pm-purple: #bc8cff;
+    --pm-purple-soft: rgba(188, 140, 255, 0.12);
+
+    --pm-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    --pm-overlay: rgba(0, 0, 0, 0.6);
+
+    color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+    /* ---- Modo claro (mismos acentos, ajustados para contraste en fondo blanco) ---- */
+    --pm-bg: #f6f8fa;
+    --pm-surface: #ffffff;
+    --pm-surface-2: #f6f8fa;
+    --pm-surface-hover: #f0f2f5;
+    --pm-border: #d0d7de;
+
+    --pm-text: #1f2328;
+    --pm-text-muted: #57606a;
+
+    --pm-amber: #9a6700;
+    --pm-amber-soft: rgba(154, 103, 0, 0.10);
+    --pm-blue: #0969da;
+    --pm-blue-soft: rgba(9, 105, 218, 0.10);
+    --pm-green: #1a7f37;
+    --pm-green-soft: rgba(26, 127, 55, 0.10);
+    --pm-red: #cf222e;
+    --pm-red-soft: rgba(207, 34, 46, 0.10);
+
+    --pm-purple: #8250df;
+    --pm-purple-soft: rgba(130, 80, 223, 0.10);
+
+    --pm-shadow: 0 8px 24px rgba(140, 149, 159, 0.2);
+    --pm-overlay: rgba(140, 149, 159, 0.4);
+
+    color-scheme: light;
+}
+
+/* =========================================================================
+   ALIASES DE COMPATIBILIDAD
+   =========================================================================
+   Cada plantilla del ERP inventó su propio nombre de variable para los
+   mismos ~9 conceptos (fondo, superficie, borde, texto, texto tenue, y los
+   4 acentos ámbar/azul/verde/rojo, más un morado ocasional). En vez de
+   reescribir cada regla CSS de cada plantilla, se listan aquí TODOS esos
+   nombres apuntando con var() al token canónico correspondiente. Así,
+   basta con borrar el bloque ":root { ... }" local de cada plantilla (que
+   fijaba esos nombres a un color fijo) para que todas respondan al mismo
+   toggle claro/oscuro. Nunca fijar aquí un valor de color directo: siempre
+   var(--pm-*), para que el modo claro los recalcule automáticamente.
+   ========================================================================= */
+:root {
+    /* Fondo de página / fondo "profundo" */
+    --dark-bg: var(--pm-bg);
+    --bg-black: var(--pm-bg);
+    --bg-deep: var(--pm-bg);
+    --bg-master: var(--pm-bg);
+    --background-color: var(--pm-bg);
+    --surface-dark: var(--pm-bg);
+    --pm-black: var(--pm-bg);
+
+    /* Superficie de tarjetas / paneles */
+    --dark-surface: var(--pm-surface);
+    --bg-card: var(--pm-surface);
+    --bg-header: var(--pm-surface);
+    --surface-color: var(--pm-surface);
+    --pm-surface-card: var(--pm-surface-2);
+    --panel-glass: var(--pm-surface);
+
+    /* Hover / superficie secundaria */
+    --dark-hover: var(--pm-surface-hover);
+    --surface-hover: var(--pm-surface-hover);
+    --panel-hover: var(--pm-surface-hover);
+
+    /* Bordes */
+    --dark-border: var(--pm-border);
+    --border-color: var(--pm-border);
+    --border-fine: var(--pm-border);
+    --border-light: var(--pm-border);
+    --panel-border: var(--pm-border);
+
+    /* Texto principal */
+    --text-white: var(--pm-text);
+    --text-main: var(--pm-text);
+    --text-primary: var(--pm-text);
+    --text-pure: var(--pm-text);
+    --pm-text-pure: var(--pm-text);
+    --text-bright: var(--pm-text);
+
+    /* Texto secundario / tenue */
+    --text-light: var(--pm-text-muted);
+    --text-muted: var(--pm-text-muted);
+    --text-secondary: var(--pm-text-muted);
+    --gray-muted: var(--pm-text-muted);
+    --pm-text-light: var(--pm-text-muted);
+    --pm-text-silver: var(--pm-text-muted);
+
+    /* Acento ámbar/amarillo (advertencia, marca) */
+    --accent-amber: var(--pm-amber);
+    --neo-amber: var(--pm-amber);
+    --pm-neon-amber: var(--pm-amber);
+    --pm-orange: var(--pm-amber);
+    --yellow-warning: var(--pm-amber);
+
+    /* Acento azul (info, primario interactivo) */
+    --blue-primary: var(--pm-blue);
+    --blue-hover: var(--pm-blue);
+    --accent-blue: var(--pm-blue);
+    --neo-blue: var(--pm-blue);
+    --neo-blue-hover: var(--pm-blue);
+    --neo-cyan: var(--pm-blue);
+    --pm-neon-blue: var(--pm-blue);
+    --pm-info: var(--pm-blue);
+    --pm-primary: var(--pm-blue);
+
+    /* Acento verde (éxito) */
+    --green-success: var(--pm-green);
+    --accent-green: var(--pm-green);
+    --neo-green: var(--pm-green);
+    --pm-neon-green: var(--pm-green);
+    --pm-success: var(--pm-green);
+
+    /* Acento rojo (peligro/error) */
+    --red-danger: var(--pm-red);
+    --accent-red: var(--pm-red);
+    --accent-danger: var(--pm-red);
+    --neo-red: var(--pm-red);
+    --pm-neon-red: var(--pm-red);
+    --pm-danger: var(--pm-red);
+    --pm-danger-light: var(--pm-red-soft);
+
+    /* Acento morado (ocasional) */
+    --accent-purple: var(--pm-purple);
+
+    /* Tipografías (no dependen del tema, se centralizan para no repetirlas) */
+    --font-body: 'Barlow', sans-serif;
+    --font-display: 'Barlow Condensed', sans-serif;
+    --font-title: 'Barlow Condensed', sans-serif;
+    --font-ui: 'Inter', sans-serif;
+}
+
+/* -------------------------------------------------------------------------
+   NOTA: no se fuerza aquí un fondo/color oscuro global para <body>. Cada
+   plantilla ya adaptada (ver el bloque de alias arriba) trae su propia
+   regla "body { background: var(--pm-bg); color: var(--pm-text); }" y
+   ya responde al toggle sola. Forzar aquí lo mismo con !important rompería
+   las pantallas que todavía no fueron adaptadas (siguen con tarjetas claras
+   de Bootstrap por defecto): el texto heredaría un color claro forzado
+   sobre fondos de tarjeta blancos y quedaría ilegible.
+   ------------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------
+   Botón de alternancia claro/oscuro (inyectado en la barra superior de
+   toda pantalla /erp/ vía base.html).
+   ------------------------------------------------------------------------- */
+.theme-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    border: 1px solid var(--pm-border);
+    background: var(--pm-surface);
+    color: var(--pm-text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 1rem;
+}
+.theme-toggle-btn:hover {
+    color: var(--pm-amber);
+    border-color: var(--pm-amber);
+    background: var(--pm-amber-soft);
+}
+.theme-toggle-btn .bi-moon-stars-fill { display: none; }
+:root[data-theme="light"] .theme-toggle-btn .bi-sun-fill { display: none; }
+:root[data-theme="light"] .theme-toggle-btn .bi-moon-stars-fill { display: inline-block; }
