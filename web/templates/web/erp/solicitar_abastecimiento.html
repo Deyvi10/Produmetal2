@@ -1,5 +1,6 @@
 {% extends 'web/base.html' %}
 {% load static %}
+{% load pm_tags %}
 
 {% block extra_head %}
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -184,17 +185,7 @@
 
                     {% if page_obj.has_other_pages %}
                     <div class="p-4 border-top" style="border-color: var(--pm-border) !important;">
-                        <nav>
-                            <ul class="pagination justify-content-center mb-0">
-                                {% if page_obj.has_previous %}
-                                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}"><i class="bi bi-chevron-left"></i></a></li>
-                                {% endif %}
-                                <li class="page-item active"><span class="page-link fw-bold">{{ page_obj.number }}</span></li>
-                                {% if page_obj.has_next %}
-                                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}"><i class="bi bi-chevron-right"></i></a></li>
-                                {% endif %}
-                            </ul>
-                        </nav>
+                        {% pm_pagination page_obj %}
                     </div>
                     {% endif %}
                 </div>

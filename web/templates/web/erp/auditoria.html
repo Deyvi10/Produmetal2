@@ -1,5 +1,6 @@
 {% extends 'web/base.html' %}
 {% load static %}
+{% load pm_tags %}
 
 {% block extra_head %}
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -244,34 +245,8 @@
         </div>
 
         {% if page_obj.has_other_pages %}
-        <div class="card-footer bg-transparent border-top py-3 d-flex justify-content-center" style="border-color: var(--pm-border) !important;">
-            <nav aria-label="Navegación de auditoría">
-                <ul class="pagination pagination-sm m-0">
-                    
-                    {% if page_obj.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link shadow-sm" href="?page={{ page_obj.previous_page_number }}&tipo={{ tipo_filtro|default:'' }}&mes={{ mes_filtro|default:'' }}&proyecto={{ proyecto_id|default:'' }}">
-                            <i class="bi bi-chevron-left"></i> <span class="d-none d-sm-inline">Ant</span>
-                        </a>
-                    </li>
-                    {% endif %}
-                    
-                    <li class="page-item active">
-                        <span class="page-link shadow-sm px-3 mx-1">
-                            Pág {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
-                        </span>
-                    </li>
-
-                    {% if page_obj.has_next %}
-                    <li class="page-item">
-                        <a class="page-link shadow-sm" href="?page={{ page_obj.next_page_number }}&tipo={{ tipo_filtro|default:'' }}&mes={{ mes_filtro|default:'' }}&proyecto={{ proyecto_id|default:'' }}">
-                            <span class="d-none d-sm-inline">Sig</span> <i class="bi bi-chevron-right"></i>
-                        </a>
-                    </li>
-                    {% endif %}
-
-                </ul>
-            </nav>
+        <div class="card-footer bg-transparent border-top py-3" style="border-color: var(--pm-border) !important;">
+            {% pm_pagination page_obj %}
         </div>
         {% endif %}
 

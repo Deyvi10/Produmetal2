@@ -741,8 +741,12 @@ def listar_ordenes_compra(request):
     # Identificamos el rol para la interfaz
     rol_actual = 'Administrador' if es_administrador else ('Compras' if es_comprador(request.user) else 'Bodeguero')
 
+    paginator = Paginator(ordenes, 15)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
     return render(request, 'web/erp/listar_oc.html', {
-        'ordenes': ordenes,
+        'ordenes': page_obj,
+        'page_obj': page_obj,
         'estados': estados_permitidos,
         'estado_filtro': estado,
         'rol': rol_actual,
@@ -1263,7 +1267,11 @@ def gestionar_proyectos(request):
             return redirect('gestionar_proyectos')
         else:
             messages.error(request, "El nombre del proyecto es obligatorio.")
-    return render(request, 'web/erp/gestionar_proyectos.html', {'proyectos': proyectos, 'rol': 'Administrador'})
+
+    paginator = Paginator(proyectos, 15)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    return render(request, 'web/erp/gestionar_proyectos.html', {'proyectos': page_obj, 'page_obj': page_obj, 'rol': 'Administrador'})
 
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
@@ -1503,15 +1511,18 @@ def gestionar_empleados(request):
     empleados = User.objects.all().select_related('perfil').order_by('-date_joined')
     grupos = Group.objects.all()
     bodegas = Bodega.objects.all() # Traemos las bodegas para el modal de asignación
-    
+
+    paginator = Paginator(empleados, 15)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
     # 1. Obtenemos TODOS los registros de bloqueos (con detalles como IP, fallos, fecha)
     intentos_bloqueo = AccessAttempt.objects.all()
-    
+
     # 2. Creamos un diccionario rápido para cruzar datos { 'nombre_usuario': <Objeto AccessAttempt> }
     dict_bloqueos = {intento.username: intento for intento in intentos_bloqueo}
-    
-    # 3. Inyectamos la información detallada en los usuarios
-    for emp in empleados:
+
+    # 3. Inyectamos la información detallada en los usuarios de la página actual
+    for emp in page_obj:
         if emp.username in dict_bloqueos:
             emp.esta_bloqueado = True
             emp.datos_bloqueo = dict_bloqueos[emp.username] # Contiene IP, failures_since_start, attempt_time
@@ -1536,7 +1547,8 @@ def gestionar_empleados(request):
         form = RegistroEmpleadoForm()
 
     return render(request, 'web/erp/gestionar_empleados.html', {
-        'empleados': empleados,
+        'empleados': page_obj,
+        'page_obj': page_obj,
         'grupos': grupos,
         'bodegas': bodegas,
         'form': form
@@ -1603,7 +1615,9 @@ def desbloquear_empleado(request, username):
 @user_passes_test(es_admin, login_url='dashboard_erp')
 def gestionar_bloqueos(request):
     intentos_fallidos = AccessAttempt.objects.all().order_by('-attempt_time')
-    return render(request, 'web/erp/gestionar_bloqueos.html', {'intentos': intentos_fallidos})
+    paginator = Paginator(intentos_fallidos, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    return render(request, 'web/erp/gestionar_bloqueos.html', {'intentos': page_obj, 'page_obj': page_obj})
 
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')

@@ -1,5 +1,6 @@
 {% extends 'web/base.html' %}
 {% load static %}
+{% load pm_tags %}
 
 {% block extra_head %}
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -268,17 +269,7 @@
                         </table>
                     </div>
                     
-                    {% if tickets_pendientes.has_other_pages %}
-                    <ul class="pagination-neo">
-                        {% if tickets_pendientes.has_previous %}
-                            <li class="page-item"><a class="page-link" href="?page={{ tickets_pendientes.previous_page_number }}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}"><i class="bi bi-chevron-left"></i></a></li>
-                        {% endif %}
-                        <li class="page-item active"><span class="page-link">{{ tickets_pendientes.number }}</span></li>
-                        {% if tickets_pendientes.has_next %}
-                            <li class="page-item"><a class="page-link" href="?page={{ tickets_pendientes.next_page_number }}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}"><i class="bi bi-chevron-right"></i></a></li>
-                        {% endif %}
-                    </ul>
-                    {% endif %}
+                    {% pm_pagination tickets_pendientes %}
                 </div>
             </div>
         </div>
@@ -386,17 +377,7 @@
                 </table>
             </div>
             
-            {% if tickets_por_despachar.has_other_pages %}
-            <ul class="pagination-neo">
-                {% if tickets_por_despachar.has_previous %}
-                    <li class="page-item"><a class="page-link" href="?page={{ tickets_por_despachar.previous_page_number }}"><i class="bi bi-chevron-left"></i></a></li>
-                {% endif %}
-                <li class="page-item active"><span class="page-link">{{ tickets_por_despachar.number }}</span></li>
-                {% if tickets_por_despachar.has_next %}
-                    <li class="page-item"><a class="page-link" href="?page={{ tickets_por_despachar.next_page_number }}"><i class="bi bi-chevron-right"></i></a></li>
-                {% endif %}
-            </ul>
-            {% endif %}
+            {% pm_pagination tickets_por_despachar %}
         </div>
     </div>
 
@@ -460,17 +441,7 @@
                 </table>
             </div>
             
-            {% if solicitudes_compras.has_other_pages %}
-            <ul class="pagination-neo">
-                {% if solicitudes_compras.has_previous %}
-                    <li class="page-item"><a class="page-link" href="?page={{ solicitudes_compras.previous_page_number }}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}"><i class="bi bi-chevron-left"></i></a></li>
-                {% endif %}
-                <li class="page-item active"><span class="page-link">{{ solicitudes_compras.number }}</span></li>
-                {% if solicitudes_compras.has_next %}
-                    <li class="page-item"><a class="page-link" href="?page={{ solicitudes_compras.next_page_number }}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}"><i class="bi bi-chevron-right"></i></a></li>
-                {% endif %}
-            </ul>
-            {% endif %}
+            {% pm_pagination solicitudes_compras %}
         </div>
     </div>
 
@@ -549,17 +520,7 @@
                 </table>
             </div>
 
-            {% if mis_requerimientos.has_other_pages %}
-            <ul class="pagination-neo">
-                {% if mis_requerimientos.has_previous %}
-                    <li class="page-item"><a class="page-link" href="?page={{ mis_requerimientos.previous_page_number }}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}"><i class="bi bi-chevron-left"></i></a></li>
-                {% endif %}
-                <li class="page-item active"><span class="page-link">{{ mis_requerimientos.number }}</span></li>
-                {% if mis_requerimientos.has_next %}
-                    <li class="page-item"><a class="page-link" href="?page={{ mis_requerimientos.next_page_number }}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}"><i class="bi bi-chevron-right"></i></a></li>
-                {% endif %}
-            </ul>
-            {% endif %}
+            {% pm_pagination mis_requerimientos %}
         </div>
     </div>
     

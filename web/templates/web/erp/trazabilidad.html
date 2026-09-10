@@ -1,5 +1,6 @@
 {% extends 'web/base.html' %}
 {% load static %}
+{% load pm_tags %}
 
 {% block content %}
 <style>
@@ -278,31 +279,7 @@
     </div>
 
     <!-- PAGINACIÓN -->
-    {% if page_obj.has_other_pages %}
-    <ul class="pagination-neo fade-up delay-2">
-        {% if page_obj.has_previous %}
-            <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if estado_actual %}&estado={{ estado_actual }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}">
-                    <i class="bi bi-chevron-left"></i> Ant
-                </a>
-            </li>
-        {% else %}
-            <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i> Ant</span></li>
-        {% endif %}
-
-        <li class="page-item active"><span class="page-link px-4">{{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
-
-        {% if page_obj.has_next %}
-            <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if estado_actual %}&estado={{ estado_actual }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}">
-                    Sig <i class="bi bi-chevron-right"></i>
-                </a>
-            </li>
-        {% else %}
-            <li class="page-item disabled"><span class="page-link">Sig <i class="bi bi-chevron-right"></i></span></li>
-        {% endif %}
-    </ul>
-    {% endif %}
+    {% pm_pagination page_obj %}
 
 </div>
 {% endblock %}

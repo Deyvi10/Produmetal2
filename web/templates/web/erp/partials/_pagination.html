@@ -1,0 +1,38 @@
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="pm-pagination-wrap" aria-label="Paginación de resultados">
+    <div class="pm-pagination-info">
+        Mostrando <strong>{{ page_obj.start_index }}–{{ page_obj.end_index }}</strong> de <strong>{{ page_obj.paginator.count }}</strong>
+    </div>
+    <ul class="pagination-neo">
+        {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?{% if base_qs %}{{ base_qs }}&{% endif %}page={{ page_obj.previous_page_number }}" aria-label="Página anterior">
+                    <i class="bi bi-chevron-left"></i><span class="d-none d-sm-inline"> Ant</span>
+                </a>
+            </li>
+        {% else %}
+            <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i><span class="d-none d-sm-inline"> Ant</span></span></li>
+        {% endif %}
+
+        {% for p in pages %}
+            {% if p == None %}
+                <li class="page-item disabled pm-ellipsis"><span class="page-link">&hellip;</span></li>
+            {% elif p == page_obj.number %}
+                <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+            {% else %}
+                <li class="page-item"><a class="page-link" href="?{% if base_qs %}{{ base_qs }}&{% endif %}page={{ p }}">{{ p }}</a></li>
+            {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?{% if base_qs %}{{ base_qs }}&{% endif %}page={{ page_obj.next_page_number }}" aria-label="Página siguiente">
+                    <span class="d-none d-sm-inline">Sig </span><i class="bi bi-chevron-right"></i>
+                </a>
+            </li>
+        {% else %}
+            <li class="page-item disabled"><span class="page-link"><span class="d-none d-sm-inline">Sig </span><i class="bi bi-chevron-right"></i></span></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}

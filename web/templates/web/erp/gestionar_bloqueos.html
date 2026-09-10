@@ -1,4 +1,5 @@
 {% extends 'web/base.html' %}
+{% load pm_tags %}
 
 {% block content %}
 <style>
@@ -58,6 +59,9 @@
                         {% endfor %}
                     </tbody>
                 </table>
+            </div>
+            <div class="px-3 pb-3">
+                {% pm_pagination page_obj %}
             </div>
             {% else %}
             <div class="p-5 text-center text-muted">

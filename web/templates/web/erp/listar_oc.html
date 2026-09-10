@@ -1,5 +1,6 @@
 {% extends 'web/base.html' %}
 {% load static %}
+{% load pm_tags %}
 
 {% block extra_head %}
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -189,6 +190,9 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+        <div class="px-3 pb-3">
+            {% pm_pagination page_obj %}
         </div>
     </div>
 

@@ -285,4 +285,80 @@
 }
 .theme-toggle-btn .bi-moon-stars-fill { display: none; }
 :root[data-theme="light"] .theme-toggle-btn .bi-sun-fill { display: none; }
+
+/* -------------------------------------------------------------------------
+   Paginación profesional reutilizable (partial: web/erp/partials/_pagination.html,
+   tag: {% pm_pagination page_obj %}). Sirve como estilo base para todas las
+   listas del ERP; una plantilla puede seguir declarando su propio
+   ".pagination-neo" local para acentuar un color distinto sin romper esto.
+   ------------------------------------------------------------------------- */
+.pm-pagination-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 1.25rem 0 0.25rem 0;
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--pm-border);
+}
+.pm-pagination-info {
+    font-size: 0.82rem;
+    color: var(--pm-text-muted);
+    white-space: nowrap;
+}
+.pm-pagination-info strong { color: var(--pm-text); font-weight: 700; }
+.pagination-neo {
+    display: flex;
+    flex-wrap: wrap;
+    list-style: none;
+    margin: 0 0 0 auto;
+    padding: 0;
+    gap: 6px;
+    justify-content: flex-end;
+}
+.pagination-neo .page-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--pm-surface);
+    border: 1px solid var(--pm-border);
+    color: var(--pm-text);
+    border-radius: 8px;
+    padding: 6px 12px;
+    min-width: 36px;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.15s ease;
+}
+.pagination-neo .page-link:hover {
+    background: var(--pm-surface-hover);
+    border-color: var(--pm-amber);
+    color: var(--pm-amber);
+}
+.pagination-neo .page-item.active .page-link {
+    background: var(--pm-amber);
+    color: #000;
+    border-color: var(--pm-amber);
+    font-weight: 800;
+}
+.pagination-neo .page-item.disabled .page-link {
+    opacity: 0.4;
+    pointer-events: none;
+}
+.pagination-neo .pm-ellipsis .page-link {
+    border: none;
+    background: transparent;
+    opacity: 0.6;
+    pointer-events: none;
+    padding: 6px 4px;
+    min-width: auto;
+}
+@media (max-width: 576px) {
+    .pm-pagination-wrap { justify-content: center; }
+    .pagination-neo { justify-content: center; margin: 0; width: 100%; }
+    .pm-pagination-info { width: 100%; text-align: center; }
+}
 :root[data-theme="light"] .theme-toggle-btn .bi-moon-stars-fill { display: inline-block; }
