@@ -19,7 +19,7 @@
     /* Tabla Rediseñada */
     .table-elegant { width: 100%; margin: 0; color: var(--text-white); border-collapse: separate; border-spacing: 0;}
     .table-elegant th {
-        background-color: #111111; color: var(--text-light); font-size: 0.75rem; font-weight: 700;
+        background-color: var(--pm-bg); color: var(--text-light); font-size: 0.75rem; font-weight: 700;
         text-transform: uppercase; letter-spacing: 1px; padding: 1.2rem 1.5rem; border-bottom: 1px solid var(--dark-border);
     }
     .table-elegant td {
@@ -33,11 +33,11 @@
         padding: 6px 12px; border-radius: 8px; font-weight: 600; font-size: 0.75rem;
         display: inline-flex; align-items: center; gap: 6px; letter-spacing: 0.3px;
     }
-    .bg-blue-custom { background-color: rgba(59, 130, 246, 0.1); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.2); }
-    .bg-green-custom { background-color: rgba(16, 185, 129, 0.1); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.2); }
-    .bg-red-custom { background-color: rgba(239, 68, 68, 0.1); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.2); }
-    .bg-gray-custom { background-color: rgba(255, 255, 255, 0.05); color: var(--text-light); border: 1px solid var(--dark-border); }
-    .bg-warning-custom { background-color: rgba(245, 158, 11, 0.1); color: #fcd34d; border: 1px solid rgba(245, 158, 11, 0.2); }
+    .bg-blue-custom { background-color: var(--pm-blue-soft); color: var(--pm-blue); border: 1px solid var(--pm-blue); }
+    .bg-green-custom { background-color: var(--pm-green-soft); color: var(--pm-green); border: 1px solid var(--pm-green); }
+    .bg-red-custom { background-color: var(--pm-red-soft); color: var(--pm-red); border: 1px solid var(--pm-red); }
+    .bg-gray-custom { background-color: var(--pm-surface-hover); color: var(--text-light); border: 1px solid var(--dark-border); }
+    .bg-warning-custom { background-color: var(--pm-amber-soft); color: var(--pm-amber); border: 1px solid var(--pm-amber); }
 
     /* Formularios Oscuros */
     .form-control-dark, .form-select-dark {
@@ -50,7 +50,7 @@
     
     /* Reglas de ayuda de Django (Contraseñas) */
     .django-help-text {
-        font-size: 0.75rem; color: var(--text-light); background: rgba(255,255,255,0.02);
+        font-size: 0.75rem; color: var(--text-light); background: var(--pm-surface-hover);
         padding: 10px; border-radius: 8px; border: 1px solid var(--dark-border); margin-top: 8px;
     }
     .django-help-text ul { margin-bottom: 0; padding-left: 15px; }
@@ -92,7 +92,7 @@
         background-color: transparent; border: 1px solid var(--dark-border); color: var(--text-light);
         border-left: none; cursor: pointer; transition: all 0.2s;
     }
-    .input-group-dark .input-group-text:hover { color: var(--text-white); background-color: rgba(255,255,255,0.05); }
+    .input-group-dark .input-group-text:hover { color: var(--text-white); background-color: var(--pm-surface-hover); }
     .input-group-dark .form-control-dark { border-right: none; }
     .input-group-dark .form-control-dark:focus + .input-group-text { border-color: var(--blue-primary); box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15) !important;}
 
@@ -101,7 +101,7 @@
     @media (max-width: 768px) {
         .table-elegant thead { display: none; }
         .table-elegant tbody tr { display: flex; flex-direction: column; background-color: var(--dark-surface); border: 1px solid var(--dark-border); border-radius: 12px; margin-bottom: 1rem; }
-        .table-elegant td { display: flex; flex-direction: column; align-items: flex-start; padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .table-elegant td { display: flex; flex-direction: column; align-items: flex-start; padding: 1rem; border-bottom: 1px solid var(--pm-surface-hover); }
         .table-elegant td:last-child { border-bottom: none; }
         .mobile-label { display: block; font-size: 0.65rem; color: var(--gray-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 6px;}
         .action-grid { width: 100%; justify-content: space-between; }
@@ -173,7 +173,7 @@
                                         <div class="fw-bold text-danger mb-1" style="font-size: 0.75rem;">
                                             <i class="bi bi-shield-lock-fill"></i> BLOQUEADO: {{ emp.datos_bloqueo.failures_since_start }} FALLOS
                                         </div>
-                                        <div style="font-size: 0.7rem; color: #fca5a5; line-height: 1.2;">
+                                        <div style="font-size: 0.7rem; color: var(--pm-red); line-height: 1.2;">
                                             IP: <strong>{{ emp.datos_bloqueo.ip_address }}</strong><br>
                                             Intento: {{ emp.datos_bloqueo.attempt_time|date:"d/m/y H:i" }}
                                         </div>
@@ -282,7 +282,7 @@ una segunda vez aquí, ya en el nivel raíz del documento.
                         <h5 class="text-white fw-bold mb-1 fs-5">Editar Empleado</h5>
                         <p class="text-secondary small mb-0">Datos y rol de: <span class="text-white">{{ emp.username }}</span></p>
                     </div>
-                    <button type="button" class="btn-close btn-close-white opacity-50" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close opacity-50" data-bs-dismiss="modal"></button>
                 </div>
                 <form action="{% url 'editar_empleado' emp.id %}" method="POST">
                     {% csrf_token %}
@@ -339,7 +339,7 @@ una segunda vez aquí, ya en el nivel raíz del documento.
                         <h5 class="text-white fw-bold mb-1 fs-5">Actualizar Credenciales</h5>
                         <p class="text-secondary small mb-0">Forzar cambio de clave para: <span class="text-white">{{ emp.username }}</span></p>
                     </div>
-                    <button type="button" class="btn-close btn-close-white opacity-50" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close opacity-50" data-bs-dismiss="modal"></button>
                 </div>
                 <form action="{% url 'cambiar_clave_admin' emp.id %}" method="POST" class="form-cambiar-clave">
                     {% csrf_token %}
@@ -377,7 +377,7 @@ una segunda vez aquí, ya en el nivel raíz del documento.
                     <h5 class="text-white fw-bold mb-1 fs-4">Alta de Personal</h5>
                     <p class="text-secondary small mb-0">Rellena los datos para habilitar un nuevo acceso al ERP.</p>
                 </div>
-                <button type="button" class="btn-close btn-close-white opacity-50" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close opacity-50" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST" id="formCrearUsuario">
                 {% csrf_token %}

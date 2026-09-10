@@ -65,7 +65,7 @@
     .btn-primary-custom:hover { background-color: #2563eb; transform: translateY(-1px); }
     
     .btn-outline-custom { background-color: transparent; border: 1px solid var(--dark-border); color: var(--text-light); font-weight: 600; padding: 0.7rem 1.5rem; border-radius: 8px; transition: 0.2s; text-decoration: none; }
-    .btn-outline-custom:hover { background-color: rgba(255,255,255,0.05); color: var(--text-white); }
+    .btn-outline-custom:hover { background-color: var(--pm-surface-hover); color: var(--text-white); }
 </style>
 
 <div class="container-fluid px-3 px-xl-5 mb-5" style="margin-top: 90px; max-width: {% if editando %}1400px{% else %}900px{% endif %}; transition: max-width 0.3s ease;">
@@ -232,7 +232,7 @@
                                         </td>
                                         <td class="py-3 pe-4 text-end align-middle">
                                             {% if mov.certificado_calidad %}
-                                                <a href="{{ mov.certificado_calidad.url }}" target="_blank" class="btn btn-sm" style="background: rgba(59, 130, 246, 0.1); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.3); font-weight: 600;">
+                                                <a href="{{ mov.certificado_calidad.url }}" target="_blank" class="btn btn-sm" style="background: rgba(59, 130, 246, 0.1); color: var(--pm-blue); border: 1px solid rgba(59, 130, 246, 0.3); font-weight: 600;">
                                                     <i class="bi bi-file-pdf-fill me-1"></i> PDF
                                                 </a>
                                             {% else %}

@@ -140,6 +140,7 @@
     --blue-primary: var(--pm-blue);
     --blue-hover: var(--pm-blue);
     --accent-blue: var(--pm-blue);
+    --accent-blue-hover: var(--pm-blue);
     --neo-blue: var(--pm-blue);
     --neo-blue-hover: var(--pm-blue);
     --neo-cyan: var(--pm-blue);
@@ -182,6 +183,82 @@
    de Bootstrap por defecto): el texto heredaría un color claro forzado
    sobre fondos de tarjeta blancos y quedaría ilegible.
    ------------------------------------------------------------------------- */
+
+/* =========================================================================
+   ADAPTADOR DE CLASES DE BOOTSTRAP "BLANCO FIJO"
+   =========================================================================
+   Todas las pantallas se diseñaron asumiendo un fondo SIEMPRE oscuro, así
+   que usan .text-white / .text-light / .btn-outline-light / .btn-close-white
+   directamente en vez de los tokens --pm-*. En modo claro eso deja texto y
+   botones blancos sobre fondos claros: invisibles.
+
+   La regla NO es "invertir todo": estas clases siguen literalmente blancas
+   cuando están sobre un contenedor de color FIJO (no cambia con el tema:
+   bg-dark, bg-primary, badges/botones de color, la barra de navegación),
+   donde el blanco siempre fue y sigue siendo el contraste correcto. En
+   cualquier otro lugar (la página o tarjeta "normal", que sí seguía el
+   tema) se re-dirigen a var(--pm-text) / var(--pm-text-muted) para que se
+   vean bien en los dos modos.
+   ========================================================================= */
+
+/* Por defecto: siguen el tema, igual que el resto del texto de la página */
+.erp-body .text-white { color: var(--pm-text) !important; }
+.erp-body .text-light { color: var(--pm-text-muted) !important; }
+
+/* Excepción: dentro de un contenedor de color FIJO (no depende del tema),
+   se quedan literalmente blancos, tanto si el propio elemento lleva la
+   clase de fondo como si es descendiente de uno que la lleva. */
+.erp-body .bg-dark.text-white,       .erp-body .bg-dark .text-white,
+.erp-body .bg-primary.text-white,    .erp-body .bg-primary .text-white,
+.erp-body .bg-danger.text-white,     .erp-body .bg-danger .text-white,
+.erp-body .bg-success.text-white,    .erp-body .bg-success .text-white,
+.erp-body .bg-secondary.text-white,  .erp-body .bg-secondary .text-white,
+.erp-body .btn-primary.text-white,   .erp-body .btn-success.text-white,
+.erp-body .btn-danger.text-white,
+.erp-body .navbar .text-white,       .erp-body .navbar-brand,
+.erp-body .badge.bg-dark,            .erp-body .badge.bg-primary,
+.erp-body .badge.bg-success,         .erp-body .badge.bg-danger {
+    color: #fff !important;
+}
+.erp-body .bg-dark.text-light,       .erp-body .bg-dark .text-light,
+.erp-body .bg-primary.text-light,    .erp-body .bg-primary .text-light,
+.erp-body .bg-danger.text-light,     .erp-body .bg-danger .text-light,
+.erp-body .navbar .text-light {
+    color: rgba(255, 255, 255, 0.75) !important;
+}
+
+/* .btn-outline-light: borde/texto blanco sobre fondo transparente. Fuera de
+   un contenedor de color fijo, se redirige a los tokens del tema. */
+.erp-body .btn-outline-light { color: var(--pm-text) !important; border-color: var(--pm-border) !important; }
+.erp-body .btn-outline-light:hover { background: var(--pm-surface-hover) !important; color: var(--pm-text) !important; border-color: var(--pm-border) !important; }
+.erp-body .bg-dark .btn-outline-light, .erp-body .bg-primary .btn-outline-light,
+.erp-body .bg-danger .btn-outline-light {
+    color: #fff !important; border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Bordes "secundarios" de Bootstrap: se alinean con el borde del tema para
+   que sean visibles en ambos modos en vez del gris fijo por defecto. */
+.erp-body .border-secondary { border-color: var(--pm-border) !important; }
+
+/* Botón "cerrar" (X) de Bootstrap: oscuro por defecto (correcto en modo
+   claro, sobre tarjetas/modales claros). En modo oscuro se invierte a
+   blanco, salvo que ya sea .btn-close-white (vive sobre una cabecera de
+   color FIJO como bg-danger y debe seguir blanco siempre — Bootstrap ya
+   se encarga de esa clase, así que no se toca). */
+:root:not([data-theme="light"]) .erp-body .btn-close:not(.btn-close-white) {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* Mismo criterio para otros iconos nativos del navegador que se pintaban
+   blancos a la fuerza (el selector de fecha, la flechita de acordeones):
+   oscuros por defecto (correcto en claro), invertidos solo en modo oscuro. */
+:root:not([data-theme="light"]) .erp-body input[type="month"]::-webkit-calendar-picker-indicator,
+:root:not([data-theme="light"]) .erp-body input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+}
+:root:not([data-theme="light"]) .erp-body .accordion-button::after {
+    filter: invert(1) brightness(200%);
+}
 
 /* -------------------------------------------------------------------------
    Botón de alternancia claro/oscuro (inyectado en la barra superior de

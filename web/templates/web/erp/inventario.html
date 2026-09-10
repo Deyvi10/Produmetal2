@@ -38,14 +38,14 @@
     }
 
     .metric-card {
-        background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border);
+        background: var(--pm-surface-hover); border: 1px solid var(--panel-border);
         border-radius: 10px; padding: 1rem; transition: transform 0.2s ease, border-color 0.2s;
     }
-    .metric-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.15); }
+    .metric-card:hover { transform: translateY(-2px); border-color: var(--pm-surface-hover); }
 
     /* Botones Elegantes */
     .btn-neo-outline {
-        border: 1px solid var(--panel-border); color: var(--text-primary); background: rgba(255,255,255,0.02);
+        border: 1px solid var(--panel-border); color: var(--text-primary); background: var(--pm-surface-hover);
         font-size: 0.85rem; font-weight: 500; padding: 0.5rem 1rem; border-radius: 8px; transition: all 0.2s;
         display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none;
     }
@@ -59,7 +59,7 @@
 
     /* Buscador Integrado */
     .search-input-neo {
-        background: rgba(0, 0, 0, 0.4) !important; border: 1px solid var(--panel-border) !important;
+        background: var(--pm-bg) !important; border: 1px solid var(--panel-border) !important;
         color: var(--text-pure) !important; border-radius: 8px; padding: 0.5rem 1rem 0.5rem 2.2rem;
         font-size: 0.85rem; width: 100%; transition: border-color 0.2s;
     }
@@ -78,11 +78,11 @@
     /* Tabla Encapsulada y Densa */
     .neo-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.85rem; }
     .neo-table th {
-        background: rgba(0,0,0,0.2); color: var(--text-secondary); font-family: var(--font-title); text-transform: uppercase;
+        background: var(--pm-bg); color: var(--text-secondary); font-family: var(--font-title); text-transform: uppercase;
         letter-spacing: 1px; padding: 0.8rem 1rem; border-bottom: 1px solid var(--panel-border); font-weight: 500; white-space: nowrap;
     }
-    .neo-table td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.03); vertical-align: middle; color: var(--text-primary); }
-    .neo-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .neo-table td { padding: 1rem; border-bottom: 1px solid var(--pm-surface-hover); vertical-align: middle; color: var(--text-primary); }
+    .neo-table tr:hover td { background: var(--pm-surface-hover); }
     
     /* Alertas de Fila (Stock y Certificados) */
     .row-alert { background-color: rgba(239, 68, 68, 0.05) !important; border-left: 3px solid var(--accent-danger); }
@@ -90,9 +90,9 @@
 
     /* Mini Badges */
     .badge-micro { padding: 4px 8px; font-size: 0.7rem; font-weight: 600; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; text-decoration: none;}
-    .badge-gray { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-secondary); }
-    .badge-blue { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2); color: #93c5fd; }
-    .badge-amber { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); color: #fcd34d; }
+    .badge-gray { background: var(--pm-surface-hover); border: 1px solid var(--pm-border); color: var(--text-secondary); }
+    .badge-blue { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2); color: var(--pm-blue); }
+    .badge-amber { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); color: var(--pm-amber); }
     
     /* Botones Icono Tabla */
     .btn-micro-action {
@@ -107,7 +107,7 @@
 
     /* Estilos para la Paginación */
     .pagination-neo { display: flex; list-style: none; margin: 0; padding: 0; gap: 5px; }
-    .pagination-neo .page-link { background: rgba(255,255,255,0.05); border: 1px solid var(--panel-border); color: var(--text-primary); border-radius: 6px; padding: 6px 12px; font-size: 0.85rem; text-decoration: none; transition: all 0.2s; }
+    .pagination-neo .page-link { background: var(--pm-surface-hover); border: 1px solid var(--panel-border); color: var(--text-primary); border-radius: 6px; padding: 6px 12px; font-size: 0.85rem; text-decoration: none; transition: all 0.2s; }
     .pagination-neo .page-link:hover { background: var(--accent-blue); color: white; border-color: var(--accent-blue); }
     .pagination-neo .active .page-link { background: var(--accent-blue); color: white; border-color: var(--accent-blue); }
     .pagination-neo .disabled .page-link { opacity: 0.5; pointer-events: none; }
@@ -135,7 +135,7 @@
         }
         .neo-table td {
             display: flex; flex-direction: column; align-items: flex-start; gap: 5px;
-            padding: 12px 15px; border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding: 12px 15px; border-bottom: 1px solid var(--pm-surface-hover);
         }
         .neo-table td:last-child { border-bottom: none; }
         .mobile-label { display: block; font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;}
@@ -315,7 +315,7 @@
         </div>
 
         {% if page_obj.has_other_pages %}
-        <div class="p-3 border-top d-flex justify-content-center" style="border-color: var(--panel-border) !important; background: rgba(0,0,0,0.2);">
+        <div class="p-3 border-top d-flex justify-content-center" style="border-color: var(--panel-border) !important; background: var(--pm-bg);">
             <ul class="pagination-neo">
                 {% if page_obj.has_previous %}
                     <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.categoria %}&categoria={{ request.GET.categoria }}{% endif %}"><i class="bi bi-chevron-left"></i> Anterior</a></li>

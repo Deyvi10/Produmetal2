@@ -20,15 +20,15 @@
 
     /* Contenedor Principal */
     .card-master { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-    .card-header-custom { background: rgba(9, 13, 19, 0.7); border-bottom: 1px solid var(--pm-border); padding: 1.2rem 1.5rem; }
+    .card-header-custom { background: var(--pm-bg); border-bottom: 1px solid var(--pm-border); padding: 1.2rem 1.5rem; }
     
     /* Formularios y Filtros */
     .form-control-dark {
-        background-color: rgba(0,0,0,0.3) !important; border: 1px solid var(--pm-border) !important;
+        background-color: var(--pm-bg) !important; border: 1px solid var(--pm-border) !important;
         color: var(--pm-text) !important; border-radius: 8px; padding: 0.6rem 1rem; font-size: 0.9rem; transition: 0.2s;
     }
     .form-control-dark:focus { border-color: var(--pm-blue) !important; box-shadow: 0 0 0 3px rgba(56,139,253,0.15) !important; }
-    ::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; } /* Para que el icono del calendario sea blanco */
+    ::-webkit-calendar-picker-indicator { cursor: pointer; }
 
     /* Píldoras de Filtro (Estados) */
     .filter-track { display: flex; overflow-x: auto; gap: 8px; padding-bottom: 4px; scrollbar-width: none; }
@@ -43,12 +43,12 @@
     /* Botones */
     .btn-neo { background: var(--pm-blue); color: white; font-weight: 600; border-radius: 8px; padding: 0.6rem 1.2rem; border: none; transition: 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
     .btn-neo:hover { background: #2563eb; transform: translateY(-1px); color: white;}
-    .btn-neo-outline { border: 1px solid var(--pm-border); color: var(--pm-text); background: rgba(255,255,255,0.02); font-weight: 600; border-radius: 8px; padding: 0.6rem 1.2rem; transition: 0.2s; text-decoration: none;}
+    .btn-neo-outline { border: 1px solid var(--pm-border); color: var(--pm-text); background: var(--pm-surface-hover); font-weight: 600; border-radius: 8px; padding: 0.6rem 1.2rem; transition: 0.2s; text-decoration: none;}
     .btn-neo-outline:hover { background: var(--pm-surface-hover); border-color: var(--pm-text-muted); color: white;}
 
     /* Tabla Elegante */
     .table-modern { width: 100%; margin-bottom: 0; color: var(--pm-text); border-collapse: separate; border-spacing: 0;}
-    .table-modern th { background: rgba(9, 13, 19, 0.4); text-transform: uppercase; font-family: var(--font-display); font-size: 0.85rem; letter-spacing: 1px; color: var(--pm-text-muted); border-bottom: 1px solid var(--pm-border); padding: 16px 20px; border-top: none; font-weight: 600;}
+    .table-modern th { background: var(--pm-bg); text-transform: uppercase; font-family: var(--font-display); font-size: 0.85rem; letter-spacing: 1px; color: var(--pm-text-muted); border-bottom: 1px solid var(--pm-border); padding: 16px 20px; border-top: none; font-weight: 600;}
     .table-modern td { vertical-align: middle; border-bottom: 1px solid var(--pm-border); padding: 16px 20px; color: var(--pm-text); }
     .table-modern tr:hover td { background-color: var(--pm-surface-hover); }
     .table-modern tr:last-child td { border-bottom: none; }
@@ -56,12 +56,12 @@
     /* Badges Suaves */
     .badge-soft { padding: 6px 12px; font-weight: 600; font-size: 0.75rem; border-radius: 8px; display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.5px;}
     .badge-soft-warning { background: rgba(230,168,23,0.1); color: var(--pm-amber); border: 1px solid rgba(230,168,23,0.2); }
-    .badge-soft-success { background: rgba(35,134,54,0.15); color: #4ade80; border: 1px solid rgba(35,134,54,0.3); }
-    .badge-soft-info    { background: rgba(56,139,253,0.15); color: #79c0ff; border: 1px solid rgba(56,139,253,0.3); }
-    .badge-soft-secondary { background: rgba(255,255,255,0.05); color: var(--pm-text-muted); border: 1px solid var(--pm-border); }
+    .badge-soft-success { background: rgba(35,134,54,0.15); color: var(--pm-green); border: 1px solid rgba(35,134,54,0.3); }
+    .badge-soft-info    { background: rgba(56,139,253,0.15); color: var(--pm-blue); border: 1px solid rgba(56,139,253,0.3); }
+    .badge-soft-secondary { background: var(--pm-surface-hover); color: var(--pm-text-muted); border: 1px solid var(--pm-border); }
 
     /* Paginación Neo */
-    .pagination-neo { display: flex; list-style: none; margin: 0; padding: 1.5rem; gap: 6px; justify-content: center; border-top: 1px solid var(--pm-border); background: rgba(0,0,0,0.2);}
+    .pagination-neo { display: flex; list-style: none; margin: 0; padding: 1.5rem; gap: 6px; justify-content: center; border-top: 1px solid var(--pm-border); background: var(--pm-bg);}
     .pagination-neo .page-link { background: var(--pm-surface); border: 1px solid var(--pm-border); color: var(--pm-text); border-radius: 6px; padding: 8px 16px; font-size: 0.9rem; text-decoration: none; transition: all 0.2s; font-weight: 600;}
     .pagination-neo .page-link:hover { background: var(--pm-surface-hover); border-color: var(--pm-text-muted); }
     .pagination-neo .active .page-link { background: var(--pm-blue); color: #fff; border-color: var(--pm-blue); }
@@ -79,9 +79,9 @@
         .search-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
         
         .table-modern thead { display: none; }
-        .table-modern tbody { display: flex; flex-direction: column; gap: 12px; padding: 10px; background: rgba(0,0,0,0.2);}
+        .table-modern tbody { display: flex; flex-direction: column; gap: 12px; padding: 10px; background: var(--pm-bg);}
         .table-modern tbody tr { display: flex; flex-direction: column; background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; padding: 5px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);}
-        .table-modern td { padding: 12px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; align-items: flex-start; gap: 5px;}
+        .table-modern td { padding: 12px 15px; border-bottom: 1px solid var(--pm-surface-hover); display: flex; flex-direction: column; align-items: flex-start; gap: 5px;}
         .table-modern td:last-child { border-bottom: none; align-items: stretch;}
         .mobile-label { display: block; font-size: 0.65rem; color: var(--pm-text-muted); text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;}
         
@@ -182,7 +182,7 @@
                             
                             <td class="text-md-end pe-md-4">
                                 <span class="mobile-label mb-2">Acciones</span>
-                                <a href="{% url 'detalle_solicitud_procesada' solicitud.id %}" class="btn btn-sm btn-neo" style="background: rgba(56,139,253,0.15); color: #79c0ff; border: 1px solid rgba(56,139,253,0.3);">
+                                <a href="{% url 'detalle_solicitud_procesada' solicitud.id %}" class="btn btn-sm btn-neo" style="background: rgba(56,139,253,0.15); color: var(--pm-blue); border: 1px solid rgba(56,139,253,0.3);">
                                     <i class="bi bi-search"></i> Ver Detalles
                                 </a>
                             </td>

@@ -19,7 +19,7 @@
     }
 
     .info-pill {
-        background: rgba(255,255,255,0.03);
+        background: var(--pm-surface-hover);
         border: 1px solid var(--pm-border);
         border-radius: 8px;
     }
@@ -82,7 +82,7 @@
                     </div>
 
                     {% if form.errors %}
-                        <div class="alert alert-danger p-2 mb-4 small border-0 rounded-3" style="background: rgba(248,81,73,0.1); color: #ff7b72;">
+                        <div class="alert alert-danger p-2 mb-4 small border-0 rounded-3" style="background: rgba(248,81,73,0.1); color: var(--pm-red);">
                             <i class="bi bi-exclamation-triangle-fill me-1"></i> Por favor revisa los campos requeridos.
                         </div>
                     {% endif %}

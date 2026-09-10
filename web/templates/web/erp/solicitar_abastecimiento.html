@@ -29,7 +29,7 @@
     .card-header-custom h6 { font-family: var(--font-display); font-size: 1.2rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin: 0; color: var(--pm-text-pure); }
 
     /* Inputs Amplios y Visibles */
-    .form-pm { background-color: rgba(0,0,0,0.4) !important; border: 1px solid var(--pm-border) !important; color: var(--pm-text-pure) !important; font-size: 1rem; padding: 0.8rem 1rem; border-radius: 8px; transition: all 0.3s ease; }
+    .form-pm { background-color: var(--pm-bg) !important; border: 1px solid var(--pm-border) !important; color: var(--pm-text-pure) !important; font-size: 1rem; padding: 0.8rem 1rem; border-radius: 8px; transition: all 0.3s ease; }
     .form-pm:focus { border-color: var(--pm-neon-blue) !important; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15) !important; background-color: var(--pm-black) !important; }
     .form-pm::placeholder { color: #888; }
     
@@ -39,15 +39,15 @@
     /* Buscador Inteligente */
     .search-results-container { position: relative; }
     .custom-dropdown-list { position: absolute; top: 100%; left: 0; right: 0; background: var(--pm-surface-card); border: 1px solid var(--pm-border); border-radius: 8px; max-height: 250px; overflow-y: auto; z-index: 1000; display: none; box-shadow: 0 15px 40px rgba(0,0,0,0.9); margin-top: 5px; }
-    .dropdown-item-pm { padding: 12px 15px; color: var(--pm-text-light); cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem; transition: background 0.2s; }
-    .dropdown-item-pm:hover { background-color: rgba(255,255,255,0.05); color: var(--pm-text-pure); }
+    .dropdown-item-pm { padding: 12px 15px; color: var(--pm-text-light); cursor: pointer; border-bottom: 1px solid var(--pm-surface-hover); font-size: 0.95rem; transition: background 0.2s; }
+    .dropdown-item-pm:hover { background-color: var(--pm-surface-hover); color: var(--pm-text-pure); }
     .dropdown-item-pm strong { color: var(--pm-neon-amber); font-weight: bold; }
 
     /* Tabla Elegante y Espaciosa */
     .table-modern { width: 100%; margin-bottom: 0; color: var(--pm-text-light); }
-    .table-modern th { background: rgba(0,0,0,0.2); text-transform: uppercase; font-family: var(--font-display); font-size: 0.9rem; color: var(--pm-text-silver); border-bottom: 1px solid var(--pm-border); padding: 15px 20px; font-weight: 600; letter-spacing: 0.5px; }
+    .table-modern th { background: var(--pm-bg); text-transform: uppercase; font-family: var(--font-display); font-size: 0.9rem; color: var(--pm-text-silver); border-bottom: 1px solid var(--pm-border); padding: 15px 20px; font-weight: 600; letter-spacing: 0.5px; }
     .table-modern td { vertical-align: middle; border-bottom: 1px solid var(--pm-border); padding: 15px 20px; background: transparent; }
-    .table-modern tr:hover td { background-color: rgba(255,255,255,0.02); }
+    .table-modern tr:hover td { background-color: var(--pm-surface-hover); }
     .table-modern tr:last-child td { border-bottom: none; }
 
     /* Badges Claras */
