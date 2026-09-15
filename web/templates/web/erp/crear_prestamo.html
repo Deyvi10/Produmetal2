@@ -3,21 +3,23 @@
 
 {% block content %}
 <style>
-    body { background-color: var(--pm-bg); }
+    body { background-color: var(--pm-bg); color: var(--pm-text); }
     .erp-container { max-width: 800px; padding-bottom: 80px; }
-    .card-master { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); overflow: hidden; }
-    .form-section-title { font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase; font-weight: 700; color: var(--pm-text-muted); letter-spacing: 1px; font-size: 0.9rem; margin-bottom: 12px; border-bottom: 2px solid #f1f4f9; padding-bottom: 8px; }
+    .card-master { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; box-shadow: var(--pm-shadow); overflow: hidden; }
+    .form-section-title { font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase; font-weight: 700; color: var(--pm-text-muted); letter-spacing: 1px; font-size: 0.9rem; margin-bottom: 12px; border-bottom: 2px solid var(--pm-border); padding-bottom: 8px; }
     .form-control-solid, .form-select-solid {
-        background: #f8f9fa !important; border: 1px solid #d1d5da !important; color: #24292e !important;
+        background: var(--pm-bg) !important; border: 1px solid var(--pm-border) !important; color: var(--pm-text) !important;
         border-radius: 8px; padding: 14px 16px; font-weight: 500; font-size: 1rem; width: 100%;
         min-height: 52px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);
     }
-    .form-control-solid:focus, .form-select-solid:focus { border-color: var(--pm-info, #0d6efd) !important; box-shadow: 0 0 0 3px rgba(13,110,253,0.15) !important; outline: none; background: #fff !important; }
+    .form-control-solid::placeholder, .form-select-solid::placeholder { color: var(--pm-text-muted) !important; }
+    .form-control-solid:focus, .form-select-solid:focus { border-color: var(--pm-blue) !important; box-shadow: 0 0 0 3px var(--pm-blue-soft) !important; outline: none; background: var(--pm-bg) !important; }
     .btn-primary-custom {
-        background: #0d6efd; color: white; font-weight: bold; border-radius: 8px; padding: 14px 24px; border: none;
+        background: #0d6efd; color: #fff; font-weight: bold; border-radius: 8px; padding: 14px 24px; border: none;
         display: flex; align-items: center; justify-content: center; width: 100%; font-size: 1.1rem;
     }
-    .btn-primary-custom:hover { background: #0b5ed7; color: white; }
+    .btn-primary-custom:hover { filter: brightness(0.9); color: #fff; }
+    .text-muted { color: var(--pm-text-muted) !important; }
     @media (max-width: 768px) {
         .card-master { border: none; box-shadow: none; border-radius: 0; background: transparent; }
         .mobile-bottom-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--pm-surface); padding: 15px; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); z-index: 1000; border-top: 1px solid var(--pm-border); }
@@ -35,12 +37,12 @@
         </span>
     </div>
 
-    <h2 class="fw-bold text-dark mb-1">Nuevo Préstamo de Herramienta / Material</h2>
+    <h2 class="fw-bold mb-1">Nuevo Préstamo de Herramienta / Material</h2>
     <p class="text-muted small mb-4">Registra la entrega temporal. El material se descuenta del stock hasta que se registre la devolución.</p>
 
     <form method="POST" action="{% url 'crear_prestamo' %}">
         {% csrf_token %}
-        <div class="card-master bg-white p-md-4 mb-4">
+        <div class="card-master p-md-4 mb-4">
             <div class="card-body p-3">
 
                 <div class="form-section-title mt-2"><i class="bi bi-person-badge-fill me-2 text-primary"></i> 1. Trabajador que Recibe</div>

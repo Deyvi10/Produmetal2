@@ -2,14 +2,24 @@
 
 {% block content %}
 <style>
-    body { background-color: #f4f6f9; }
+    body { background-color: var(--pm-bg); color: var(--pm-text); }
     .erp-container { max-width: 700px; padding-bottom: 60px; margin-top: 30px; }
-    .card-master { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); overflow: hidden; margin-bottom: 20px; }
-    .ticket-header { background: linear-gradient(135deg, #1e8449 0%, #28a745 100%); color: white; padding: 25px; border-radius: 12px; box-shadow: 0 8px 20px rgba(40, 167, 69, 0.2); }
-    .btn-success-custom { background: var(--pm-success, #198754); color: white; font-weight: bold; border-radius: 8px; padding: 14px 24px; border: none; }
-    .btn-success-custom:hover { background: #157347; color: white; }
-    .condicion-option { border: 2px solid var(--pm-border); border-radius: 10px; padding: 14px; cursor: pointer; }
+    .card-master { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; box-shadow: var(--pm-shadow); overflow: hidden; margin-bottom: 20px; }
+    .ticket-header { background: linear-gradient(135deg, #1e8449 0%, #28a745 100%); color: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 8px 20px rgba(40, 167, 69, 0.2); }
+    .btn-success-custom { background: #198754; color: #fff; font-weight: bold; border-radius: 8px; padding: 14px 24px; border: none; }
+    .btn-success-custom:hover { filter: brightness(0.9); color: #fff; }
+    .condicion-option { border: 2px solid var(--pm-border); border-radius: 10px; padding: 14px; cursor: pointer; color: var(--pm-text); }
     .condicion-option input { margin-right: 8px; }
+    .condicion-option:hover { background: var(--pm-surface-hover); }
+
+    label, .form-label { color: var(--pm-text); }
+    .form-control { background-color: var(--pm-bg); border: 1px solid var(--pm-border); color: var(--pm-text); }
+    .form-control:focus { background-color: var(--pm-bg); color: var(--pm-text); border-color: var(--pm-amber); box-shadow: 0 0 0 3px var(--pm-amber-soft); }
+    .form-control::placeholder { color: var(--pm-text-muted); }
+    .text-muted { color: var(--pm-text-muted) !important; }
+    .text-success { color: var(--pm-green) !important; }
+    .text-warning { color: var(--pm-amber) !important; }
+    .text-danger { color: var(--pm-red) !important; }
 </style>
 
 <div class="container erp-container">
@@ -21,7 +31,7 @@
         <p class="mb-0 fw-bold">Prestado a: {{ prestamo.trabajador.nombre_completo }} · Cantidad: {{ prestamo.cantidad }}</p>
     </div>
 
-    <div class="card-master bg-white p-3 mb-3">
+    <div class="card-master p-3 mb-3">
         <p class="small text-muted mb-1"><i class="bi bi-calendar-event me-1"></i> Entregado el {{ prestamo.fecha_entrega|date:"d/m/Y" }} por {{ prestamo.entregado_por.username }}</p>
         {% if prestamo.observaciones %}
         <p class="small text-muted mb-0"><i class="bi bi-chat-left-text me-1"></i> {{ prestamo.observaciones }}</p>
@@ -30,7 +40,7 @@
 
     <form method="POST">
         {% csrf_token %}
-        <div class="card-master bg-white p-4">
+        <div class="card-master p-4">
             <label class="form-label fw-bold mb-2">Condición de la devolución <span class="text-danger">*</span></label>
             <div class="d-flex flex-column gap-2 mb-4">
                 <label class="condicion-option d-flex align-items-center">
