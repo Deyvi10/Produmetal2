@@ -250,6 +250,44 @@
             </div>
         </div>
 
+        <!-- ================= HORAS EXTRA ================= -->
+        <div class="col-12 col-lg-6 fade-up delay-3">
+            <div class="card-neo">
+                <div class="card-header-neo" style="border-top: 2px solid var(--accent-green);">
+                    <h5 class="mb-0 fw-bold text-white fs-6"><i class="bi bi-clock-history text-success me-2"></i>Rangos de Horas Extra</h5>
+                </div>
+
+                <div class="form-wrapper">
+                    <p class="text-muted small mb-3">Define cuándo una hora trabajada cuenta como extra ordinaria o extraordinaria. El cálculo de su valor se integrará cuando se defina la fórmula oficial.</p>
+                    <form method="POST" action="{% url 'configuracion_erp' %}">
+                        {% csrf_token %}
+                        <div class="row g-2 neo-form-group">
+                            <div class="col-12"><strong class="text-white small text-uppercase">Hora Extra Ordinaria</strong></div>
+                            <div class="col-6">
+                                <label>Desde</label>
+                                {{ form_horas_extra.hora_inicio_ordinaria }}
+                            </div>
+                            <div class="col-6">
+                                <label>Hasta</label>
+                                {{ form_horas_extra.hora_fin_ordinaria }}
+                            </div>
+                            <div class="col-12 mt-2"><strong class="text-white small text-uppercase">Hora Extra Extraordinaria</strong></div>
+                            <div class="col-6">
+                                <label>Desde</label>
+                                {{ form_horas_extra.hora_inicio_extraordinaria }}
+                            </div>
+                            <div class="col-6">
+                                <label>Hasta</label>
+                                {{ form_horas_extra.hora_fin_extraordinaria }}
+                            </div>
+                            <div class="col-12 mt-3">
+                                <button type="submit" name="form_horas_extra" class="btn-neo w-100" style="background: var(--accent-green);">Guardar Configuración</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 

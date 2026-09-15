@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.contrib.auth.models import User, Group
 from django.db.models import Sum, F, Q
+from django.core.exceptions import ValidationError
 from axes.models import AccessAttempt
 from django.db import transaction
 from django.core.paginator import Paginator
@@ -14,14 +15,19 @@ from datetime import datetime, timedelta
 # IMPORTACIONES DE MODELOS Y FORMULARIOS
 # =======================================================
 from .models import (
-    Requerimiento, DetalleRequerimiento, Material, Proyecto, MovimientoInventario, 
+    Requerimiento, DetalleRequerimiento, Material, Proyecto, MovimientoInventario,
     OrdenCompra, DetalleOrdenCompra, SolicitudCompra, CotizacionItem, Bodega, StockBodega,
-    Categoria, PerfilEmpleado
+    Categoria, PerfilEmpleado, CierreIncompletoRequerimiento,
+    Trabajador, EntregaDirecta, PrestamoHerramienta, DevolucionPrestamo,
+    SalarioTrabajador, HorarioTrabajador, ConfiguracionHorasExtra, Pago, HoraExtra, Descuento,
+    PeriodoNominaMensual,
     )
+from . import servicios_nomina
 from .forms import (
     RequerimientoForm, DetalleRequerimientoForm, RegistroEmpleadoForm,
     OrdenCompraForm, DetalleOrdenCompraForm, AjusteInventarioForm,
-    VentaMaterialForm, BodegaForm, CategoriaForm
+    VentaMaterialForm, BodegaForm, CategoriaForm,
+    TrabajadorForm, HorarioTrabajadorForm, ConfiguracionHorasExtraForm,
 )
 
 # IMPORTS PARA GENERACIÓN DE PDF
@@ -220,19 +226,42 @@ def dashboard_erp(request):
     elif es_bodeguero(usuario):
         context['rol'] = 'Bodeguero'
         bodega_asignada = getattr(usuario.perfil, 'bodega_asignada', None) if hasattr(usuario, 'perfil') else None
-        
+        bodega_q = request.GET.get('q', '').strip()
+
         if bodega_asignada:
-            # AQUÍ ESTÁ EL FIX DEL PRIMER PROBLEMA: Muestra aprobados Y los que faltan llegar de compras
             qs_tickets = Requerimiento.objects.filter(
-                detalles__estado_item__in=['APROBADO_BODEGA', 'EN_COMPRAS'], 
                 detalles__bodega_destino=bodega_asignada
-            ).distinct().order_by('fecha_solicitud')
-            
-            if estado_filtro:
-                qs_tickets = qs_tickets.filter(estado=estado_filtro)
-                
+            ).distinct()
+
+            if estado_filtro == 'PARCIAL':
+                qs_tickets = qs_tickets.filter(estado='PARCIALMENTE_DESPACHADO')
+            elif estado_filtro == 'COMPLETADO':
+                qs_tickets = qs_tickets.filter(estado='DESPACHADO')
+            elif estado_filtro == 'CERRADO_INCOMPLETO':
+                qs_tickets = qs_tickets.filter(estado='CERRADO_INCOMPLETO')
+            elif estado_filtro == 'TODOS':
+                pass
+            else:
+                # Por defecto: solo lo que requiere acción de bodega ahora mismo
+                qs_tickets = qs_tickets.filter(
+                    detalles__estado_item__in=['APROBADO_BODEGA', 'EN_COMPRAS'],
+                    detalles__bodega_destino=bodega_asignada
+                ).distinct()
+
+            if bodega_q:
+                qs_tickets = qs_tickets.filter(
+                    Q(folio__icontains=bodega_q) |
+                    Q(solicitante__username__icontains=bodega_q) |
+                    Q(solicitante__first_name__icontains=bodega_q) |
+                    Q(solicitante__last_name__icontains=bodega_q) |
+                    Q(detalles__material__nombre__icontains=bodega_q) |
+                    Q(detalles__material__sku__icontains=bodega_q)
+                ).distinct()
+
+            qs_tickets = qs_tickets.order_by('fecha_solicitud')
             paginator_tickets = Paginator(qs_tickets, 10)
             context['tickets_por_despachar'] = paginator_tickets.get_page(page_number)
+            context['bodega_q'] = bodega_q
         else:
             # Paginador vacío para que no explote el HTML si no tiene bodega
             context['tickets_por_despachar'] = Paginator(Requerimiento.objects.none(), 10).get_page(1)
@@ -435,39 +464,71 @@ def despachar_requerimiento(request, req_id):
         return redirect('dashboard_erp')
 
     if request.method == 'POST':
+        algo_despachado = False
         for item in items_a_despachar:
             cant_solicitada = Decimal(str(item.cantidad_solicitada))
             cant_despachada = Decimal(str(item.cantidad_despachada))
-            cantidad_a_entregar = cant_solicitada - cant_despachada
-            
-            if cantidad_a_entregar > 0:
-                material = Material.objects.select_for_update().get(id=item.material.id)
-                bodega_origen = item.bodega_destino # EXTRAE DIRECTO DE LA VINCULADA
-                stock_bodega = StockBodega.objects.select_for_update().filter(bodega=bodega_origen, material=material).first()
-                
-                cant_en_bodega = Decimal(str(stock_bodega.cantidad)) if stock_bodega and stock_bodega.cantidad else Decimal('0.0')
-                
-                if cant_en_bodega < cantidad_a_entregar:
-                    messages.error(request, f"Error físico: Faltan existencias en {bodega_origen.nombre} para {material.nombre}.")
-                    return redirect('despachar_requerimiento', req_id=ticket.id)
+            pendiente = cant_solicitada - cant_despachada
+            if pendiente <= 0:
+                continue
 
-                # Descuenta de la bodega específica
-                stock_bodega.cantidad = cant_en_bodega - cantidad_a_entregar
-                stock_bodega.save()
-                material.save()
+            # Cantidad indicada por el bodeguero para ESTA entrega (permite parcialidad).
+            # Si no se envía el campo (compatibilidad hacia atrás), se asume el pendiente total.
+            campo = f'cantidad_{item.id}'
+            raw_valor = request.POST.get(campo, None)
+            if raw_valor is None or raw_valor.strip() == '':
+                continue  # el bodeguero no tocó este ítem en esta entrega
 
-                MovimientoInventario.objects.create(
-                    material=material, tipo='SALIDA', cantidad=cantidad_a_entregar, bodega_origen=bodega_origen,
-                    responsable=request.user, requerimiento_asociado=ticket,
-                    observaciones=f"Despacho físico desde {bodega_origen.nombre}"
+            try:
+                cantidad_a_entregar = Decimal(raw_valor.replace(',', '.'))
+            except Exception:
+                messages.error(request, f"Cantidad inválida para {item.material.nombre}.")
+                return redirect('despachar_requerimiento', req_id=ticket.id)
+
+            if cantidad_a_entregar <= 0:
+                continue
+
+            if cantidad_a_entregar > pendiente:
+                messages.error(
+                    request,
+                    f"No puedes entregar {cantidad_a_entregar} de {item.material.nombre}: "
+                    f"solo quedan {pendiente} pendientes de este ítem."
                 )
-                
-                item.cantidad_despachada = cant_despachada + cantidad_a_entregar
-                item.estado_item = 'DESPACHADO'
-                item.save()
+                return redirect('despachar_requerimiento', req_id=ticket.id)
+
+            material = Material.objects.select_for_update().get(id=item.material.id)
+            bodega_origen = item.bodega_destino # EXTRAE DIRECTO DE LA VINCULADA
+            stock_bodega = StockBodega.objects.select_for_update().filter(bodega=bodega_origen, material=material).first()
+
+            cant_en_bodega = Decimal(str(stock_bodega.cantidad)) if stock_bodega and stock_bodega.cantidad else Decimal('0.0')
+
+            if cant_en_bodega < cantidad_a_entregar:
+                messages.error(request, f"Error físico: Faltan existencias en {bodega_origen.nombre} para {material.nombre}.")
+                return redirect('despachar_requerimiento', req_id=ticket.id)
+
+            # Descuenta de la bodega específica
+            stock_bodega.cantidad = cant_en_bodega - cantidad_a_entregar
+            stock_bodega.save()
+            material.save()
+
+            MovimientoInventario.objects.create(
+                material=material, tipo='SALIDA', cantidad=cantidad_a_entregar, bodega_origen=bodega_origen,
+                responsable=request.user, requerimiento_asociado=ticket,
+                observaciones=f"Despacho físico desde {bodega_origen.nombre}"
+                + (" (entrega parcial)" if cantidad_a_entregar < pendiente else "")
+            )
+
+            item.cantidad_despachada = cant_despachada + cantidad_a_entregar
+            item.estado_item = 'DESPACHADO' if item.cantidad_despachada >= cant_solicitada else 'APROBADO_BODEGA'
+            item.save()
+            algo_despachado = True
+
+        if not algo_despachado:
+            messages.warning(request, "No se registró ninguna entrega: indica una cantidad mayor a cero en al menos un ítem.")
+            return redirect('despachar_requerimiento', req_id=ticket.id)
 
         ticket.actualizar_estado_general()
-        messages.success(request, f"Despacho completado. Los materiales salieron estrictamente de sus bodegas destino.")
+        messages.success(request, f"Despacho registrado. Los materiales salieron estrictamente de sus bodegas destino.")
         return redirect('dashboard_erp')
 
     return render(request, 'web/erp/confirmar_despacho.html', {
@@ -475,7 +536,50 @@ def despachar_requerimiento(request, req_id):
         'items': items_a_despachar,
         'items_pendientes': items_pendientes,
     })
-    
+
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: es_bodeguero(u) or es_admin(u), login_url='dashboard_erp')
+def cerrar_requerimiento_incompleto(request, req_id):
+    """
+    Permite a bodega cerrar definitivamente un requerimiento aunque queden
+    cantidades sin entregar. Exige doble confirmación (checkbox + confirm JS)
+    y un justificativo obligatorio que queda registrado en auditoría.
+    """
+    ticket = get_object_or_404(Requerimiento, id=req_id)
+
+    if not ticket.puede_cerrarse_incompleto:
+        messages.warning(request, "Este requerimiento ya no tiene cantidades pendientes por cerrar.")
+        return redirect('dashboard_erp')
+
+    if request.method == 'POST':
+        justificativo = request.POST.get('justificativo', '').strip()
+        confirmo = request.POST.get('confirmo_cierre') == 'on'
+
+        if not confirmo:
+            messages.error(request, "Debes confirmar explícitamente que entiendes que quedarán materiales pendientes.")
+            return redirect('cerrar_requerimiento_incompleto', req_id=ticket.id)
+
+        if len(justificativo) < 10:
+            messages.error(request, "El justificativo es obligatorio y debe ser suficientemente descriptivo (mínimo 10 caracteres).")
+            return redirect('cerrar_requerimiento_incompleto', req_id=ticket.id)
+
+        try:
+            ticket.cerrar_incompleto(usuario=request.user, justificativo=justificativo)
+        except ValueError as e:
+            messages.error(request, str(e))
+            return redirect('dashboard_erp')
+
+        messages.success(request, f"Requerimiento {ticket.folio} cerrado como incompleto. Queda registrado en auditoría.")
+        return redirect('dashboard_erp')
+
+    detalles_pendientes = ticket.detalles.exclude(estado_item__in=['DESPACHADO', 'RECHAZADO'])
+
+    return render(request, 'web/erp/cerrar_incompleto.html', {
+        'ticket': ticket,
+        'detalles_pendientes': detalles_pendientes,
+    })
+
 # =======================================================
 # MÓDULO DE COMPRAS Y COTIZACIONES (DESGLOSE INCLUIDO)
 # =======================================================
@@ -1355,7 +1459,9 @@ def historial_movimientos(request):
     """
     movimientos_list = MovimientoInventario.objects.select_related(
         'material', 'bodega_origen', 'bodega_destino', 'responsable',
-        'requerimiento_asociado__proyecto', 'orden_compra_asociada'
+        'requerimiento_asociado__proyecto', 'orden_compra_asociada',
+        'entrega_directa__trabajador', 'prestamo_origen__trabajador',
+        'devolucion_prestamo__prestamo__trabajador',
     ).order_by('-fecha_hora')
 
     tipo_filtro = request.GET.get('tipo')
@@ -1399,11 +1505,20 @@ def historial_movimientos(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
+    cierres_incompletos = None
+    if es_admin(request.user):
+        cierres_qs = CierreIncompletoRequerimiento.objects.select_related(
+            'requerimiento', 'requerimiento__proyecto', 'usuario'
+        ).order_by('-fecha_hora')
+        cierres_paginator = Paginator(cierres_qs, 10)
+        cierres_incompletos = cierres_paginator.get_page(request.GET.get('cierre_page'))
+
     return render(request, 'web/erp/auditoria.html', {
         'page_obj': page_obj, 'tipo_filtro': tipo_filtro, 'mes_filtro': mes_filtro,
         'proyecto_id': proyecto_id, 'material_q': material_q, 'proveedor_q': proveedor_q,
         'proyectos_activos': proyectos_activos,
         'proyectos_inactivos': proyectos_inactivos,
+        'cierres_incompletos': cierres_incompletos,
         'rol': 'Administrador' if es_admin(request.user) else 'Compras',
     })
 
@@ -1789,9 +1904,21 @@ def configuracion_erp(request):
             messages.success(request, "Categoría creada exitosamente.")
             return redirect('configuracion_erp')
 
+    # Formulario para la configuración global de rangos de horas extra
+    config_horas_extra = ConfiguracionHorasExtra.obtener()
+    if 'form_horas_extra' in request.POST:
+        form_he = ConfiguracionHorasExtraForm(request.POST, instance=config_horas_extra)
+        if form_he.is_valid():
+            config = form_he.save(commit=False)
+            config.actualizado_por = request.user
+            config.save()
+            messages.success(request, "Configuración de horas extra actualizada.")
+            return redirect('configuracion_erp')
+
     return render(request, 'web/erp/configuracion.html', {
         'form_bodega': BodegaForm(),
         'form_categoria': CategoriaForm(),
+        'form_horas_extra': ConfiguracionHorasExtraForm(instance=config_horas_extra),
         'bodegas': Bodega.objects.all(),
         'categorias': Categoria.objects.all()
     })
@@ -2193,36 +2320,505 @@ def detalle_solicitud_procesada(request, solicitud_id):
 @user_passes_test(es_bodeguero, login_url='dashboard_erp')
 @transaction.atomic
 def entrega_directa_bodeguero(request):
-    bodega_asignada = getattr(request.user.perfil, 'bodega_asignada', None)
+    bodega_asignada = getattr(request.user.perfil, 'bodega_asignada', None) if hasattr(request.user, 'perfil') else None
     if not bodega_asignada:
         messages.error(request, "No tienes una bodega asignada para realizar despachos.")
         return redirect('dashboard_erp')
 
     if request.method == 'POST':
         material_id = request.POST.get('material_id')
-        cantidad = Decimal(request.POST.get('cantidad', '0').replace(',', '.'))
-        observaciones = request.POST.get('observaciones')
-        proyecto_id = request.POST.get('proyecto_id') # Destino administrativo
+        trabajador_id = request.POST.get('trabajador_id')
+        proyecto_id = request.POST.get('proyecto_id')  # Destino administrativo (opcional)
+        observaciones = (request.POST.get('observaciones') or '').strip()
 
+        try:
+            cantidad = Decimal(request.POST.get('cantidad', '0').replace(',', '.'))
+        except Exception:
+            messages.error(request, "Cantidad inválida.")
+            return redirect('entrega_directa_bodeguero')
+
+        if not trabajador_id:
+            messages.error(request, "Debes indicar a qué trabajador se le entrega el material.")
+            return redirect('entrega_directa_bodeguero')
+
+        trabajador = get_object_or_404(Trabajador, id=trabajador_id, estado='ACTIVO')
         material = get_object_or_404(Material, id=material_id)
+
+        if cantidad <= 0:
+            messages.error(request, "La cantidad debe ser mayor a cero.")
+            return redirect('entrega_directa_bodeguero')
+
+        if not observaciones:
+            messages.error(request, "El justificativo de la entrega directa es obligatorio.")
+            return redirect('entrega_directa_bodeguero')
+
         stock_b = StockBodega.objects.select_for_update().filter(bodega=bodega_asignada, material=material).first()
+        cant_disponible = stock_b.cantidad if stock_b else Decimal('0.00')
 
-        if stock_b and stock_b.cantidad >= cantidad > 0 and observaciones:
-            stock_b.cantidad -= cantidad
-            stock_b.save()
-            material.save()
+        if cant_disponible < cantidad:
+            messages.error(request, f"Stock insuficiente de {material.nombre} en tu bodega (disponible: {cant_disponible}).")
+            return redirect('entrega_directa_bodeguero')
 
-            MovimientoInventario.objects.create(
-                material=material, tipo='SALIDA', cantidad=cantidad, bodega_origen=bodega_asignada,
-                responsable=request.user, 
-                observaciones=f"[ENTREGA DIRECTA URGENTE] Proyecto ID: {proyecto_id} | {observaciones}"
-            )
-            # Aquí podrías crear un registro de Notificación si tuvieras el modelo
-            messages.success(request, f"Entrega directa de {cantidad} {material.nombre} registrada. El administrador ha sido notificado en la auditoría.")
-            return redirect('dashboard_erp')
-        else:
-            messages.error(request, "Error: Stock insuficiente u observaciones vacías.")
-            
+        stock_b.cantidad = cant_disponible - cantidad
+        stock_b.save()
+        material.save()
+
+        proyecto = Proyecto.objects.filter(id=proyecto_id, is_active=True).first() if proyecto_id else None
+
+        movimiento = MovimientoInventario.objects.create(
+            material=material, tipo='SALIDA', cantidad=cantidad, bodega_origen=bodega_asignada,
+            responsable=request.user,
+            observaciones=f"[ENTREGA DIRECTA] Para {trabajador.nombre_completo} | {observaciones}"
+        )
+        EntregaDirecta.objects.create(
+            movimiento=movimiento, trabajador=trabajador, proyecto=proyecto, justificativo=observaciones,
+        )
+
+        messages.success(request, f"Entrega directa de {cantidad} {material.nombre} a {trabajador.nombre_completo} registrada en auditoría.")
+        return redirect('dashboard_erp')
+
     materiales = Material.objects.filter(stocks_bodegas__bodega=bodega_asignada, stocks_bodegas__cantidad__gt=0).distinct()
     proyectos = Proyecto.objects.filter(is_active=True)
-    return render(request, 'web/erp/entrega_directa.html', {'materiales': materiales, 'proyectos': proyectos})
+    trabajadores = Trabajador.objects.filter(estado='ACTIVO').order_by('nombres', 'apellidos')
+    return render(request, 'web/erp/entrega_directa.html', {
+        'materiales': materiales, 'proyectos': proyectos, 'trabajadores': trabajadores,
+    })
+
+# =======================================================
+# MÓDULO DE PRÉSTAMOS DE HERRAMIENTAS/MATERIALES/MAQUINARIA
+# =======================================================
+@login_required(login_url='login')
+@user_passes_test(lambda u: es_bodeguero(u) or es_admin(u), login_url='dashboard_erp')
+def listar_prestamos(request):
+    prestamos = PrestamoHerramienta.objects.select_related(
+        'trabajador', 'material', 'bodega_origen', 'entregado_por', 'devolucion__recibido_por'
+    ).all()
+
+    estado_filtro = request.GET.get('estado')
+    if estado_filtro == 'PRESTADO':
+        prestamos = prestamos.filter(estado='PRESTADO')
+    elif estado_filtro == 'DEVUELTO':
+        prestamos = prestamos.filter(estado='DEVUELTO')
+
+    q = request.GET.get('q', '').strip()
+    if q:
+        prestamos = prestamos.filter(
+            Q(trabajador__nombres__icontains=q) | Q(trabajador__apellidos__icontains=q) |
+            Q(material__nombre__icontains=q)
+        )
+
+    paginator = Paginator(prestamos, 15)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    return render(request, 'web/erp/listar_prestamos.html', {
+        'page_obj': page_obj, 'estado_filtro': estado_filtro, 'q': q,
+        'rol': 'Administrador' if es_admin(request.user) else 'Bodeguero',
+    })
+
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: es_bodeguero(u) or es_admin(u), login_url='dashboard_erp')
+@transaction.atomic
+def crear_prestamo(request):
+    bodega_asignada = getattr(request.user.perfil, 'bodega_asignada', None) if hasattr(request.user, 'perfil') else None
+    if not bodega_asignada:
+        messages.error(request, "No tienes una bodega asignada para registrar préstamos.")
+        return redirect('dashboard_erp')
+
+    if request.method == 'POST':
+        material_id = request.POST.get('material_id')
+        trabajador_id = request.POST.get('trabajador_id')
+        observaciones = (request.POST.get('observaciones') or '').strip()
+
+        try:
+            cantidad = Decimal((request.POST.get('cantidad') or '1').replace(',', '.'))
+        except Exception:
+            messages.error(request, "Cantidad inválida.")
+            return redirect('crear_prestamo')
+
+        if cantidad <= 0:
+            messages.error(request, "La cantidad debe ser mayor a cero.")
+            return redirect('crear_prestamo')
+
+        if not trabajador_id:
+            messages.error(request, "Debes indicar a qué trabajador se le presta el material.")
+            return redirect('crear_prestamo')
+
+        trabajador = get_object_or_404(Trabajador, id=trabajador_id, estado='ACTIVO')
+        material = get_object_or_404(Material, id=material_id)
+
+        stock_b = StockBodega.objects.select_for_update().filter(bodega=bodega_asignada, material=material).first()
+        cant_disponible = stock_b.cantidad if stock_b else Decimal('0.00')
+
+        if cant_disponible < cantidad:
+            messages.error(request, f"Stock insuficiente de {material.nombre} en tu bodega (disponible: {cant_disponible}).")
+            return redirect('crear_prestamo')
+
+        stock_b.cantidad = cant_disponible - cantidad
+        stock_b.save()
+        material.save()
+
+        movimiento = MovimientoInventario.objects.create(
+            material=material, tipo='PRESTAMO', cantidad=cantidad, bodega_origen=bodega_asignada,
+            responsable=request.user,
+            observaciones=f"Préstamo a {trabajador.nombre_completo}" + (f" | {observaciones}" if observaciones else "")
+        )
+        PrestamoHerramienta.objects.create(
+            trabajador=trabajador, material=material, bodega_origen=bodega_asignada, cantidad=cantidad,
+            entregado_por=request.user, observaciones=observaciones, movimiento_salida=movimiento,
+        )
+
+        messages.success(request, f"Préstamo de {cantidad} {material.nombre} a {trabajador.nombre_completo} registrado.")
+        return redirect('listar_prestamos')
+
+    materiales = Material.objects.filter(stocks_bodegas__bodega=bodega_asignada, stocks_bodegas__cantidad__gt=0).distinct()
+    trabajadores = Trabajador.objects.filter(estado='ACTIVO').order_by('nombres', 'apellidos')
+    return render(request, 'web/erp/crear_prestamo.html', {
+        'materiales': materiales, 'trabajadores': trabajadores,
+    })
+
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: es_bodeguero(u) or es_admin(u), login_url='dashboard_erp')
+def registrar_devolucion_prestamo(request, prestamo_id):
+    prestamo = get_object_or_404(PrestamoHerramienta, id=prestamo_id)
+
+    if prestamo.esta_devuelto:
+        messages.warning(request, "Este préstamo ya fue devuelto anteriormente.")
+        return redirect('listar_prestamos')
+
+    if request.method == 'POST':
+        condicion = request.POST.get('condicion')
+        observaciones = (request.POST.get('observaciones') or '').strip()
+
+        if condicion not in dict(DevolucionPrestamo.CONDICIONES):
+            messages.error(request, "Selecciona una condición de devolución válida.")
+            return redirect('registrar_devolucion_prestamo', prestamo_id=prestamo.id)
+
+        try:
+            prestamo.registrar_devolucion(usuario=request.user, condicion=condicion, observaciones=observaciones)
+        except ValueError as e:
+            messages.error(request, str(e))
+            return redirect('listar_prestamos')
+
+        messages.success(request, f"Devolución de {prestamo.material.nombre} registrada correctamente.")
+        return redirect('listar_prestamos')
+
+    return render(request, 'web/erp/registrar_devolucion.html', {'prestamo': prestamo})
+
+
+# =======================================================
+# MÓDULO ADMINISTRADOR: TRABAJADORES (RRHH)
+# =======================================================
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def listar_trabajadores(request):
+    trabajadores = Trabajador.objects.all()
+
+    estado_filtro = request.GET.get('estado', 'ACTIVO')
+    if estado_filtro in ('ACTIVO', 'INACTIVO'):
+        trabajadores = trabajadores.filter(estado=estado_filtro)
+
+    q = request.GET.get('q', '').strip()
+    if q:
+        trabajadores = trabajadores.filter(
+            Q(nombres__icontains=q) | Q(apellidos__icontains=q) | Q(documento_identidad__icontains=q)
+        )
+
+    paginator = Paginator(trabajadores, 15)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    return render(request, 'web/erp/listar_trabajadores.html', {
+        'page_obj': page_obj, 'estado_filtro': estado_filtro, 'q': q,
+    })
+
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def crear_trabajador(request):
+    if request.method == 'POST':
+        form = TrabajadorForm(request.POST)
+        if form.is_valid():
+            trabajador = form.save()
+            messages.success(request, f"Trabajador {trabajador.nombre_completo} registrado correctamente.")
+            return redirect('listar_trabajadores')
+    else:
+        form = TrabajadorForm()
+    return render(request, 'web/erp/form_trabajador.html', {'form': form, 'modo': 'crear'})
+
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def editar_trabajador(request, trabajador_id):
+    trabajador = get_object_or_404(Trabajador, id=trabajador_id)
+    if request.method == 'POST':
+        form = TrabajadorForm(request.POST, instance=trabajador)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Datos del trabajador actualizados.")
+            return redirect('listar_trabajadores')
+    else:
+        form = TrabajadorForm(instance=trabajador)
+    return render(request, 'web/erp/form_trabajador.html', {'form': form, 'modo': 'editar', 'trabajador': trabajador})
+
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def desactivar_trabajador(request, trabajador_id):
+    trabajador = get_object_or_404(Trabajador, id=trabajador_id)
+    if request.method == 'POST':
+        motivo = (request.POST.get('motivo') or '').strip()
+        if len(motivo) < 5:
+            messages.error(request, "Debes indicar un motivo de salida (mínimo 5 caracteres).")
+            return redirect('desactivar_trabajador', trabajador_id=trabajador.id)
+        try:
+            trabajador.desactivar(motivo=motivo)
+        except ValueError as e:
+            messages.error(request, str(e))
+            return redirect('listar_trabajadores')
+        messages.success(request, f"{trabajador.nombre_completo} fue marcado como inactivo. Su historial se conserva íntegro.")
+        return redirect('listar_trabajadores')
+    return render(request, 'web/erp/desactivar_trabajador.html', {'trabajador': trabajador})
+
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def reactivar_trabajador(request, trabajador_id):
+    trabajador = get_object_or_404(Trabajador, id=trabajador_id)
+    if request.method == 'POST':
+        try:
+            trabajador.reactivar()
+        except ValueError as e:
+            messages.error(request, str(e))
+        else:
+            messages.success(request, f"{trabajador.nombre_completo} fue reactivado y puede volver a recibir material.")
+    return redirect('listar_trabajadores')
+
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def ficha_trabajador(request, trabajador_id):
+    """Historial integral del trabajador: salarios, pagos, horas extra, descuentos, préstamos y entregas directas."""
+    trabajador = get_object_or_404(Trabajador, id=trabajador_id)
+
+    horario = getattr(trabajador, 'horario', None)
+    horas_extras = trabajador.horas_extras.all()
+    descuentos = trabajador.descuentos.all()
+
+    return render(request, 'web/erp/ficha_trabajador.html', {
+        'trabajador': trabajador,
+        'salarios': trabajador.salarios.all(),
+        'pagos': trabajador.pagos.all(),
+        'horas_extras': horas_extras,
+        'descuentos': descuentos,
+        'prestamos': trabajador.prestamos.select_related('material', 'devolucion').all(),
+        'entregas_directas': trabajador.entregas_directas.select_related('movimiento__material').all(),
+        'horario': horario,
+        'form_horario': HorarioTrabajadorForm(instance=horario),
+        'horas_extra_disponibles': horas_extras.filter(pago__isnull=True),
+        'descuentos_disponibles': descuentos.filter(tipo='DESCUENTO', pago__isnull=True),
+        'anticipos_disponibles': descuentos.filter(tipo='ANTICIPO', pago__isnull=True),
+        'periodos_mensuales': trabajador.periodos_mensuales.all(),
+        'hoy': timezone.localdate(),
+    })
+
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def asignar_salario_trabajador(request, trabajador_id):
+    trabajador = get_object_or_404(Trabajador, id=trabajador_id)
+    if request.method == 'POST':
+        try:
+            monto = Decimal((request.POST.get('monto') or '0').replace(',', '.'))
+            fecha_inicio = datetime.strptime(request.POST.get('fecha_inicio_vigencia'), '%Y-%m-%d').date()
+        except Exception:
+            messages.error(request, "Datos inválidos para el salario.")
+            return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+        try:
+            trabajador.asignar_salario(monto=monto, fecha_inicio_vigencia=fecha_inicio, usuario=request.user)
+        except ValueError as e:
+            messages.error(request, str(e))
+        else:
+            messages.success(request, "Salario registrado. El historial anterior se conserva sin modificarse.")
+    return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def registrar_horario_trabajador(request, trabajador_id):
+    trabajador = get_object_or_404(Trabajador, id=trabajador_id)
+    horario = getattr(trabajador, 'horario', None)
+    if request.method == 'POST':
+        form = HorarioTrabajadorForm(request.POST, instance=horario)
+        if form.is_valid():
+            horario = form.save(commit=False)
+            horario.trabajador = trabajador
+            horario.actualizado_por = request.user
+            horario.save()
+            messages.success(request, "Horario normal actualizado.")
+        else:
+            messages.error(request, "Revisa el horario ingresado: " + " ".join(
+                f"{campo}: {', '.join(errores)}" for campo, errores in form.errors.items()
+            ))
+    return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def registrar_hora_extra(request, trabajador_id):
+    trabajador = get_object_or_404(Trabajador, id=trabajador_id)
+    if request.method == 'POST':
+        tipo = request.POST.get('tipo')
+        observaciones = (request.POST.get('observaciones') or '').strip()
+        try:
+            fecha = datetime.strptime(request.POST.get('fecha'), '%Y-%m-%d').date()
+            cantidad_horas = Decimal((request.POST.get('cantidad_horas') or '0').replace(',', '.'))
+        except Exception:
+            messages.error(request, "Datos inválidos para la hora extra.")
+            return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+        if tipo not in dict(HoraExtra.TIPOS):
+            messages.error(request, "Selecciona un tipo de hora extra válido.")
+            return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+        hora_extra = HoraExtra(
+            trabajador=trabajador, fecha=fecha, tipo=tipo, cantidad_horas=cantidad_horas,
+            observaciones=observaciones, registrado_por=request.user,
+        )
+        try:
+            hora_extra.full_clean(exclude=['valor_calculado', 'pago'])
+        except ValidationError as e:
+            messages.error(request, " ".join(e.messages))
+            return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+        try:
+            hora_extra.valor_calculado = servicios_nomina.calcular_valor_hora_extra(trabajador, tipo, cantidad_horas)
+        except ValueError as e:
+            messages.error(request, str(e))
+            return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+        hora_extra.save()
+        messages.success(request, f"Hora extra registrada: ${hora_extra.valor_calculado} ({trabajador.get_periodicidad_pago_display()}, recargo {'50%' if tipo == 'ORDINARIA' else '100%'}).")
+    return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def registrar_descuento(request, trabajador_id):
+    trabajador = get_object_or_404(Trabajador, id=trabajador_id)
+    if request.method == 'POST':
+        tipo = request.POST.get('tipo', 'DESCUENTO')
+        motivo = (request.POST.get('motivo') or '').strip()
+        observaciones = (request.POST.get('observaciones') or '').strip()
+        try:
+            fecha = datetime.strptime(request.POST.get('fecha'), '%Y-%m-%d').date()
+            monto = Decimal((request.POST.get('monto') or '0').replace(',', '.'))
+        except Exception:
+            messages.error(request, "Datos inválidos para el descuento/anticipo.")
+            return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+        if tipo not in dict(Descuento.TIPOS):
+            messages.error(request, "Selecciona un tipo válido (Descuento o Anticipo).")
+            return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+        if not motivo:
+            messages.error(request, "El motivo es obligatorio.")
+            return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+        descuento = Descuento(
+            trabajador=trabajador, tipo=tipo, motivo=motivo, monto=monto, fecha=fecha,
+            observaciones=observaciones, registrado_por=request.user,
+        )
+        try:
+            descuento.full_clean(exclude=['pago'])
+        except ValidationError as e:
+            messages.error(request, " ".join(e.messages))
+            return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+        descuento.save()
+        messages.success(request, f"{descuento.get_tipo_display()} registrado correctamente.")
+    return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def registrar_pago(request, trabajador_id):
+    trabajador = get_object_or_404(Trabajador, id=trabajador_id)
+    if request.method == 'POST':
+        observaciones = (request.POST.get('observaciones') or '').strip()
+        try:
+            periodo_inicio = datetime.strptime(request.POST.get('periodo_inicio'), '%Y-%m-%d').date()
+            periodo_fin = datetime.strptime(request.POST.get('periodo_fin'), '%Y-%m-%d').date()
+            fecha_pago = datetime.strptime(request.POST.get('fecha_pago'), '%Y-%m-%d').date()
+        except Exception:
+            messages.error(request, "Fechas inválidas para el pago.")
+            return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+        dias_laborados_raw = (request.POST.get('dias_laborados') or '').strip()
+        dias_laborados = None
+        if dias_laborados_raw:
+            try:
+                dias_laborados = Decimal(dias_laborados_raw.replace(',', '.'))
+            except Exception:
+                messages.error(request, "Días laborados inválidos.")
+                return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+        periodo_mensual = None
+        periodo_mensual_id = request.POST.get('periodo_mensual_id')
+        if periodo_mensual_id:
+            periodo_mensual = get_object_or_404(PeriodoNominaMensual, id=periodo_mensual_id, trabajador=trabajador)
+
+        horas_extra_ids = request.POST.getlist('horas_extra_ids')
+        descuento_ids = request.POST.getlist('descuento_ids')
+
+        try:
+            pago = trabajador.registrar_pago(
+                periodo_inicio=periodo_inicio, periodo_fin=periodo_fin, fecha_pago=fecha_pago,
+                usuario=request.user, dias_laborados=dias_laborados,
+                horas_extra_ids=horas_extra_ids, descuento_ids=descuento_ids,
+                periodo_mensual=periodo_mensual, observaciones=observaciones,
+            )
+        except ValueError as e:
+            messages.error(request, str(e))
+        else:
+            messages.success(request, f"Pago registrado correctamente. Total: ${pago.total_pagado}.")
+    return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def registrar_periodo_mensual(request, trabajador_id):
+    """
+    Registra (o actualiza) la Bonificación y el Aporte IESS del MES para un
+    trabajador. El sistema aplicará automáticamente la mitad de cada valor
+    en cada pago quincenal de ese mes que lo referencie.
+    """
+    trabajador = get_object_or_404(Trabajador, id=trabajador_id)
+    if request.method == 'POST':
+        try:
+            anio = int(request.POST.get('anio'))
+            mes = int(request.POST.get('mes'))
+            bonificacion = Decimal((request.POST.get('bonificacion') or '0').replace(',', '.'))
+            aporte_iess = Decimal((request.POST.get('aporte_iess') or '0').replace(',', '.'))
+        except Exception:
+            messages.error(request, "Datos inválidos para el periodo mensual.")
+            return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+        periodo, creado = PeriodoNominaMensual.objects.get_or_create(
+            trabajador=trabajador, anio=anio, mes=mes,
+            defaults={'bonificacion': bonificacion, 'aporte_iess': aporte_iess, 'registrado_por': request.user},
+        )
+        if not creado:
+            periodo.bonificacion = bonificacion
+            periodo.aporte_iess = aporte_iess
+            periodo.registrado_por = request.user
+
+        try:
+            periodo.full_clean()
+        except ValidationError as e:
+            messages.error(request, " ".join(e.messages))
+            return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+        periodo.save()
+        messages.success(request, f"Bonificación e IESS de {mes}/{anio} registrados. Se aplicará la mitad en cada quincena.")
+    return redirect('ficha_trabajador', trabajador_id=trabajador.id)

@@ -144,7 +144,20 @@
                     </select>
                 </div>
 
-                <div class="form-section-title mt-4"><i class="bi bi-box-seam-fill me-2 text-danger"></i> 2. Ítem a Despachar</div>
+                <div class="form-section-title mt-4"><i class="bi bi-person-badge-fill me-2 text-danger"></i> 2. Trabajador que Recibe</div>
+                <div class="mb-4">
+                    <label class="form-label fw-bold text-dark small">Trabajador destinatario <span class="text-danger">*</span></label>
+                    <select name="trabajador_id" class="form-select-solid" required>
+                        <option value="" disabled selected>-- Seleccione al trabajador --</option>
+                        {% for trabajador in trabajadores %}
+                            <option value="{{ trabajador.id }}">{{ trabajador.nombre_completo }}{% if trabajador.cargo %} ({{ trabajador.cargo }}){% endif %}</option>
+                        {% empty %}
+                            <option value="" disabled>No hay trabajadores activos registrados.</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-section-title mt-4"><i class="bi bi-box-seam-fill me-2 text-danger"></i> 3. Ítem a Despachar</div>
                 <div class="row g-3 mb-4">
                     <div class="col-12 col-md-8">
                         <label class="form-label fw-bold text-dark small">Material Disponible en mi Bodega <span class="text-danger">*</span></label>
@@ -166,7 +179,7 @@
                     </div>
                 </div>
 
-                <div class="form-section-title mt-4"><i class="bi bi-chat-left-text-fill me-2 text-danger"></i> 3. Justificación y Notas</div>
+                <div class="form-section-title mt-4"><i class="bi bi-chat-left-text-fill me-2 text-danger"></i> 4. Justificación y Notas</div>
                 <div class="mb-2">
                     <label class="form-label fw-bold text-dark small">Observaciones del Despacho Urgente <span class="text-danger">*</span></label>
                     <textarea name="observaciones" class="form-control-solid" rows="3" placeholder="Escriba aquí quién retira el material, número de placa del vehículo o el motivo de la urgencia..." required style="min-height: 100px; resize: none;"></textarea>

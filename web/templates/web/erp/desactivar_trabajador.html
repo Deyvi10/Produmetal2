@@ -1,0 +1,36 @@
+{% extends 'web/base.html' %}
+
+{% block content %}
+<style>
+    body { background-color: #f4f6f9; }
+    .erp-container { max-width: 650px; padding-bottom: 60px; margin-top: 30px; }
+    .card-master { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); overflow: hidden; padding: 2rem; }
+    .btn-danger-custom { background: #b91c1c; color: white; font-weight: bold; border-radius: 8px; padding: 12px 24px; border: none; }
+    .btn-danger-custom:hover { background: #991b1b; color: white; }
+</style>
+
+<div class="container erp-container">
+    <div class="alert alert-warning border-0 shadow-sm rounded-3 d-flex align-items-start p-3 mb-4">
+        <i class="bi bi-info-circle-fill fs-3 text-warning me-3 mt-1"></i>
+        <div>
+            <h6 class="fw-bold mb-1">Esto no elimina al trabajador</h6>
+            <p class="small mb-0">Su historial (préstamos, salarios, pagos, entregas) se conserva íntegro. Podrás reactivarlo en cualquier momento desde la lista de trabajadores.</p>
+        </div>
+    </div>
+
+    <form method="POST" class="card-master" onsubmit="return confirm('¿Confirmas marcar a {{ trabajador.nombre_completo }} como INACTIVO?');">
+        {% csrf_token %}
+        <h4 class="fw-bold text-dark mb-3">Desactivar a {{ trabajador.nombre_completo }}</h4>
+
+        <label class="form-label fw-bold">Motivo de la salida <span class="text-danger">*</span></label>
+        <textarea name="motivo" class="form-control" rows="4" minlength="5" required placeholder="Ej: Fin de contrato de obra, renuncia voluntaria, etc."></textarea>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <a href="{% url 'listar_trabajadores' %}" class="btn btn-secondary fw-bold px-4">Cancelar</a>
+            <button type="submit" class="btn-danger-custom px-4">
+                <i class="bi bi-person-dash me-2"></i> Confirmar Desactivación
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

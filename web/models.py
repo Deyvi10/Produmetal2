@@ -1,6 +1,7 @@
 from django.db import models, transaction
 from django.contrib.auth.models import User
 from django.core.validators import FileExtensionValidator
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 from simple_history.models import HistoricalRecords
 from decimal import Decimal
@@ -245,6 +246,7 @@ class Requerimiento(models.Model):
         ('PARCIALMENTE_DESPACHADO', 'Parcialmente Despachado'),
         ('DESPACHADO', 'Despachado Totalmente'),
         ('EN_COMPRAS', 'Enviado a Compras'),
+        ('CERRADO_INCOMPLETO', 'Cerrado Incompleto por Bodega'),
     ]
 
     folio = models.CharField(max_length=20, unique=True, blank=True, editable=False)
@@ -301,43 +303,105 @@ class Requerimiento(models.Model):
         Calcula y actualiza automáticamente el estado maestro del Requerimiento 
         basándose en las decisiones que se tomaron ítem por ítem.
         """
-        detalles = self.detalles.all()
-        if not detalles.exists():
+        # El cierre incompleto es una decisión definitiva de bodega: no se
+        # recalcula automáticamente a partir de los estados de los ítems.
+        if self.estado == 'CERRADO_INCOMPLETO':
             return
-            
+
+        detalles = list(self.detalles.all())
+        if not detalles:
+            return
+
         estados = [item.estado_item for item in detalles]
-        
+        algo_despachado = any(item.cantidad_despachada > 0 for item in detalles)
+        algo_pendiente = any(item.estado_item in ('APROBADO_BODEGA', 'EN_COMPRAS') for item in detalles)
+
         # 1. Si absolutamente todo fue rechazado por el Admin
         if all(estado == 'RECHAZADO' for estado in estados):
             self.estado = 'RECHAZADO'
-            
-        # 2. Si todo el material ya fue entregado físicamente al técnico
-        elif all(estado == 'DESPACHADO' for estado in estados):
+
+        # 2. Si todo lo que no fue rechazado ya se entregó físicamente al técnico
+        elif all(estado in ('DESPACHADO', 'RECHAZADO') for estado in estados) and any(estado == 'DESPACHADO' for estado in estados):
             self.estado = 'DESPACHADO'
-            
-        # 3. Si todo el material válido está en la bodega listo para que el técnico lo retire
-        elif all(estado in ['APROBADO_BODEGA', 'DESPACHADO', 'RECHAZADO'] for estado in estados) and any(estado == 'APROBADO_BODEGA' for estado in estados):
-            self.estado = 'APROBADO'
-            
-        # 4. Si todo el material faltaba y se fue directo al departamento de Compras
-        elif all(estado in ['EN_COMPRAS', 'RECHAZADO'] for estado in estados) and any(estado == 'EN_COMPRAS' for estado in estados):
-            self.estado = 'EN_COMPRAS'
-            
-        # 5. SPLIT: Si una parte se entrega ahora en bodega y la otra parte se mandó a comprar
-        elif any(estado in ['EN_COMPRAS', 'APROBADO_BODEGA', 'DESPACHADO'] for estado in estados):
+
+        # 3. Ya se entregó una parte, pero todavía queda cantidad pendiente (en bodega o en compras)
+        elif algo_despachado and algo_pendiente:
             self.estado = 'PARCIALMENTE_DESPACHADO'
-            
-        # 6. Si todavía el Admin no revisa nada
+
+        # 4. Todo el material válido está en la bodega listo para que el técnico lo retire (nada entregado aún)
+        elif all(estado in ('APROBADO_BODEGA', 'DESPACHADO', 'RECHAZADO') for estado in estados) and any(estado == 'APROBADO_BODEGA' for estado in estados):
+            self.estado = 'APROBADO'
+
+        # 5. Todo el material faltante se fue directo al departamento de Compras
+        elif all(estado in ('EN_COMPRAS', 'RECHAZADO') for estado in estados) and any(estado == 'EN_COMPRAS' for estado in estados):
+            self.estado = 'EN_COMPRAS'
+
+        # 6. SPLIT: mezcla de estados sin que se haya entregado nada todavía
+        elif any(estado in ('EN_COMPRAS', 'APROBADO_BODEGA', 'DESPACHADO') for estado in estados):
+            self.estado = 'PARCIALMENTE_DESPACHADO'
+
+        # 7. Si todavía el Admin no revisa nada
         else:
             self.estado = 'PENDIENTE'
-            
+
         self.save()
+
+    @property
+    def cantidad_total_solicitada(self):
+        return sum((d.cantidad_solicitada for d in self.detalles.all()), Decimal('0.00'))
+
+    @property
+    def cantidad_total_despachada(self):
+        return sum((d.cantidad_despachada for d in self.detalles.all()), Decimal('0.00'))
+
+    @property
+    def cantidad_total_pendiente(self):
+        return sum((d.cantidad_pendiente for d in self.detalles.all()), Decimal('0.00'))
+
+    @property
+    def puede_cerrarse_incompleto(self):
+        """Solo tiene sentido cerrar incompleto si aún queda algo por entregar."""
+        return self.estado not in ('DESPACHADO', 'RECHAZADO', 'CERRADO_INCOMPLETO') and self.cantidad_total_pendiente > 0
+
+    @transaction.atomic
+    def cerrar_incompleto(self, usuario, justificativo):
+        """
+        Cierra definitivamente el requerimiento aunque queden cantidades sin
+        entregar. Exige justificativo y deja auditoría permanente.
+        """
+        justificativo = (justificativo or '').strip()
+        if not justificativo:
+            raise ValueError("El justificativo es obligatorio para cerrar un requerimiento incompleto.")
+        if not self.puede_cerrarse_incompleto:
+            raise ValueError("Este requerimiento no tiene cantidades pendientes por cerrar.")
+
+        solicitada = self.cantidad_total_solicitada
+        despachada = self.cantidad_total_despachada
+        pendiente = self.cantidad_total_pendiente
+
+        for item in self.detalles.exclude(estado_item__in=['DESPACHADO', 'RECHAZADO']):
+            item.estado_item = 'CERRADO_INCOMPLETO'
+            item.save(update_fields=['estado_item'])
+
+        self.estado = 'CERRADO_INCOMPLETO'
+        self.save(update_fields=['estado'])
+
+        return CierreIncompletoRequerimiento.objects.create(
+            requerimiento=self,
+            usuario=usuario,
+            justificativo=justificativo,
+            cantidad_solicitada_snapshot=solicitada,
+            cantidad_despachada_snapshot=despachada,
+            cantidad_pendiente_snapshot=pendiente,
+        )
 
 class DetalleRequerimiento(models.Model):
     ESTADOS_ITEM = [
         ('PENDIENTE', 'Pendiente de Revisión'),
         ('APROBADO_BODEGA', 'Aprobado para Despacho (Bodega)'),
         ('EN_COMPRAS', 'Mandar a Compras (Falta Stock)'),
+        ('DESPACHADO', 'Despachado Totalmente'),
+        ('CERRADO_INCOMPLETO', 'Cerrado Incompleto por Bodega'),
         ('RECHAZADO', 'Rechazado'),
     ]
 
@@ -359,6 +423,33 @@ class DetalleRequerimiento(models.Model):
             stock = self.material.stocks_bodegas.filter(bodega=self.bodega_destino).first()
             return stock.cantidad if stock else 0
         return 0
+
+    @property
+    def cantidad_pendiente(self):
+        pendiente = self.cantidad_solicitada - self.cantidad_despachada
+        return pendiente if pendiente > 0 else Decimal('0.00')
+
+
+class CierreIncompletoRequerimiento(models.Model):
+    """
+    Auditoría permanente del cierre de un Requerimiento sin haber sido
+    entregado al 100%. El justificativo es obligatorio y no se sobrescribe.
+    """
+    requerimiento = models.OneToOneField(
+        Requerimiento, on_delete=models.CASCADE, related_name='cierre_incompleto'
+    )
+    usuario = models.ForeignKey(User, on_delete=models.PROTECT, related_name='cierres_incompletos')
+    fecha_hora = models.DateTimeField(default=timezone.now)
+    justificativo = models.TextField()
+
+    # Fotografía de las cantidades al momento del cierre (auditoría, no se recalcula)
+    cantidad_solicitada_snapshot = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    cantidad_despachada_snapshot = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    cantidad_pendiente_snapshot = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    def __str__(self):
+        return f"Cierre incompleto de {self.requerimiento.folio}"
+
 # =====================================================================
 # 4. MÓDULO DE COTIZACIONES Y COMPRAS
 # =====================================================================
@@ -527,12 +618,14 @@ class MovimientoInventario(models.Model):
         ('INGRESO', 'Ingreso por Compra (Abastecimiento)'),
         ('SALIDA', 'Salida por Requerimiento (Despacho)'),
         ('AJUSTE', 'Ajuste Manual de Inventario'),
-        ('VENTA', 'Venta a Terceros'), 
-        ('TRANSFERENCIA', 'Transferencia entre Bodegas'), 
+        ('VENTA', 'Venta a Terceros'),
+        ('TRANSFERENCIA', 'Transferencia entre Bodegas'),
+        ('PRESTAMO', 'Préstamo a Trabajador'),
+        ('DEVOLUCION_PRESTAMO', 'Devolución de Préstamo'),
     ]
 
     material = models.ForeignKey(Material, on_delete=models.PROTECT, related_name='movimientos')
-    tipo = models.CharField(max_length=15, choices=TIPO_MOVIMIENTO)
+    tipo = models.CharField(max_length=20, choices=TIPO_MOVIMIENTO)
     cantidad = models.DecimalField(max_digits=10, decimal_places=2)
     bodega_origen = models.ForeignKey(Bodega, on_delete=models.SET_NULL, null=True, blank=True, related_name='movimientos_salida')
     bodega_destino = models.ForeignKey(Bodega, on_delete=models.SET_NULL, null=True, blank=True, related_name='movimientos_ingreso')
@@ -568,6 +661,498 @@ class MovimientoInventario(models.Model):
 class PerfilEmpleado(models.Model):
     usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='perfil')
     bodega_asignada = models.ForeignKey(Bodega, on_delete=models.SET_NULL, null=True, blank=True, help_text="Bodega sobre la cual el usuario tiene control logístico.")
-    
+
     def __str__(self):
         return f"Perfil de {self.usuario.username}"
+
+# =====================================================================
+# 6. RECURSOS HUMANOS: TRABAJADORES DE CAMPO (RECEPTORES DE MATERIAL)
+# =====================================================================
+class Trabajador(models.Model):
+    """
+    Trabajador de obra/campo: recibe materiales, herramientas y maquinaria,
+    y es sujeto de nómina (salario, horas extra, descuentos, pagos).
+
+    Distinto de PerfilEmpleado: PerfilEmpleado es la cuenta de acceso al
+    sistema (login) de un Administrador/Bodeguero/Compras/Solicitante. Un
+    Trabajador puede o no tener también una cuenta de usuario del sistema.
+    """
+    ESTADOS = [
+        ('ACTIVO', 'Activo'),
+        ('INACTIVO', 'Inactivo / Anterior'),
+    ]
+    PERIODICIDADES = [
+        ('MENSUAL', 'Mensual'),
+        ('QUINCENAL', 'Quincenal'),
+        ('SEMANAL', 'Semanal'),
+    ]
+
+    nombres = models.CharField(max_length=100)
+    apellidos = models.CharField(max_length=100)
+    documento_identidad = models.CharField(max_length=20, unique=True, help_text="Cédula o documento de identidad")
+    cargo = models.CharField(max_length=100, blank=True)
+    telefono = models.CharField(max_length=20, blank=True)
+    estado = models.CharField(max_length=10, choices=ESTADOS, default='ACTIVO')
+    fecha_ingreso = models.DateField(default=timezone.localdate)
+    fecha_salida = models.DateField(null=True, blank=True)
+    motivo_salida = models.TextField(blank=True)
+    periodicidad_pago = models.CharField(max_length=10, choices=PERIODICIDADES, default='MENSUAL')
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ['apellidos', 'nombres']
+        verbose_name_plural = "Trabajadores"
+
+    def __str__(self):
+        return f"{self.nombres} {self.apellidos}"
+
+    def clean(self):
+        if self.fecha_salida and self.fecha_ingreso and self.fecha_salida < self.fecha_ingreso:
+            raise ValidationError("La fecha de salida no puede ser anterior a la fecha de ingreso.")
+
+    @property
+    def nombre_completo(self):
+        return f"{self.nombres} {self.apellidos}"
+
+    @property
+    def salario_actual(self):
+        return self.salarios.filter(fecha_fin_vigencia__isnull=True).order_by('-fecha_inicio_vigencia').first()
+
+    @property
+    def tiene_prestamos_pendientes(self):
+        return self.prestamos.filter(estado='PRESTADO').exists()
+
+    def desactivar(self, motivo=''):
+        if self.estado == 'INACTIVO':
+            raise ValueError("El trabajador ya está inactivo.")
+        self.estado = 'INACTIVO'
+        self.fecha_salida = timezone.localdate()
+        self.motivo_salida = (motivo or '').strip()
+        self.full_clean()
+        self.save()
+
+    def reactivar(self):
+        if self.estado == 'ACTIVO':
+            raise ValueError("El trabajador ya está activo.")
+        self.estado = 'ACTIVO'
+        self.fecha_salida = None
+        self.motivo_salida = ''
+        self.save()
+
+    @transaction.atomic
+    def asignar_salario(self, monto, fecha_inicio_vigencia, usuario):
+        """
+        Cierra la vigencia del salario anterior (si existe) y crea uno nuevo.
+        Nunca sobrescribe ni borra el registro anterior: los pagos ya
+        generados siguen mostrando el salario que tenían en su momento.
+        """
+        if monto is None or monto <= 0:
+            raise ValueError("El salario debe ser un monto mayor a cero.")
+
+        actual = self.salario_actual
+        if actual:
+            if fecha_inicio_vigencia <= actual.fecha_inicio_vigencia:
+                raise ValueError("La nueva vigencia debe ser posterior a la del salario actualmente vigente.")
+            actual.fecha_fin_vigencia = fecha_inicio_vigencia - datetime.timedelta(days=1)
+            actual.save(update_fields=['fecha_fin_vigencia'])
+
+        return SalarioTrabajador.objects.create(
+            trabajador=self, monto=monto,
+            fecha_inicio_vigencia=fecha_inicio_vigencia, creado_por=usuario,
+        )
+
+    @transaction.atomic
+    def registrar_pago(self, periodo_inicio, periodo_fin, fecha_pago, usuario,
+                        dias_laborados=None, horas_extra_ids=None, descuento_ids=None,
+                        periodo_mensual=None, observaciones=''):
+        """
+        Genera un pago con desglose transparente, replicando la lógica real
+        del rol de pagos de la empresa:
+
+            Salario del periodo + Horas Extra + Bonificación (mitad del mes)
+            - Descuentos - Anticipos - Aporte IESS (mitad del mes)
+
+        Si `periodicidad_pago` es QUINCENAL/SEMANAL, el salario del periodo
+        se prorratea por días laborados (Valor Día = Sueldo Mensual / 30).
+        Si es MENSUAL, se paga el sueldo completo.
+
+        `periodo_mensual` (un PeriodoNominaMensual) aporta la Bonificación y
+        el Aporte IESS mensuales; el sistema registra automáticamente la
+        MITAD de cada uno en este pago (igual que el Excel de la empresa).
+
+        Es transaccional y evita duplicar el pago de un mismo periodo.
+        """
+        if periodo_fin < periodo_inicio:
+            raise ValueError("El periodo de pago es inválido (la fecha final es anterior a la inicial).")
+
+        if Pago.objects.filter(trabajador=self, periodo_inicio=periodo_inicio, periodo_fin=periodo_fin).exists():
+            raise ValueError("Ya existe un pago registrado para este trabajador en ese periodo.")
+
+        salario_vigente = self.salario_actual
+        if not salario_vigente:
+            raise ValueError("El trabajador no tiene un salario asignado todavía.")
+
+        dias_calendario = (periodo_fin - periodo_inicio).days + 1
+        if dias_laborados is None:
+            dias_laborados = Decimal(dias_calendario)
+        dias_laborados = Decimal(dias_laborados)
+        if dias_laborados <= 0:
+            raise ValueError("Los días laborados deben ser mayores a cero.")
+
+        if self.periodicidad_pago == 'MENSUAL':
+            salario_periodo = salario_vigente.monto
+        else:
+            valor_dia = salario_vigente.monto / Decimal('30')
+            salario_periodo = (valor_dia * dias_laborados).quantize(Decimal('0.01'))
+
+        horas = HoraExtra.objects.select_for_update().filter(
+            id__in=(horas_extra_ids or []), trabajador=self, pago__isnull=True
+        )
+        descuentos = Descuento.objects.select_for_update().filter(
+            id__in=(descuento_ids or []), trabajador=self, pago__isnull=True
+        )
+        descuentos_lista = list(descuentos)
+
+        total_horas_extras = sum((h.valor_calculado or Decimal('0.00')) for h in horas) or Decimal('0.00')
+        total_descuentos = sum(
+            (d.monto for d in descuentos_lista if d.tipo == 'DESCUENTO'), Decimal('0.00')
+        )
+        total_anticipos = sum(
+            (d.monto for d in descuentos_lista if d.tipo == 'ANTICIPO'), Decimal('0.00')
+        )
+
+        bonificacion = Decimal('0.00')
+        aporte_iess = Decimal('0.00')
+        if periodo_mensual is not None:
+            if periodo_mensual.trabajador_id != self.id:
+                raise ValueError("El periodo mensual seleccionado no corresponde a este trabajador.")
+            bonificacion = periodo_mensual.bonificacion_quincenal
+            aporte_iess = periodo_mensual.aporte_iess_quincenal
+
+        total_pagado = salario_periodo + total_horas_extras + bonificacion - total_descuentos - total_anticipos - aporte_iess
+
+        if total_pagado < 0:
+            raise ValueError("El total a pagar no puede quedar negativo. Revisa los descuentos/anticipos ingresados.")
+
+        pago = Pago.objects.create(
+            trabajador=self, periodo_inicio=periodo_inicio, periodo_fin=periodo_fin, fecha_pago=fecha_pago,
+            dias_laborados=dias_laborados, salario_base=salario_periodo,
+            bonificacion=bonificacion, aporte_iess=aporte_iess,
+            total_horas_extras=total_horas_extras, total_descuentos=total_descuentos,
+            total_anticipos=total_anticipos, total_pagado=total_pagado,
+            periodo_mensual=periodo_mensual, observaciones=observaciones, registrado_por=usuario,
+        )
+        horas.update(pago=pago)
+        descuentos.update(pago=pago)
+        return pago
+
+
+class EntregaDirecta(models.Model):
+    """
+    Detalle de una entrega directa/urgente de bodega a un trabajador.
+    Vinculada 1 a 1 con su MovimientoInventario (tipo SALIDA) para dejar
+    la trazabilidad completa: Movimiento -> Entrega Directa -> Trabajador ->
+    Material -> Justificativo, consultable desde Auditoría.
+    """
+    movimiento = models.OneToOneField(MovimientoInventario, on_delete=models.CASCADE, related_name='entrega_directa')
+    trabajador = models.ForeignKey(Trabajador, on_delete=models.PROTECT, related_name='entregas_directas')
+    proyecto = models.ForeignKey(Proyecto, on_delete=models.SET_NULL, null=True, blank=True)
+    justificativo = models.TextField()
+
+    def __str__(self):
+        return f"Entrega directa a {self.trabajador} - {self.movimiento.material.nombre}"
+
+
+# =====================================================================
+# 7. PRÉSTAMOS DE HERRAMIENTAS/MATERIALES/MAQUINARIA A TRABAJADORES
+# =====================================================================
+class PrestamoHerramienta(models.Model):
+    ESTADOS = [
+        ('PRESTADO', 'Prestado / Pendiente de Devolución'),
+        ('DEVUELTO', 'Devuelto'),
+    ]
+
+    trabajador = models.ForeignKey(Trabajador, on_delete=models.PROTECT, related_name='prestamos')
+    material = models.ForeignKey(Material, on_delete=models.PROTECT, related_name='prestamos')
+    bodega_origen = models.ForeignKey(Bodega, on_delete=models.PROTECT, related_name='prestamos_entregados')
+    cantidad = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('1.00'))
+    fecha_entrega = models.DateTimeField(default=timezone.now)
+    entregado_por = models.ForeignKey(User, on_delete=models.PROTECT, related_name='prestamos_entregados')
+    observaciones = models.TextField(blank=True)
+    estado = models.CharField(max_length=10, choices=ESTADOS, default='PRESTADO')
+    movimiento_salida = models.OneToOneField(
+        MovimientoInventario, on_delete=models.SET_NULL, null=True, blank=True, related_name='prestamo_origen'
+    )
+
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ['-fecha_entrega']
+
+    def __str__(self):
+        return f"{self.material.nombre} -> {self.trabajador} ({self.get_estado_display()})"
+
+    @property
+    def esta_devuelto(self):
+        return self.estado == 'DEVUELTO'
+
+    @transaction.atomic
+    def registrar_devolucion(self, usuario, condicion, observaciones=''):
+        if self.estado == 'DEVUELTO':
+            raise ValueError("Este préstamo ya fue devuelto anteriormente.")
+
+        material = Material.objects.select_for_update().get(id=self.material_id)
+        stock_bodega, _ = StockBodega.objects.select_for_update().get_or_create(
+            material=material, bodega=self.bodega_origen, defaults={'cantidad': Decimal('0.00')}
+        )
+        stock_bodega.cantidad = (stock_bodega.cantidad or Decimal('0.00')) + self.cantidad
+        stock_bodega.save()
+        material.save()
+
+        movimiento = MovimientoInventario.objects.create(
+            material=material, tipo='DEVOLUCION_PRESTAMO', cantidad=self.cantidad,
+            bodega_destino=self.bodega_origen, responsable=usuario,
+            observaciones=f"Devolución de préstamo a {self.trabajador.nombre_completo}"
+        )
+
+        self.estado = 'DEVUELTO'
+        self.save(update_fields=['estado'])
+
+        return DevolucionPrestamo.objects.create(
+            prestamo=self, recibido_por=usuario, condicion=condicion,
+            observaciones=(observaciones or '').strip(), movimiento_ingreso=movimiento,
+        )
+
+
+class DevolucionPrestamo(models.Model):
+    CONDICIONES = [
+        ('BUEN_ESTADO', 'Buenas condiciones'),
+        ('CON_OBSERVACIONES', 'Con observaciones / daños'),
+    ]
+
+    prestamo = models.OneToOneField(PrestamoHerramienta, on_delete=models.CASCADE, related_name='devolucion')
+    fecha_devolucion = models.DateTimeField(default=timezone.now)
+    recibido_por = models.ForeignKey(User, on_delete=models.PROTECT, related_name='devoluciones_recibidas')
+    condicion = models.CharField(max_length=20, choices=CONDICIONES, default='BUEN_ESTADO')
+    observaciones = models.TextField(blank=True)
+    movimiento_ingreso = models.OneToOneField(
+        MovimientoInventario, on_delete=models.SET_NULL, null=True, blank=True, related_name='devolucion_prestamo'
+    )
+
+    def __str__(self):
+        return f"Devolución de {self.prestamo}"
+
+
+# =====================================================================
+# 8. NÓMINA: SALARIOS, HORARIO, HORAS EXTRA, DESCUENTOS Y PAGOS
+# =====================================================================
+class SalarioTrabajador(models.Model):
+    """
+    Historial de salarios de un trabajador. Nunca se edita/sobrescribe un
+    registro existente: para cambiar el salario se cierra la vigencia
+    anterior y se crea uno nuevo (ver Trabajador.asignar_salario).
+    """
+    trabajador = models.ForeignKey(Trabajador, on_delete=models.CASCADE, related_name='salarios')
+    monto = models.DecimalField(max_digits=10, decimal_places=2)
+    fecha_inicio_vigencia = models.DateField(default=timezone.localdate)
+    fecha_fin_vigencia = models.DateField(null=True, blank=True, help_text="Vacío = salario vigente actual")
+    creado_por = models.ForeignKey(User, on_delete=models.PROTECT, related_name='salarios_registrados')
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-fecha_inicio_vigencia']
+
+    def __str__(self):
+        return f"{self.trabajador} - ${self.monto} desde {self.fecha_inicio_vigencia}"
+
+    @property
+    def esta_vigente(self):
+        return self.fecha_fin_vigencia is None
+
+
+class HorarioTrabajador(models.Model):
+    """Horario normal de trabajo de un trabajador (para cálculo/validación de horas)."""
+    trabajador = models.OneToOneField(Trabajador, on_delete=models.CASCADE, related_name='horario')
+    hora_inicio = models.TimeField()
+    hora_fin = models.TimeField()
+    actualizado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Horario de {self.trabajador}: {self.hora_inicio} - {self.hora_fin}"
+
+
+class ConfiguracionHorasExtra(models.Model):
+    """
+    Configuración global (fila única) de los rangos horarios que definen
+    cuándo una hora trabajada cuenta como extra ordinaria o extraordinaria.
+    """
+    hora_inicio_ordinaria = models.TimeField()
+    hora_fin_ordinaria = models.TimeField()
+    hora_inicio_extraordinaria = models.TimeField()
+    hora_fin_extraordinaria = models.TimeField()
+    actualizado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return "Configuración de Horas Extra"
+
+    @classmethod
+    def obtener(cls):
+        config, _ = cls.objects.get_or_create(pk=1, defaults={
+            'hora_inicio_ordinaria': datetime.time(18, 0),
+            'hora_fin_ordinaria': datetime.time(22, 0),
+            'hora_inicio_extraordinaria': datetime.time(22, 0),
+            'hora_fin_extraordinaria': datetime.time(6, 0),
+        })
+        return config
+
+
+class PeriodoNominaMensual(models.Model):
+    """
+    Bonificación y Aporte IESS del MES completo de un trabajador. Replica el
+    Excel de nómina de la empresa: estos valores se registran una sola vez
+    al mes y el sistema aplica automáticamente la MITAD de cada uno en cada
+    Pago quincenal de ese mes (ver Trabajador.registrar_pago).
+    """
+    trabajador = models.ForeignKey(Trabajador, on_delete=models.CASCADE, related_name='periodos_mensuales')
+    anio = models.PositiveIntegerField()
+    mes = models.PositiveSmallIntegerField(help_text="1 = Enero ... 12 = Diciembre")
+    bonificacion = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    aporte_iess = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    registrado_por = models.ForeignKey(User, on_delete=models.PROTECT, related_name='periodos_nomina_registrados')
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-anio', '-mes']
+        constraints = [
+            models.UniqueConstraint(fields=['trabajador', 'anio', 'mes'], name='unico_periodo_mensual_por_trabajador')
+        ]
+
+    def __str__(self):
+        return f"{self.trabajador} - {self.mes}/{self.anio}"
+
+    def clean(self):
+        if self.mes and not (1 <= self.mes <= 12):
+            raise ValidationError("El mes debe estar entre 1 y 12.")
+        if self.bonificacion is not None and self.bonificacion < 0:
+            raise ValidationError("La bonificación no puede ser negativa.")
+        if self.aporte_iess is not None and self.aporte_iess < 0:
+            raise ValidationError("El aporte IESS no puede ser negativo.")
+
+    @property
+    def bonificacion_quincenal(self):
+        return (self.bonificacion / 2).quantize(Decimal('0.01'))
+
+    @property
+    def aporte_iess_quincenal(self):
+        return (self.aporte_iess / 2).quantize(Decimal('0.01'))
+
+
+class Pago(models.Model):
+    """
+    Pago de nómina de un periodo (quincena, semana o mes según la
+    periodicidad del trabajador). Guarda todos los componentes COMO
+    SNAPSHOT (no referencias vivas) para que cambios posteriores de salario,
+    bonificación o IESS nunca alteren el histórico de pagos ya generados.
+
+    Total = salario_base + total_horas_extras + bonificacion
+            - total_descuentos - total_anticipos - aporte_iess
+    """
+    trabajador = models.ForeignKey(Trabajador, on_delete=models.PROTECT, related_name='pagos')
+    periodo_inicio = models.DateField()
+    periodo_fin = models.DateField()
+    fecha_pago = models.DateField(default=timezone.localdate)
+    dias_laborados = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('15.00'))
+    salario_base = models.DecimalField(max_digits=10, decimal_places=2)
+    bonificacion = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    aporte_iess = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_horas_extras = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_descuentos = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_anticipos = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_pagado = models.DecimalField(max_digits=10, decimal_places=2)
+    periodo_mensual = models.ForeignKey(
+        PeriodoNominaMensual, on_delete=models.SET_NULL, null=True, blank=True, related_name='pagos'
+    )
+    observaciones = models.TextField(blank=True)
+    registrado_por = models.ForeignKey(User, on_delete=models.PROTECT, related_name='pagos_registrados')
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ['-periodo_fin']
+        constraints = [
+            models.UniqueConstraint(fields=['trabajador', 'periodo_inicio', 'periodo_fin'], name='unico_pago_por_periodo')
+        ]
+
+    def __str__(self):
+        return f"Pago {self.trabajador} [{self.periodo_inicio} - {self.periodo_fin}]"
+
+
+class HoraExtra(models.Model):
+    TIPOS = [
+        ('ORDINARIA', 'Ordinaria'),
+        ('EXTRAORDINARIA', 'Extraordinaria'),
+    ]
+
+    trabajador = models.ForeignKey(Trabajador, on_delete=models.CASCADE, related_name='horas_extras')
+    fecha = models.DateField()
+    tipo = models.CharField(max_length=15, choices=TIPOS)
+    cantidad_horas = models.DecimalField(max_digits=5, decimal_places=2)
+    valor_calculado = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Pendiente hasta integrar la fórmula oficial de cálculo de horas extra."
+    )
+    observaciones = models.TextField(blank=True)
+    registrado_por = models.ForeignKey(User, on_delete=models.PROTECT, related_name='horas_extras_registradas')
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+    pago = models.ForeignKey(Pago, on_delete=models.SET_NULL, null=True, blank=True, related_name='horas_extras_incluidas')
+
+    class Meta:
+        ordering = ['-fecha']
+        verbose_name_plural = "Horas Extra"
+
+    def __str__(self):
+        return f"{self.cantidad_horas}h {self.tipo} - {self.trabajador} ({self.fecha})"
+
+    def clean(self):
+        if self.cantidad_horas is not None and self.cantidad_horas <= 0:
+            raise ValidationError("Las horas extra deben ser mayores a cero.")
+        if self.cantidad_horas is not None and self.cantidad_horas > 24:
+            raise ValidationError("No es posible registrar más de 24 horas extra en un mismo día.")
+
+
+class Descuento(models.Model):
+    """
+    Descuento o Anticipo aplicado al pago de un trabajador. El Excel de
+    nómina de la empresa lleva ambos como categorías separadas (mismo
+    registro de motivo/monto/fecha), por eso se distinguen aquí con `tipo`
+    en vez de duplicar el modelo.
+    """
+    TIPOS = [
+        ('DESCUENTO', 'Descuento (multa, atraso, etc.)'),
+        ('ANTICIPO', 'Anticipo (adelanto de dinero)'),
+    ]
+
+    trabajador = models.ForeignKey(Trabajador, on_delete=models.CASCADE, related_name='descuentos')
+    tipo = models.CharField(max_length=10, choices=TIPOS, default='DESCUENTO')
+    motivo = models.CharField(max_length=200)
+    monto = models.DecimalField(max_digits=10, decimal_places=2)
+    fecha = models.DateField(default=timezone.localdate)
+    observaciones = models.TextField(blank=True)
+    registrado_por = models.ForeignKey(User, on_delete=models.PROTECT, related_name='descuentos_registrados')
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+    pago = models.ForeignKey(Pago, on_delete=models.SET_NULL, null=True, blank=True, related_name='descuentos_incluidos')
+
+    class Meta:
+        ordering = ['-fecha']
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} {self.monto} a {self.trabajador} ({self.motivo})"
+
+    def clean(self):
+        if self.monto is not None and self.monto <= 0:
+            raise ValidationError("El monto debe ser mayor a cero.")

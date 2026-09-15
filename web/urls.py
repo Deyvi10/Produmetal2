@@ -40,6 +40,7 @@ urlpatterns = [
     path('erp/ticket/<int:req_id>/procesar/<str:accion>/', views.procesar_ticket, name='procesar_ticket'),
     path('erp/requerimiento/revisar/<int:req_id>/', views.revisar_requerimiento_items, name='revisar_requerimiento_items'),
     path('erp/ticket/<int:req_id>/despachar/', views.despachar_requerimiento, name='despachar_requerimiento'),
+    path('erp/ticket/<int:req_id>/cerrar-incompleto/', views.cerrar_requerimiento_incompleto, name='cerrar_requerimiento_incompleto'),
     # Rutas para que el Solicitante modifique su propio ticket antes de enviarlo
     path('erp/ticket/actualizar-item/<int:item_id>/', views.actualizar_item_ticket, name='actualizar_item_ticket'),
     path('erp/ticket/eliminar-item/<int:item_id>/', views.eliminar_item_ticket, name='eliminar_item_ticket'),
@@ -92,6 +93,29 @@ urlpatterns = [
     path('erp/inventario/trasladar/<int:material_id>/', views.trasladar_material, name='trasladar_material'),
     path('erp/inventario/categoria/nueva/', views.crear_categoria, name='crear_categoria'), 
     path('erp/inventario/entrega-directa/', views.entrega_directa_bodeguero, name='entrega_directa_bodeguero'),
+
+    # ==========================================
+    # ERP: PRÉSTAMOS DE HERRAMIENTAS/MATERIALES/MAQUINARIA
+    # ==========================================
+    path('erp/prestamos/', views.listar_prestamos, name='listar_prestamos'),
+    path('erp/prestamos/nuevo/', views.crear_prestamo, name='crear_prestamo'),
+    path('erp/prestamos/<int:prestamo_id>/devolver/', views.registrar_devolucion_prestamo, name='registrar_devolucion_prestamo'),
+
+    # ==========================================
+    # ERP: ADMINISTRADOR - TRABAJADORES (RRHH) Y NÓMINA
+    # ==========================================
+    path('erp/trabajadores/', views.listar_trabajadores, name='listar_trabajadores'),
+    path('erp/trabajadores/nuevo/', views.crear_trabajador, name='crear_trabajador'),
+    path('erp/trabajadores/<int:trabajador_id>/editar/', views.editar_trabajador, name='editar_trabajador'),
+    path('erp/trabajadores/<int:trabajador_id>/desactivar/', views.desactivar_trabajador, name='desactivar_trabajador'),
+    path('erp/trabajadores/<int:trabajador_id>/reactivar/', views.reactivar_trabajador, name='reactivar_trabajador'),
+    path('erp/trabajadores/<int:trabajador_id>/ficha/', views.ficha_trabajador, name='ficha_trabajador'),
+    path('erp/trabajadores/<int:trabajador_id>/salario/', views.asignar_salario_trabajador, name='asignar_salario_trabajador'),
+    path('erp/trabajadores/<int:trabajador_id>/horario/', views.registrar_horario_trabajador, name='registrar_horario_trabajador'),
+    path('erp/trabajadores/<int:trabajador_id>/hora-extra/', views.registrar_hora_extra, name='registrar_hora_extra'),
+    path('erp/trabajadores/<int:trabajador_id>/descuento/', views.registrar_descuento, name='registrar_descuento'),
+    path('erp/trabajadores/<int:trabajador_id>/pago/', views.registrar_pago, name='registrar_pago'),
+    path('erp/trabajadores/<int:trabajador_id>/periodo-mensual/', views.registrar_periodo_mensual, name='registrar_periodo_mensual'),
     # AGREGAR la nueva ruta de compras
     path('erp/cotizacion/confirmar-compra/<int:solicitud_id>/', views.confirmar_compra_definitiva, name='confirmar_compra_definitiva'),
     # ==========================================

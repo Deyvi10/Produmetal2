@@ -102,6 +102,8 @@
                         <a href="?tipo=INGRESO&mes={{ mes_filtro|default:'' }}&proyecto={{ proyecto_id|default:'' }}" class="filtro-chip text-success {% if tipo_filtro == 'INGRESO' %}active{% endif %}"><i class="bi bi-box-arrow-in-down me-1"></i> Ingresos</a>
                         <a href="?tipo=SALIDA&mes={{ mes_filtro|default:'' }}&proyecto={{ proyecto_id|default:'' }}" class="filtro-chip text-warning {% if tipo_filtro == 'SALIDA' %}active{% endif %}"><i class="bi bi-box-arrow-up me-1"></i> Salidas</a>
                         <a href="?tipo=AJUSTE&mes={{ mes_filtro|default:'' }}&proyecto={{ proyecto_id|default:'' }}" class="filtro-chip text-danger {% if tipo_filtro == 'AJUSTE' %}active{% endif %}"><i class="bi bi-sliders me-1"></i> Ajustes</a>
+                        <a href="?tipo=PRESTAMO&mes={{ mes_filtro|default:'' }}&proyecto={{ proyecto_id|default:'' }}" class="filtro-chip text-warning {% if tipo_filtro == 'PRESTAMO' %}active{% endif %}"><i class="bi bi-tools me-1"></i> Préstamos</a>
+                        <a href="?tipo=DEVOLUCION_PRESTAMO&mes={{ mes_filtro|default:'' }}&proyecto={{ proyecto_id|default:'' }}" class="filtro-chip text-success {% if tipo_filtro == 'DEVOLUCION_PRESTAMO' %}active{% endif %}"><i class="bi bi-box-arrow-in-left me-1"></i> Devoluciones</a>
                     </div>
                 </div>
 
@@ -176,13 +178,17 @@
                                 <span class="badge-soft badge-soft-success"><i class="bi bi-box-arrow-in-down me-1"></i> Ingreso</span>
                             {% elif mov.tipo == 'SALIDA' %}
                                 <span class="badge-soft badge-soft-warning"><i class="bi bi-box-arrow-up me-1"></i> Salida</span>
+                            {% elif mov.tipo == 'PRESTAMO' %}
+                                <span class="badge-soft badge-soft-warning"><i class="bi bi-tools me-1"></i> Préstamo</span>
+                            {% elif mov.tipo == 'DEVOLUCION_PRESTAMO' %}
+                                <span class="badge-soft badge-soft-success"><i class="bi bi-box-arrow-in-left me-1"></i> Devolución</span>
                             {% else %}
                                 <span class="badge-soft badge-soft-danger"><i class="bi bi-sliders me-1"></i> Ajuste</span>
                             {% endif %}
                         </td>
 
-                        <td class="text-end align-middle fw-bold fs-5 {% if mov.tipo == 'INGRESO' %}text-success{% elif mov.tipo == 'SALIDA' %}text-warning{% else %}text-danger{% endif %}" style="font-family: var(--font-display);">
-                            {% if mov.tipo == 'INGRESO' or mov.tipo == 'AJUSTE' and mov.cantidad > 0 %}+{% elif mov.tipo == 'SALIDA' or mov.tipo == 'AJUSTE' and mov.cantidad < 0 %}{% endif %}{{ mov.cantidad }}
+                        <td class="text-end align-middle fw-bold fs-5 {% if mov.tipo == 'INGRESO' or mov.tipo == 'DEVOLUCION_PRESTAMO' %}text-success{% elif mov.tipo == 'SALIDA' or mov.tipo == 'PRESTAMO' %}text-warning{% else %}text-danger{% endif %}" style="font-family: var(--font-display);">
+                            {% if mov.tipo == 'INGRESO' or mov.tipo == 'DEVOLUCION_PRESTAMO' or mov.tipo == 'AJUSTE' and mov.cantidad > 0 %}+{% elif mov.tipo == 'SALIDA' or mov.tipo == 'PRESTAMO' or mov.tipo == 'AJUSTE' and mov.cantidad < 0 %}{% endif %}{{ mov.cantidad }}
                         </td>
 
                         <td>
@@ -195,6 +201,21 @@
                                 <div class="small text-muted text-uppercase fw-bold mb-1">Compra a Proveedor:</div>
                                 <div class="text-white text-truncate" style="max-width: 220px;"><i class="bi bi-truck me-1 text-success"></i> {{ mov.orden_compra_asociada.proveedor }}</div>
                                 <div class="small text-muted mt-1">OC: {{ mov.orden_compra_asociada.folio }}</div>
+
+                            {% elif mov.tipo == 'SALIDA' and mov.entrega_directa %}
+                                <div class="small text-muted text-uppercase fw-bold mb-1">Entrega Directa a:</div>
+                                <div class="text-white text-truncate" style="max-width: 220px;"><i class="bi bi-person-badge me-1 text-danger"></i> {{ mov.entrega_directa.trabajador.nombre_completo }}</div>
+                                <button type="button" class="btn btn-sm btn-outline-light border-secondary mt-1 py-0 px-2" data-bs-toggle="modal" data-bs-target="#justificativo-entrega-{{ mov.id }}">
+                                    <i class="bi bi-file-text"></i> Ver justificativo
+                                </button>
+
+                            {% elif mov.tipo == 'PRESTAMO' and mov.prestamo_origen %}
+                                <div class="small text-muted text-uppercase fw-bold mb-1">Préstamo a:</div>
+                                <div class="text-white text-truncate" style="max-width: 220px;"><i class="bi bi-person-badge me-1 text-warning"></i> {{ mov.prestamo_origen.trabajador.nombre_completo }}</div>
+
+                            {% elif mov.tipo == 'DEVOLUCION_PRESTAMO' and mov.devolucion_prestamo %}
+                                <div class="small text-muted text-uppercase fw-bold mb-1">Devolución de:</div>
+                                <div class="text-white text-truncate" style="max-width: 220px;"><i class="bi bi-person-badge me-1 text-success"></i> {{ mov.devolucion_prestamo.prestamo.trabajador.nombre_completo }}</div>
 
                             {% else %}
                                 <span class="text-muted small">N/A (Movimiento de Ajuste)</span>
@@ -231,6 +252,28 @@
                         </td>
 
                     </tr>
+                    {% if mov.entrega_directa %}
+                    <div class="modal fade" id="justificativo-entrega-{{ mov.id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content" style="background: var(--pm-surface); color: var(--pm-text); border: 1px solid var(--pm-border);">
+                                <div class="modal-header border-secondary">
+                                    <h6 class="modal-title fw-bold"><i class="bi bi-lightning-charge text-danger me-2"></i>Justificativo — Entrega Directa</h6>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p class="small text-muted mb-2">
+                                        Entregado por <strong class="text-white">{{ mov.responsable.username }}</strong> a
+                                        <strong class="text-white">{{ mov.entrega_directa.trabajador.nombre_completo }}</strong>
+                                        el {{ mov.fecha_hora|date:"d/m/Y" }} a las {{ mov.fecha_hora|time:"H:i" }}.
+                                    </p>
+                                    <p class="small text-muted mb-1">Material: {{ mov.material.nombre }} · Cantidad: {{ mov.cantidad }}</p>
+                                    <hr class="border-secondary">
+                                    <p class="mb-0" style="white-space: pre-wrap;">{{ mov.entrega_directa.justificativo }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                     {% empty %}
                     <tr>
                         <td colspan="7" class="text-center py-5">
@@ -251,5 +294,89 @@
         {% endif %}
 
     </div>
+
+    {% if cierres_incompletos is not None %}
+    <div class="card card-minimal overflow-hidden fade-up delay-1 mt-4">
+        <div class="card-header bg-transparent border-bottom p-3 p-md-4">
+            <h5 class="mb-0" style="font-family: var(--font-display); font-weight: 800; text-transform: uppercase;">
+                <i class="bi bi-x-octagon text-danger me-2"></i>Justificativos de Cierres Incompletos
+            </h5>
+            <p class="mb-0 text-muted small">Requerimientos cerrados por bodega sin entregar la totalidad de lo solicitado.</p>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-modern mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-4">Fecha</th>
+                        <th>Requerimiento</th>
+                        <th class="text-end">Solicitado</th>
+                        <th class="text-end">Entregado</th>
+                        <th class="text-end">Pendiente</th>
+                        <th>Cerrado por</th>
+                        <th class="text-end pe-4">Justificativo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cierre in cierres_incompletos %}
+                    <tr>
+                        <td class="ps-4 text-nowrap">
+                            <div class="fw-bold text-white mb-1">{{ cierre.fecha_hora|date:"d M, Y" }}</div>
+                            <div class="text-muted small"><i class="bi bi-clock me-1"></i>{{ cierre.fecha_hora|time:"H:i" }}</div>
+                        </td>
+                        <td>
+                            <div class="fw-bold" style="color: var(--pm-amber);">{{ cierre.requerimiento.folio }}</div>
+                            <div class="small text-muted">{{ cierre.requerimiento.proyecto.nombre }}</div>
+                        </td>
+                        <td class="text-end">{{ cierre.cantidad_solicitada_snapshot }}</td>
+                        <td class="text-end text-success">{{ cierre.cantidad_despachada_snapshot }}</td>
+                        <td class="text-end text-danger fw-bold">{{ cierre.cantidad_pendiente_snapshot }}</td>
+                        <td class="text-white">{{ cierre.usuario.get_full_name|default:cierre.usuario.username }}</td>
+                        <td class="text-end pe-4">
+                            <button type="button" class="btn btn-sm btn-outline-light border-secondary" data-bs-toggle="modal" data-bs-target="#justificativo-cierre-{{ cierre.id }}">
+                                <i class="bi bi-file-text me-1"></i> Ver
+                            </button>
+                        </td>
+                    </tr>
+
+                    <div class="modal fade" id="justificativo-cierre-{{ cierre.id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content" style="background: var(--pm-surface); color: var(--pm-text); border: 1px solid var(--pm-border);">
+                                <div class="modal-header border-secondary">
+                                    <h6 class="modal-title fw-bold"><i class="bi bi-x-octagon text-danger me-2"></i>Justificativo — {{ cierre.requerimiento.folio }}</h6>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p class="small text-muted mb-2">
+                                        Cerrado por <strong class="text-white">{{ cierre.usuario.get_full_name|default:cierre.usuario.username }}</strong>
+                                        el {{ cierre.fecha_hora|date:"d/m/Y" }} a las {{ cierre.fecha_hora|time:"H:i" }}.
+                                    </p>
+                                    <p class="small text-muted mb-1">Solicitado: {{ cierre.cantidad_solicitada_snapshot }} · Entregado: {{ cierre.cantidad_despachada_snapshot }} · Pendiente: {{ cierre.cantidad_pendiente_snapshot }}</p>
+                                    <hr class="border-secondary">
+                                    <p class="mb-0" style="white-space: pre-wrap;">{{ cierre.justificativo }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted small">No hay cierres incompletos registrados.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if cierres_incompletos.has_other_pages %}
+        <div class="card-footer bg-transparent border-top py-3 d-flex justify-content-center gap-2" style="border-color: var(--pm-border) !important;">
+            {% if cierres_incompletos.has_previous %}
+                <a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'cierre_page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}cierre_page={{ cierres_incompletos.previous_page_number }}">Anterior</a>
+            {% endif %}
+            <span class="page-link disabled">Página {{ cierres_incompletos.number }} de {{ cierres_incompletos.paginator.num_pages }}</span>
+            {% if cierres_incompletos.has_next %}
+                <a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'cierre_page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}cierre_page={{ cierres_incompletos.next_page_number }}">Siguiente</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

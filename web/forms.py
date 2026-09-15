@@ -1,8 +1,9 @@
 from django import forms
 from django.contrib.auth.models import User, Group
 from django.core.exceptions import ValidationError
-from .models import (Requerimiento, DetalleRequerimiento, OrdenCompra, DetalleOrdenCompra, 
-                     Material, Proyecto, Bodega, Categoria)
+from .models import (Requerimiento, DetalleRequerimiento, OrdenCompra, DetalleOrdenCompra,
+                     Material, Proyecto, Bodega, Categoria, Trabajador, HorarioTrabajador,
+                     ConfiguracionHorasExtra)
 
 # =======================================================
 # HELPERS Y VALIDACIONES GLOBALES
@@ -290,5 +291,74 @@ class BodegaForm(forms.ModelForm):
             'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Bodega Norte'}),
             'ubicacion': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Av. Principal y Secundaria'}),
             'is_principal': forms.CheckboxInput(attrs={'class': 'form-check-input'})
+        }
+
+
+class TrabajadorForm(forms.ModelForm):
+    class Meta:
+        model = Trabajador
+        fields = ['nombres', 'apellidos', 'documento_identidad', 'cargo', 'telefono', 'periodicidad_pago', 'fecha_ingreso']
+        widgets = {
+            'nombres': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombres'}),
+            'apellidos': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Apellidos'}),
+            'documento_identidad': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Cédula / documento de identidad'}),
+            'cargo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Soldador, Ayudante de obra'}),
+            'telefono': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Teléfono de contacto'}),
+            'periodicidad_pago': forms.Select(attrs={'class': 'form-select'}),
+            'fecha_ingreso': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        }
+
+    def clean_nombres(self):
+        nombres = (self.cleaned_data.get('nombres') or '').strip()
+        if len(nombres) < 2:
+            raise ValidationError("El nombre debe tener al menos 2 caracteres.")
+        return nombres
+
+    def clean_apellidos(self):
+        apellidos = (self.cleaned_data.get('apellidos') or '').strip()
+        if len(apellidos) < 2:
+            raise ValidationError("El apellido debe tener al menos 2 caracteres.")
+        return apellidos
+
+    def clean_documento_identidad(self):
+        documento = (self.cleaned_data.get('documento_identidad') or '').strip()
+        if not documento.isalnum():
+            raise ValidationError("El documento de identidad solo puede contener letras y números.")
+        if len(documento) < 5 or len(documento) > 20:
+            raise ValidationError("El documento de identidad debe tener entre 5 y 20 caracteres.")
+        qs = Trabajador.objects.filter(documento_identidad__iexact=documento)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise ValidationError("Ya existe un trabajador registrado con este documento de identidad.")
+        return documento
+
+
+class HorarioTrabajadorForm(forms.ModelForm):
+    class Meta:
+        model = HorarioTrabajador
+        fields = ['hora_inicio', 'hora_fin']
+        widgets = {
+            'hora_inicio': forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
+            'hora_fin': forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
+        }
+
+    def clean(self):
+        cleaned = super().clean()
+        inicio, fin = cleaned.get('hora_inicio'), cleaned.get('hora_fin')
+        if inicio and fin and inicio == fin:
+            raise ValidationError("La hora de inicio y de fin del horario no pueden ser iguales.")
+        return cleaned
+
+
+class ConfiguracionHorasExtraForm(forms.ModelForm):
+    class Meta:
+        model = ConfiguracionHorasExtra
+        fields = ['hora_inicio_ordinaria', 'hora_fin_ordinaria', 'hora_inicio_extraordinaria', 'hora_fin_extraordinaria']
+        widgets = {
+            'hora_inicio_ordinaria': forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
+            'hora_fin_ordinaria': forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
+            'hora_inicio_extraordinaria': forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
+            'hora_fin_extraordinaria': forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
         }
 

@@ -1,0 +1,115 @@
+{% extends 'web/base.html' %}
+
+{% block content %}
+<style>
+    body { background-color: #f4f6f9; }
+    .erp-container { max-width: 800px; padding-bottom: 60px; margin-top: 30px; }
+
+    .card-master { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); overflow: hidden; margin-bottom: 20px; }
+
+    .ticket-header { background: linear-gradient(135deg, #b91c1c 0%, #ef4444 100%); color: white; padding: 25px; border-radius: 12px; box-shadow: 0 8px 20px rgba(185, 28, 28, 0.2); }
+
+    .table-erp { width: 100%; margin-bottom: 0; color: var(--pm-text); }
+    .table-erp th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; padding: 12px 16px; border-bottom: 2px solid var(--pm-border); background: #f8f9fa; color: #586069; }
+    .table-erp td { padding: 12px 16px; border-bottom: 1px solid var(--pm-border); vertical-align: middle; }
+
+    .resumen-box { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .resumen-item { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 10px; padding: 14px; text-align: center; }
+    .resumen-item .valor { font-size: 1.4rem; font-weight: 800; }
+    .resumen-item .etiqueta { font-size: 0.75rem; text-transform: uppercase; color: #6b7280; letter-spacing: 0.5px; }
+
+    .btn-danger-custom { background: #b91c1c; color: white; font-weight: bold; border-radius: 8px; padding: 14px 24px; border: none; transition: all 0.2s ease; }
+    .btn-danger-custom:hover { background: #991b1b; color: white; }
+</style>
+
+<div class="container erp-container">
+
+    <div class="ticket-header mb-4">
+        <h5 class="mb-1 text-uppercase fw-bold" style="letter-spacing: 0.5px; opacity: 0.9;">
+            <i class="bi bi-x-octagon-fill me-1"></i> Cierre Incompleto de Requerimiento
+        </h5>
+        <h2 class="fw-bold mb-1">{{ ticket.proyecto.nombre }}</h2>
+        <p class="mb-0 fw-bold">Folio: #{{ ticket.folio }} · Solicitante: {{ ticket.solicitante.get_full_name|default:ticket.solicitante.username }}</p>
+    </div>
+
+    <div class="alert alert-danger border-0 shadow-sm rounded-3 d-flex align-items-start p-3 mb-4">
+        <i class="bi bi-exclamation-triangle-fill fs-3 me-3 mt-1"></i>
+        <div>
+            <h6 class="fw-bold mb-1">Esta acción es definitiva</h6>
+            <p class="small mb-0">
+                Este requerimiento todavía tiene materiales sin entregar. Si lo cierras ahora,
+                <strong>ya no podrás despachar el resto</strong> desde este ticket. El sistema guardará
+                esta decisión, quién la tomó y el motivo, de forma permanente en la auditoría.
+            </p>
+        </div>
+    </div>
+
+    <div class="card-master bg-white p-3 mb-4">
+        <div class="resumen-box">
+            <div class="resumen-item">
+                <div class="valor text-dark">{{ ticket.cantidad_total_solicitada }}</div>
+                <div class="etiqueta">Solicitado</div>
+            </div>
+            <div class="resumen-item">
+                <div class="valor text-success">{{ ticket.cantidad_total_despachada }}</div>
+                <div class="etiqueta">Entregado</div>
+            </div>
+            <div class="resumen-item">
+                <div class="valor text-danger">{{ ticket.cantidad_total_pendiente }}</div>
+                <div class="etiqueta">Pendiente</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-master bg-white">
+        <div class="table-responsive m-0 border-0">
+            <table class="table-erp">
+                <thead>
+                    <tr>
+                        <th class="ps-3">Material</th>
+                        <th class="text-center">Solicitado</th>
+                        <th class="text-center">Entregado</th>
+                        <th class="text-center pe-3">Pendiente</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in detalles_pendientes %}
+                    <tr>
+                        <td class="ps-3 fw-bold">{{ item.material.nombre }}</td>
+                        <td class="text-center">{{ item.cantidad_solicitada }}</td>
+                        <td class="text-center text-success">{{ item.cantidad_despachada }}</td>
+                        <td class="text-center pe-3 fw-bold text-danger">{{ item.cantidad_pendiente }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <form method="POST" class="mt-4" onsubmit="return confirm('¿Confirmas el cierre definitivo de este requerimiento? Los materiales pendientes NO se entregarán.');">
+        {% csrf_token %}
+
+        <div class="card-master bg-white p-4">
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" name="confirmo_cierre" id="confirmo_cierre" required>
+                <label class="form-check-label fw-bold" for="confirmo_cierre">
+                    Entiendo que quedarán <span class="text-danger">{{ ticket.cantidad_total_pendiente }} unidades</span> sin entregar
+                    y que esta acción es definitiva.
+                </label>
+            </div>
+
+            <label for="justificativo" class="form-label fw-bold">Justificativo del cierre (obligatorio)</label>
+            <textarea name="justificativo" id="justificativo" class="form-control" rows="4" minlength="10" required
+                      placeholder="Explica por qué se cierra el requerimiento sin completar la entrega..."></textarea>
+            <div class="form-text">Mínimo 10 caracteres. Este texto quedará visible para el administrador en Auditoría.</div>
+        </div>
+
+        <div class="d-flex flex-column flex-md-row justify-content-end gap-2 mt-4">
+            <a href="{% url 'despachar_requerimiento' ticket.id %}" class="btn btn-secondary fw-bold px-4">Cancelar</a>
+            <button type="submit" class="btn-danger-custom px-4">
+                <i class="bi bi-x-octagon me-2"></i> Confirmar Cierre Incompleto
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

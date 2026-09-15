@@ -184,7 +184,15 @@
         </a>
         <a href="{% url 'gestionar_empleados' %}" class="action-card card-purple">
             <div class="action-icon" style="color: var(--pm-purple);"><i class="bi bi-people"></i></div>
-            <h6>Personal</h6>
+            <h6>Personal (Usuarios)</h6>
+        </a>
+        <a href="{% url 'listar_trabajadores' %}" class="action-card card-purple">
+            <div class="action-icon" style="color: var(--pm-purple);"><i class="bi bi-person-vcard"></i></div>
+            <h6>Trabajadores</h6>
+        </a>
+        <a href="{% url 'listar_prestamos' %}" class="action-card card-blue">
+            <div class="action-icon text-info"><i class="bi bi-tools"></i></div>
+            <h6>Préstamos</h6>
         </a>
         <a href="{% url 'historial_solicitudes' %}" class="action-card card-blue">
             <div class="action-icon text-info"><i class="bi bi-clock-history"></i></div>
@@ -329,6 +337,10 @@
             <div class="action-icon text-danger"><i class="bi bi-lightning-charge"></i></div>
             <h6>Entrega Directa</h6>
         </a>
+        <a href="{% url 'listar_prestamos' %}" class="action-card card-blue">
+            <div class="action-icon text-info"><i class="bi bi-tools"></i></div>
+            <h6>Préstamos</h6>
+        </a>
     </div>
 
     {% if alertas_stock %}
@@ -344,9 +356,18 @@
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h6><i class="bi bi-hammer text-info me-1"></i> Entregas de Bodega</h6>
             </div>
-            <div class="filter-track">
-                <a href="?estado=" class="filter-pill active-blue">Listos para Despachar</a>
-                </div>
+            <div class="filter-track mb-2">
+                <a href="?estado=" class="filter-pill {% if not request.GET.estado %}active-blue{% endif %}">Por Entregar</a>
+                <a href="?estado=PARCIAL" class="filter-pill {% if request.GET.estado == 'PARCIAL' %}active-blue{% endif %}">Parciales</a>
+                <a href="?estado=COMPLETADO" class="filter-pill {% if request.GET.estado == 'COMPLETADO' %}active-blue{% endif %}">Completados</a>
+                <a href="?estado=CERRADO_INCOMPLETO" class="filter-pill {% if request.GET.estado == 'CERRADO_INCOMPLETO' %}active-blue{% endif %}">Cerrados Incompletos</a>
+                <a href="?estado=TODOS" class="filter-pill {% if request.GET.estado == 'TODOS' %}active-blue{% endif %}">Todos</a>
+            </div>
+            <form method="GET" class="d-flex gap-2">
+                <input type="hidden" name="estado" value="{{ request.GET.estado }}">
+                <input type="text" name="q" value="{{ bodega_q|default:'' }}" class="form-control form-control-sm" placeholder="Buscar por folio, solicitante o material...">
+                <button type="submit" class="btn btn-sm btn-outline-light border-secondary"><i class="bi bi-search"></i></button>
+            </form>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive m-0 border-0 rounded-0">
@@ -363,20 +384,34 @@
                         <tr>
                             <td class="ps-3">
                                 <div class="text-warning fw-bold mb-1">{{ req.folio }}</div>
-                                <span class="badge-soft badge-soft-success">Aprobado</span>
+                                {% if req.estado == 'PARCIALMENTE_DESPACHADO' %}
+                                    <span class="badge-soft badge-soft-purple">Parcial</span>
+                                {% elif req.estado == 'DESPACHADO' %}
+                                    <span class="badge-soft badge-soft-secondary">Completado</span>
+                                {% elif req.estado == 'CERRADO_INCOMPLETO' %}
+                                    <span class="badge-soft badge-soft-danger">Cerrado Incompleto</span>
+                                {% elif req.estado == 'EN_COMPRAS' %}
+                                    <span class="badge-soft badge-soft-info">En Compras</span>
+                                {% else %}
+                                    <span class="badge-soft badge-soft-success">Aprobado</span>
+                                {% endif %}
                             </td>
                             <td><div class="text-truncate text-white" style="max-width: 150px; font-size: 0.85rem;">{{ req.proyecto.nombre }}</div></td>
                             <td class="text-end pe-3">
-                                <a href="{% url 'despachar_requerimiento' req.id %}" class="btn btn-sm btn-success px-3 py-1 fw-bold"><i class="bi bi-box-seam"></i> Surtir Material</a>
+                                {% if req.estado == 'DESPACHADO' or req.estado == 'CERRADO_INCOMPLETO' %}
+                                    <span class="text-muted small">Sin acciones</span>
+                                {% else %}
+                                    <a href="{% url 'despachar_requerimiento' req.id %}" class="btn btn-sm btn-success px-3 py-1 fw-bold"><i class="bi bi-box-seam"></i> Surtir Material</a>
+                                {% endif %}
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="3" class="text-center py-5 text-muted small"><i class="bi bi-cup-hot fs-3 d-block mb-2"></i> Mostrador vacío. No hay tickets autorizados.</td></tr>
+                        <tr><td colspan="3" class="text-center py-5 text-muted small"><i class="bi bi-cup-hot fs-3 d-block mb-2"></i> Mostrador vacío. No hay tickets que coincidan con este filtro.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
-            
+
             {% pm_pagination tickets_por_despachar %}
         </div>
     </div>
@@ -501,6 +536,8 @@
                                     <span class="badge-soft badge-soft-danger"><i class="bi bi-x-circle"></i> Rechazado</span>
                                 {% elif req.estado == 'EN_COMPRAS' %}
                                     <span class="badge-soft badge-soft-info"><i class="bi bi-cart"></i> En Compras</span>
+                                {% elif req.estado == 'CERRADO_INCOMPLETO' %}
+                                    <span class="badge-soft badge-soft-danger"><i class="bi bi-x-octagon"></i> Cerrado Incompleto</span>
                                 {% else %}
                                     <span class="badge-soft badge-soft-secondary"><i class="bi bi-check-all"></i> Entregado Completo</span>
                                 {% endif %}

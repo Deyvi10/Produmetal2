@@ -100,7 +100,7 @@
                         <tr>
                             <th class="ps-4">Material / Suministro</th>
                             <th>Ubicación (Extraer de)</th>
-                            <th class="text-center pe-4">Cantidad a Despachar</th>
+                            <th class="text-center pe-4">Cantidad a Entregar Ahora</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -110,8 +110,11 @@
                                 <span class="mobile-label">Ítem Requerido</span>
                                 <div class="fw-bold text-dark fs-6">{{ item.material.nombre }}</div>
                                 <div class="text-muted small mt-1"><i class="bi bi-upc-scan me-1"></i> SKU: {{ item.material.sku }}</div>
+                                {% if item.cantidad_despachada > 0 %}
+                                <div class="small mt-1" style="color:#1a7f37;"><i class="bi bi-check2-circle me-1"></i>Ya entregado: {{ item.cantidad_despachada }} de {{ item.cantidad_solicitada }}</div>
+                                {% endif %}
                             </td>
-                            
+
                             <td>
                                 <span class="mobile-label mt-2">Extraer material desde</span>
                                 <div class="bodega-badge shadow-sm">
@@ -120,10 +123,13 @@
                             </td>
 
                             <td class="text-md-center pe-md-4">
-                                <span class="mobile-label mt-2 mb-2">Despachar al técnico</span>
-                                <div class="qty-badge shadow-sm w-100 w-md-auto text-center">
-                                    {{ item.cantidad_solicitada|floatformat:"0" }} <span style="font-size: 0.75rem; text-transform: uppercase; font-weight: normal; margin-left: 3px;">UNID.</span>
-                                </div>
+                                <span class="mobile-label mt-2 mb-2">Cantidad a entregar (pendiente: {{ item.cantidad_pendiente }})</span>
+                                <input type="number" name="cantidad_{{ item.id }}" class="form-control fw-bold text-center"
+                                       style="max-width: 160px; margin: 0 auto;"
+                                       step="0.01" min="0" max="{{ item.cantidad_pendiente }}"
+                                       value="{{ item.cantidad_pendiente }}"
+                                       placeholder="0.00">
+                                <div class="small text-muted mt-1">Pendiente: {{ item.cantidad_pendiente }} unid.</div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -207,7 +213,16 @@
                 <a href="{% url 'dashboard_erp' %}" class="btn btn-secondary w-100 shadow-lg py-3 fw-bold">Volver al Dashboard</a>
             </div>
         {% endif %}
-        
+
     </form>
+
+    {% if ticket.puede_cerrarse_incompleto %}
+    <div class="text-center mt-4 pb-5 pb-md-0">
+        <a href="{% url 'cerrar_requerimiento_incompleto' ticket.id %}" class="btn btn-outline-danger fw-bold px-4">
+            <i class="bi bi-x-octagon me-2"></i> Cerrar este requerimiento como incompleto
+        </a>
+        <p class="small text-muted mt-2">Úsalo solo si ya no vas a entregar el resto de materiales pendientes.</p>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
