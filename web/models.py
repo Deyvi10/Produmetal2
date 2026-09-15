@@ -686,12 +686,27 @@ class Trabajador(models.Model):
         ('QUINCENAL', 'Quincenal'),
         ('SEMANAL', 'Semanal'),
     ]
+    BANCOS = [
+        ('PICHINCHA', 'Banco Pichincha'),
+        ('GUAYAQUIL', 'Banco Guayaquil'),
+        ('PACIFICO', 'Banco del Pacífico'),
+        ('PRODUBANCO', 'Produbanco'),
+        ('INTERNACIONAL', 'Banco Internacional'),
+    ]
+    TIPOS_CUENTA = [
+        ('AHORROS', 'Ahorros'),
+        ('CORRIENTE', 'Corriente'),
+    ]
 
     nombres = models.CharField(max_length=100)
     apellidos = models.CharField(max_length=100)
     documento_identidad = models.CharField(max_length=20, unique=True, help_text="Cédula o documento de identidad")
     cargo = models.CharField(max_length=100, blank=True)
     telefono = models.CharField(max_length=20, blank=True)
+    email = models.EmailField(blank=True, default='', help_text="Correo del trabajador; se usa para notificarle cuando se le realiza un pago.")
+    banco = models.CharField(max_length=20, choices=BANCOS, blank=True, default='')
+    numero_cuenta = models.CharField(max_length=20, blank=True, default='')
+    tipo_cuenta = models.CharField(max_length=10, choices=TIPOS_CUENTA, blank=True, default='')
     estado = models.CharField(max_length=10, choices=ESTADOS, default='ACTIVO')
     fecha_ingreso = models.DateField(default=timezone.localdate)
     fecha_salida = models.DateField(null=True, blank=True)
@@ -723,6 +738,22 @@ class Trabajador(models.Model):
     @property
     def tiene_prestamos_pendientes(self):
         return self.prestamos.filter(estado='PRESTADO').exists()
+
+    def dias_pagados(self, periodo_inicio=None, periodo_fin=None):
+        """
+        Conjunto de fechas (date) que ya quedaron cubiertas por un Pago
+        existente de este trabajador, opcionalmente acotado a un rango.
+        Se usa para bloquear la selección de días ya pagados al generar un
+        pago nuevo (tanto en la UI como en la validación de backend).
+        """
+        dias = set()
+        for pago in self.pagos.only('periodo_inicio', 'periodo_fin'):
+            d = pago.periodo_inicio
+            while d <= pago.periodo_fin:
+                if (periodo_inicio is None or d >= periodo_inicio) and (periodo_fin is None or d <= periodo_fin):
+                    dias.add(d)
+                d += datetime.timedelta(days=1)
+        return dias
 
     def desactivar(self, motivo=''):
         if self.estado == 'INACTIVO':
@@ -766,7 +797,7 @@ class Trabajador(models.Model):
     @transaction.atomic
     def registrar_pago(self, periodo_inicio, periodo_fin, fecha_pago, usuario,
                         dias_laborados=None, horas_extra_ids=None, descuento_ids=None,
-                        periodo_mensual=None, observaciones=''):
+                        periodo_mensual=None, observaciones='', total_horas_normales=None):
         """
         Genera un pago con desglose transparente, replicando la lógica real
         del rol de pagos de la empresa:
@@ -790,6 +821,14 @@ class Trabajador(models.Model):
         if Pago.objects.filter(trabajador=self, periodo_inicio=periodo_inicio, periodo_fin=periodo_fin).exists():
             raise ValueError("Ya existe un pago registrado para este trabajador en ese periodo.")
 
+        dias_ya_pagados = self.dias_pagados(periodo_inicio, periodo_fin)
+        if dias_ya_pagados:
+            primero = min(dias_ya_pagados)
+            raise ValueError(
+                f"El periodo se cruza con días ya pagados anteriormente (desde el {primero.strftime('%d/%m/%Y')}). "
+                "Ajusta el rango para no repetir días ya cubiertos por otro pago."
+            )
+
         salario_vigente = self.salario_actual
         if not salario_vigente:
             raise ValueError("El trabajador no tiene un salario asignado todavía.")
@@ -798,14 +837,11 @@ class Trabajador(models.Model):
         if dias_laborados is None:
             dias_laborados = Decimal(dias_calendario)
         dias_laborados = Decimal(dias_laborados)
-        if dias_laborados <= 0:
-            raise ValueError("Los días laborados deben ser mayores a cero.")
+        if dias_laborados < 0:
+            raise ValueError("Los días laborados no pueden ser negativos.")
 
-        if self.periodicidad_pago == 'MENSUAL':
-            salario_periodo = salario_vigente.monto
-        else:
-            valor_dia = salario_vigente.monto / Decimal('30')
-            salario_periodo = (valor_dia * dias_laborados).quantize(Decimal('0.01'))
+        from . import servicios_nomina
+        salario_periodo = servicios_nomina.calcular_salario_periodo(self, dias_laborados)
 
         horas = HoraExtra.objects.select_for_update().filter(
             id__in=(horas_extra_ids or []), trabajador=self, pago__isnull=True
@@ -842,6 +878,7 @@ class Trabajador(models.Model):
             bonificacion=bonificacion, aporte_iess=aporte_iess,
             total_horas_extras=total_horas_extras, total_descuentos=total_descuentos,
             total_anticipos=total_anticipos, total_pagado=total_pagado,
+            total_horas_normales=(total_horas_normales if total_horas_normales is not None else Decimal('0.00')),
             periodo_mensual=periodo_mensual, observaciones=observaciones, registrado_por=usuario,
         )
         horas.update(pago=pago)
@@ -973,15 +1010,64 @@ class SalarioTrabajador(models.Model):
 
 
 class HorarioTrabajador(models.Model):
-    """Horario normal de trabajo de un trabajador (para cálculo/validación de horas)."""
+    """
+    Horario normal de trabajo de un trabajador, detallado por día de la
+    semana (ver HorarioTrabajadorDia). Sirve de base para calcular
+    automáticamente horas normales vs. horas extra al registrar un pago.
+    """
     trabajador = models.OneToOneField(Trabajador, on_delete=models.CASCADE, related_name='horario')
-    hora_inicio = models.TimeField()
-    hora_fin = models.TimeField()
     actualizado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Horario de {self.trabajador}: {self.hora_inicio} - {self.hora_fin}"
+        return f"Horario de {self.trabajador}"
+
+    def dia(self, dia_semana):
+        """Devuelve el HorarioTrabajadorDia (o None) para ese día (0=Lunes..6=Domingo)."""
+        return next((d for d in self.dias.all() if d.dia_semana == dia_semana), None)
+
+    @classmethod
+    def para_trabajador(cls, trabajador, usuario=None):
+        """Obtiene (o crea con los 7 días en blanco) el horario de un trabajador."""
+        horario, creado = cls.objects.get_or_create(trabajador=trabajador, defaults={'actualizado_por': usuario})
+        if creado:
+            HorarioTrabajadorDia.objects.bulk_create([
+                HorarioTrabajadorDia(horario=horario, dia_semana=d, trabaja=(d < 5))
+                for d, _ in HorarioTrabajadorDia.DIAS_SEMANA
+            ])
+        return horario
+
+
+class HorarioTrabajadorDia(models.Model):
+    """Un día de la semana dentro del horario normal de un trabajador."""
+    DIAS_SEMANA = [
+        (0, 'Lunes'), (1, 'Martes'), (2, 'Miércoles'), (3, 'Jueves'),
+        (4, 'Viernes'), (5, 'Sábado'), (6, 'Domingo'),
+    ]
+
+    horario = models.ForeignKey(HorarioTrabajador, on_delete=models.CASCADE, related_name='dias')
+    dia_semana = models.PositiveSmallIntegerField(choices=DIAS_SEMANA)
+    trabaja = models.BooleanField(default=False)
+    hora_inicio = models.TimeField(null=True, blank=True)
+    hora_fin = models.TimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['dia_semana']
+        constraints = [
+            models.UniqueConstraint(fields=['horario', 'dia_semana'], name='unico_dia_por_horario')
+        ]
+
+    def __str__(self):
+        if self.trabaja and self.hora_inicio and self.hora_fin:
+            return f"{self.get_dia_semana_display()}: {self.hora_inicio}-{self.hora_fin}"
+        return f"{self.get_dia_semana_display()}: Libre"
+
+    def clean(self):
+        if self.trabaja:
+            if not self.hora_inicio or not self.hora_fin:
+                raise ValidationError(f"Indica hora de inicio y fin para {self.get_dia_semana_display()}.")
+            if self.hora_inicio >= self.hora_fin:
+                raise ValidationError(f"La hora de inicio debe ser anterior a la de fin ({self.get_dia_semana_display()}).")
 
 
 class ConfiguracionHorasExtra(models.Model):
@@ -1061,6 +1147,11 @@ class Pago(models.Model):
     Total = salario_base + total_horas_extras + bonificacion
             - total_descuentos - total_anticipos - aporte_iess
     """
+    ESTADOS = [
+        ('PENDIENTE', 'Pendiente de Pago'),
+        ('PAGADO', 'Pagado'),
+    ]
+
     trabajador = models.ForeignKey(Trabajador, on_delete=models.PROTECT, related_name='pagos')
     periodo_inicio = models.DateField()
     periodo_fin = models.DateField()
@@ -1069,6 +1160,7 @@ class Pago(models.Model):
     salario_base = models.DecimalField(max_digits=10, decimal_places=2)
     bonificacion = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     aporte_iess = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_horas_normales = models.DecimalField(max_digits=6, decimal_places=2, default=0)
     total_horas_extras = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     total_descuentos = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     total_anticipos = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -1080,6 +1172,12 @@ class Pago(models.Model):
     registrado_por = models.ForeignKey(User, on_delete=models.PROTECT, related_name='pagos_registrados')
     fecha_registro = models.DateTimeField(auto_now_add=True)
 
+    estado = models.CharField(max_length=10, choices=ESTADOS, default='PENDIENTE')
+    pagado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='pagos_confirmados')
+    fecha_pago_confirmado = models.DateTimeField(null=True, blank=True)
+    email_enviado = models.BooleanField(default=False)
+    email_error = models.TextField(blank=True)
+
     history = HistoricalRecords()
 
     class Meta:
@@ -1090,6 +1188,14 @@ class Pago(models.Model):
 
     def __str__(self):
         return f"Pago {self.trabajador} [{self.periodo_inicio} - {self.periodo_fin}]"
+
+    def marcar_como_pagado(self, usuario):
+        if self.estado == 'PAGADO':
+            raise ValueError("Este pago ya fue marcado como realizado anteriormente.")
+        self.estado = 'PAGADO'
+        self.pagado_por = usuario
+        self.fecha_pago_confirmado = timezone.now()
+        self.save(update_fields=['estado', 'pagado_por', 'fecha_pago_confirmado'])
 
 
 class HoraExtra(models.Model):
@@ -1107,6 +1213,9 @@ class HoraExtra(models.Model):
         help_text="Pendiente hasta integrar la fórmula oficial de cálculo de horas extra."
     )
     observaciones = models.TextField(blank=True)
+    generado_automaticamente = models.BooleanField(
+        default=False, help_text="Calculado desde el detalle de días de un pago, no ingresado a mano."
+    )
     registrado_por = models.ForeignKey(User, on_delete=models.PROTECT, related_name='horas_extras_registradas')
     fecha_registro = models.DateTimeField(auto_now_add=True)
     pago = models.ForeignKey(Pago, on_delete=models.SET_NULL, null=True, blank=True, related_name='horas_extras_incluidas')

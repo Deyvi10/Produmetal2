@@ -1,0 +1,88 @@
+{% extends 'web/base.html' %}
+
+{% block content %}
+<style>
+    body { background-color: var(--pm-bg); color: var(--pm-text); }
+    .erp-container { max-width: 900px; padding-bottom: 80px; margin-top: 30px; }
+    .card-master { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; box-shadow: var(--pm-shadow); overflow: hidden; margin-bottom: 20px; }
+    .card-header-pm { padding: 1rem 1.25rem; border-bottom: 1px solid var(--pm-border); font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; }
+    .table-modern { width: 100%; margin-bottom: 0; color: var(--pm-text); font-size: 0.9rem; }
+    .table-modern th { background: var(--pm-bg); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; color: var(--pm-text-muted); border-bottom: 1px solid var(--pm-border); padding: 8px 12px; }
+    .table-modern td { padding: 8px 12px; border-bottom: 1px solid var(--pm-border); }
+    .resumen-row { display: flex; justify-content: space-between; padding: 10px 20px; border-bottom: 1px solid var(--pm-border); }
+    .resumen-row:last-child { border-bottom: none; }
+    .resumen-row.total { font-weight: 800; font-size: 1.2rem; background: var(--pm-surface-hover); }
+    .btn-success-custom { background: #198754; color: #fff; font-weight: bold; border-radius: 8px; padding: 14px 24px; border: none; }
+    .btn-success-custom:hover { filter: brightness(0.9); color: #fff; }
+    .btn-outline-secondary { color: var(--pm-text); border-color: var(--pm-border); }
+</style>
+
+<div class="container erp-container">
+    <h2 class="fw-bold mb-1">Revisar Pago — {{ trabajador.nombre_completo }}</h2>
+    <p class="mb-4 small" style="color: var(--pm-text-muted);">{{ periodo_inicio|date:"d/m/Y" }} — {{ periodo_fin|date:"d/m/Y" }}. Revisa el desglose antes de confirmar; todavía no se ha guardado nada.</p>
+
+    {% if resultado.dias_detalle %}
+    <div class="card-master">
+        <div class="card-header-pm"><i class="bi bi-calendar3 me-2"></i>Detalle por Día</div>
+        <div class="table-responsive">
+            <table class="table-modern">
+                <thead><tr><th>Día</th><th>Entrada-Salida</th><th class="text-end">Normales</th><th class="text-end">Ordinaria (50%)</th><th class="text-end">Extraordinaria (100%)</th></tr></thead>
+                <tbody>
+                {% for dia in resultado.dias_detalle %}
+                    {% if dia.incluido %}
+                    <tr>
+                        <td>{{ dia.fecha|date:"D d/m" }}</td>
+                        <td>{{ dia.entrada|time:"H:i" }} - {{ dia.salida|time:"H:i" }}</td>
+                        <td class="text-end">{{ dia.horas_normales }}</td>
+                        <td class="text-end {% if dia.horas_ordinarias > 0 %}text-warning{% endif %}">{{ dia.horas_ordinarias }}</td>
+                        <td class="text-end {% if dia.horas_extraordinarias > 0 %}text-danger{% endif %}">{{ dia.horas_extraordinarias }}</td>
+                    </tr>
+                    {% endif %}
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card-master">
+        <div class="card-header-pm"><i class="bi bi-cash-coin me-2"></i>Desglose del Pago</div>
+        <div class="resumen-row"><span>Días laborados (base)</span><span>{{ resultado.dias_laborados }}</span></div>
+        <div class="resumen-row"><span>Salario del periodo</span><span>${{ salario_preview }}</span></div>
+        <div class="resumen-row"><span>Horas Ordinarias ({{ resultado.total_ordinaria_horas }}h · recargo 50%)</span><span class="text-success">+${{ resultado.total_ordinaria_valor }}</span></div>
+        <div class="resumen-row"><span>Horas Extraordinarias ({{ resultado.total_extraordinaria_horas }}h · recargo 100%)</span><span class="text-success">+${{ resultado.total_extraordinaria_valor }}</span></div>
+        {% if horas_manuales %}
+        <div class="resumen-row"><span>Horas extra manuales incluidas ({{ horas_manuales|length }})</span><span class="text-success">incluidas arriba si aplican</span></div>
+        {% endif %}
+        <div class="resumen-row"><span>Bonificación (mitad del mes)</span><span class="text-success">+${{ bonificacion }}</span></div>
+        <div class="resumen-row"><span>Descuentos</span><span class="text-danger">-${{ total_descuentos_manual }}</span></div>
+        <div class="resumen-row"><span>Anticipos</span><span class="text-danger">-${{ total_anticipos_manual }}</span></div>
+        <div class="resumen-row"><span>Aporte IESS (mitad del mes)</span><span class="text-danger">-${{ aporte_iess }}</span></div>
+        <div class="resumen-row total"><span>TOTAL A PAGAR</span><span>${{ total_estimado }}</span></div>
+    </div>
+
+    <form method="POST" action="{% url 'registrar_pago' trabajador.id %}" onsubmit="return confirm('¿Confirmas el registro de este pago por ${{ total_estimado }}?');">
+        {% csrf_token %}
+        <input type="hidden" name="confirmado" value="1">
+        <input type="hidden" name="periodo_inicio" value="{{ periodo_inicio|date:'Y-m-d' }}">
+        <input type="hidden" name="periodo_fin" value="{{ periodo_fin|date:'Y-m-d' }}">
+        <input type="hidden" name="fecha_pago" value="{{ fecha_pago|date:'Y-m-d' }}">
+        <input type="hidden" name="observaciones" value="{{ observaciones }}">
+        {% if periodo_mensual %}<input type="hidden" name="periodo_mensual_id" value="{{ periodo_mensual.id }}">{% endif %}
+        {% for id in horas_extra_ids_manual %}<input type="hidden" name="horas_extra_ids" value="{{ id }}">{% endfor %}
+        {% for id in descuento_ids_manual %}<input type="hidden" name="descuento_ids" value="{{ id }}">{% endfor %}
+        {% for dia in resultado.dias_detalle %}
+            {% if dia.incluido %}
+                <input type="hidden" name="incluir_{{ dia.fecha|date:'Y-m-d' }}" value="on">
+                <input type="hidden" name="entrada_{{ dia.fecha|date:'Y-m-d' }}" value="{{ dia.entrada|time:'H:i' }}">
+                <input type="hidden" name="salida_{{ dia.fecha|date:'Y-m-d' }}" value="{{ dia.salida|time:'H:i' }}">
+            {% endif %}
+        {% endfor %}
+
+        <div class="d-flex justify-content-end gap-2">
+            <a href="{% url 'preparar_pago' trabajador.id %}?periodo_inicio={{ periodo_inicio|date:'Y-m-d' }}&periodo_fin={{ periodo_fin|date:'Y-m-d' }}" class="btn btn-outline-secondary fw-bold px-4">Volver a Editar</a>
+            <button type="submit" class="btn-success-custom px-4"><i class="bi bi-check-lg me-2"></i> Confirmar y Registrar Pago</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

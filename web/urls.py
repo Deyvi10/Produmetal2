@@ -113,9 +113,21 @@ urlpatterns = [
     path('erp/trabajadores/<int:trabajador_id>/salario/', views.asignar_salario_trabajador, name='asignar_salario_trabajador'),
     path('erp/trabajadores/<int:trabajador_id>/horario/', views.registrar_horario_trabajador, name='registrar_horario_trabajador'),
     path('erp/trabajadores/<int:trabajador_id>/hora-extra/', views.registrar_hora_extra, name='registrar_hora_extra'),
+    path('erp/trabajadores/<int:trabajador_id>/hora-extra/<int:hora_id>/eliminar/', views.eliminar_hora_extra, name='eliminar_hora_extra'),
     path('erp/trabajadores/<int:trabajador_id>/descuento/', views.registrar_descuento, name='registrar_descuento'),
-    path('erp/trabajadores/<int:trabajador_id>/pago/', views.registrar_pago, name='registrar_pago'),
+    path('erp/trabajadores/<int:trabajador_id>/descuento/<int:descuento_id>/eliminar/', views.eliminar_descuento, name='eliminar_descuento'),
     path('erp/trabajadores/<int:trabajador_id>/periodo-mensual/', views.registrar_periodo_mensual, name='registrar_periodo_mensual'),
+
+    # Registro de pago (flujo por días: iniciar -> preparar -> registrar/revisar)
+    path('erp/trabajadores/<int:trabajador_id>/pago/iniciar/', views.iniciar_pago, name='iniciar_pago'),
+    path('erp/trabajadores/<int:trabajador_id>/pago/preparar/', views.preparar_pago, name='preparar_pago'),
+    path('erp/trabajadores/<int:trabajador_id>/pago/', views.registrar_pago, name='registrar_pago'),
+
+    # Pagos Realizados (Administrador y Compras)
+    path('erp/pagos/', views.listar_pagos, name='listar_pagos'),
+    path('erp/pagos/<int:pago_id>/confirmar/', views.confirmar_pago, name='confirmar_pago'),
+    path('erp/pagos/<int:pago_id>/editar/', views.editar_pago, name='editar_pago'),
+    path('erp/pagos/<int:pago_id>/pdf/', views.imprimir_pdf_pago, name='imprimir_pdf_pago'),
     # AGREGAR la nueva ruta de compras
     path('erp/cotizacion/confirmar-compra/<int:solicitud_id>/', views.confirmar_compra_definitiva, name='confirmar_compra_definitiva'),
     # ==========================================

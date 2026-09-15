@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Rol de Pago {{ trabajador.documento_identidad }}</title>
+    <style>
+        @page {
+            size: a4 portrait;
+            margin: 1.5cm;
+            margin-bottom: 2.8cm;
+            @frame footer_frame {
+                -pdf-frame-content: footer_content;
+                left: 1.5cm; right: 1.5cm; bottom: 0.5cm; height: 1.8cm;
+            }
+        }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 10px; color: #1e293b; line-height: 1.4; }
+
+        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; border: 1px solid #cbd5e1; }
+        .header-table td { padding: 12px; vertical-align: middle; border: 1px solid #cbd5e1; }
+        .logo { width: 75px; height: 75px; object-fit: cover; }
+        .company-name { font-size: 18px; font-weight: bold; color: #0f172a; margin: 0 0 2px 0; letter-spacing: -0.5px; }
+        .company-details { font-size: 9px; color: #64748b; line-height: 1.3; }
+        .box-folio { text-align: center; background-color: #f8fafc; width: 30%; }
+        .title-document { font-size: 9px; color: #64748b; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; }
+        .number-folio { font-size: 16px; font-weight: bold; color: #0f172a; margin-top: 4px; }
+
+        .section-header { font-size: 9px; font-weight: bold; color: #1e293b; text-transform: uppercase; letter-spacing: 0.5px; background-color: #f1f5f9; padding: 6px 10px; border: 1px solid #cbd5e1; border-bottom: none; }
+        .metadata-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; border: 1px solid #cbd5e1; }
+        .metadata-table td { padding: 7px 10px; border: 1px solid #cbd5e1; font-size: 10px; }
+        .meta-label { font-weight: bold; color: #475569; background-color: #f8fafc; width: 18%; }
+        .meta-value { color: #0f172a; width: 32%; }
+
+        .data-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .data-table th { background-color: #1e293b; color: #ffffff; font-size: 9px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; padding: 8px 10px; border: 1px solid #1e293b; }
+        .data-table td { padding: 8px 10px; border: 1px solid #cbd5e1; font-size: 10px; color: #334155; }
+        .data-table tr:nth-child(even) { background-color: #f8fafc; }
+
+        .totales-table { width: 60%; margin-left: auto; border-collapse: collapse; margin-bottom: 25px; }
+        .totales-table td { padding: 6px 10px; border: 1px solid #cbd5e1; font-size: 10.5px; }
+        .totales-table .label { color: #475569; }
+        .totales-table .valor { text-align: right; font-weight: bold; color: #0f172a; }
+        .totales-table .total-row td { background-color: #1e293b; color: #ffffff; font-size: 13px; font-weight: bold; }
+
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .bold { font-weight: bold; }
+        .positivo { color: #16a34a; }
+        .negativo { color: #dc2626; }
+
+        .signatures-container { margin-top: 45px; width: 100%; page-break-inside: avoid; }
+        .signature-table { width: 100%; border-collapse: collapse; }
+        .signature-table td { width: 50%; text-align: center; padding: 0 20px; vertical-align: top; }
+        .signature-space { height: 60px; }
+        .signature-line { border-top: 1px solid #334155; width: 85%; margin: 0 auto 6px auto; }
+        .signature-name { font-size: 10px; font-weight: bold; color: #0f172a; text-transform: uppercase; }
+        .signature-role { font-size: 8.5px; color: #64748b; margin-top: 2px; letter-spacing: 0.3px; }
+
+        #footer_content { border-top: 1px solid #cbd5e1; padding-top: 8px; font-size: 8px; color: #64748b; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <table class="header-table">
+        <tr>
+            <td style="width: 12%; text-align: center;"><img src="{{ logo_path }}" alt="Logo" class="logo"></td>
+            <td style="width: 58%;">
+                <h1 class="company-name">ProduMetal CM</h1>
+                <div class="company-details">
+                    <strong>RUC:</strong> 1792418521001 | <strong>Email:</strong> operaciones@produmetalcm.com<br>
+                    <strong>Planta Industrial:</strong> Av. General Enríquez, Sector San Jorge<br>
+                    <strong>Módulo:</strong> Rol de Pagos - Recursos Humanos
+                </div>
+            </td>
+            <td class="box-folio">
+                <div class="title-document">Rol de Pago Individual</div>
+                <div class="number-folio">{{ pago.periodo_inicio|date:"d/m/Y" }} - {{ pago.periodo_fin|date:"d/m/Y" }}</div>
+            </td>
+        </tr>
+    </table>
+
+    <div class="section-header">Datos del Trabajador</div>
+    <table class="metadata-table">
+        <tr>
+            <td class="meta-label">Nombre:</td>
+            <td class="meta-value">{{ trabajador.nombre_completo }}</td>
+            <td class="meta-label">Documento:</td>
+            <td class="meta-value">{{ trabajador.documento_identidad }}</td>
+        </tr>
+        <tr>
+            <td class="meta-label">Cargo:</td>
+            <td class="meta-value">{{ trabajador.cargo|default:"-" }}</td>
+            <td class="meta-label">Periodicidad:</td>
+            <td class="meta-value">{{ trabajador.get_periodicidad_pago_display }}</td>
+        </tr>
+        <tr>
+            <td class="meta-label">Banco:</td>
+            <td class="meta-value">{{ trabajador.get_banco_display|default:"-" }}</td>
+            <td class="meta-label">N° Cuenta:</td>
+            <td class="meta-value">{{ trabajador.numero_cuenta|default:"-" }} ({{ trabajador.get_tipo_cuenta_display|default:"-" }})</td>
+        </tr>
+        <tr>
+            <td class="meta-label">Fecha de Pago:</td>
+            <td class="meta-value bold">{{ pago.fecha_pago|date:"d/m/Y" }}</td>
+            <td class="meta-label">Estado:</td>
+            <td class="meta-value bold {% if pago.estado == 'PAGADO' %}positivo{% endif %}">{{ pago.get_estado_display }}</td>
+        </tr>
+    </table>
+
+    {% if horas_extras %}
+    <div class="section-header">Horas Extra Incluidas</div>
+    <table class="data-table">
+        <thead><tr><th>Fecha</th><th>Tipo</th><th class="text-center">Horas</th><th class="text-right">Valor</th></tr></thead>
+        <tbody>
+        {% for he in horas_extras %}
+            <tr>
+                <td>{{ he.fecha|date:"d/m/Y" }}</td>
+                <td>{{ he.get_tipo_display }}</td>
+                <td class="text-center">{{ he.cantidad_horas }}</td>
+                <td class="text-right">${{ he.valor_calculado|default:"0.00" }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    {% if descuentos or anticipos %}
+    <div class="section-header">Descuentos y Anticipos Incluidos</div>
+    <table class="data-table">
+        <thead><tr><th>Fecha</th><th>Tipo</th><th>Motivo</th><th class="text-right">Monto</th></tr></thead>
+        <tbody>
+        {% for d in descuentos %}
+            <tr><td>{{ d.fecha|date:"d/m/Y" }}</td><td>Descuento</td><td>{{ d.motivo }}</td><td class="text-right">-${{ d.monto }}</td></tr>
+        {% endfor %}
+        {% for a in anticipos %}
+            <tr><td>{{ a.fecha|date:"d/m/Y" }}</td><td>Anticipo</td><td>{{ a.motivo }}</td><td class="text-right">-${{ a.monto }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <div class="section-header">Resumen del Pago</div>
+    <table class="totales-table">
+        <tr><td class="label">Días laborados</td><td class="valor">{{ pago.dias_laborados }}</td></tr>
+        <tr><td class="label">Horas normales</td><td class="valor">{{ pago.total_horas_normales }}</td></tr>
+        <tr><td class="label">Salario Base</td><td class="valor">${{ pago.salario_base }}</td></tr>
+        <tr><td class="label">Horas Extra</td><td class="valor positivo">+${{ pago.total_horas_extras }}</td></tr>
+        <tr><td class="label">Bonificación</td><td class="valor positivo">+${{ pago.bonificacion }}</td></tr>
+        <tr><td class="label">Descuentos</td><td class="valor negativo">-${{ pago.total_descuentos }}</td></tr>
+        <tr><td class="label">Anticipos</td><td class="valor negativo">-${{ pago.total_anticipos }}</td></tr>
+        <tr><td class="label">Aporte IESS</td><td class="valor negativo">-${{ pago.aporte_iess }}</td></tr>
+        <tr class="total-row"><td>TOTAL A PAGAR</td><td class="text-right">${{ pago.total_pagado }}</td></tr>
+    </table>
+
+    {% if pago.observaciones %}
+    <div class="section-header">Observaciones</div>
+    <table class="metadata-table"><tr><td class="meta-value" style="font-style: italic;">{{ pago.observaciones }}</td></tr></table>
+    {% endif %}
+
+    <div class="signatures-container">
+        <table class="signature-table">
+            <tr>
+                <td>
+                    <div class="signature-space"></div>
+                    <div class="signature-line"></div>
+                    <div class="signature-name">Gerencia General</div>
+                    <div class="signature-role">ProduMetal CM</div>
+                </td>
+                <td>
+                    <div class="signature-space"></div>
+                    <div class="signature-line"></div>
+                    <div class="signature-name">{{ trabajador.nombre_completo }}</div>
+                    <div class="signature-role">Trabajador — Recibí Conforme</div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div id="footer_content">
+        Documento generado por el sistema ERP de ProduMetal CM el {{ fecha_impresion|date:"d/m/Y H:i" }}.
+        <br><strong>Rol de Pagos - Uso Interno | Página <pdf:pagenumber> de <pdf:pagecount></strong>
+    </div>
+</body>
+</html>

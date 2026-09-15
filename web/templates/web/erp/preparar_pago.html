@@ -1,0 +1,158 @@
+{% extends 'web/base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    body { background-color: var(--pm-bg); color: var(--pm-text); }
+    .erp-container { max-width: 950px; padding-bottom: 80px; margin-top: 30px; }
+    .card-master { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; box-shadow: var(--pm-shadow); overflow: hidden; margin-bottom: 20px; }
+    .btn-primary-custom { background: #0d6efd; color: #fff; font-weight: bold; border-radius: 8px; padding: 14px 24px; border: none; }
+    .btn-primary-custom:hover { filter: brightness(0.9); color: #fff; }
+    .btn-amber { background: var(--pm-amber); color: #000; border: none; font-weight: 700; }
+    label, .form-label { color: var(--pm-text); }
+    .form-control, .form-select { background-color: var(--pm-bg); border: 1px solid var(--pm-border); color: var(--pm-text); }
+    .form-control:focus, .form-select:focus { background-color: var(--pm-bg); color: var(--pm-text); border-color: var(--pm-amber); box-shadow: 0 0 0 3px var(--pm-amber-soft); }
+    .btn-outline-secondary { color: var(--pm-text); border-color: var(--pm-border); }
+
+    .dia-row { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--pm-border); flex-wrap: wrap; }
+    .dia-row:last-child { border-bottom: none; }
+    .dia-row.ya-pagado { opacity: 0.55; }
+    .dia-fecha { width: 150px; font-weight: 700; font-size: 0.9rem; }
+    .dia-fecha small { display: block; font-weight: 400; color: var(--pm-text-muted); }
+    .dia-horas input { width: 110px; }
+    .badge-soft { padding: 4px 10px; font-weight: 600; font-size: 0.7rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; text-transform: uppercase; }
+    .badge-normal { background: var(--pm-blue-soft); color: var(--pm-blue); border: 1px solid var(--pm-blue-soft); }
+    .badge-extra { background: var(--pm-amber-soft); color: var(--pm-amber); border: 1px solid var(--pm-amber-soft); }
+    .badge-pagado { background: rgba(35,134,54,0.15); color: var(--pm-green); border: 1px solid rgba(35,134,54,0.3); }
+    .card-header-pm { padding: 1rem 1.25rem; border-bottom: 1px solid var(--pm-border); font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; }
+</style>
+
+<div class="container erp-container">
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="{% url 'iniciar_pago' trabajador.id %}" class="btn btn-outline-secondary rounded-pill px-3"><i class="bi bi-arrow-left"></i></a>
+        <div>
+            <h2 class="fw-bold mb-0">Detalle de Días — {{ trabajador.nombre_completo }}</h2>
+            <p class="mb-0 small" style="color: var(--pm-text-muted);">{{ periodo_inicio|date:"d/m/Y" }} — {{ periodo_fin|date:"d/m/Y" }}</p>
+        </div>
+    </div>
+
+    <form method="POST" action="{% url 'registrar_pago' trabajador.id %}">
+        {% csrf_token %}
+        <input type="hidden" name="periodo_inicio" value="{{ periodo_inicio|date:'Y-m-d' }}">
+        <input type="hidden" name="periodo_fin" value="{{ periodo_fin|date:'Y-m-d' }}">
+
+        <div class="card-master">
+            <div class="card-header-pm"><i class="bi bi-calendar3 me-2"></i>Días del Periodo</div>
+            <div class="p-2 small" style="color: var(--pm-text-muted);">
+                <span class="badge-soft badge-normal">Normal</span> = dentro del horario configurado (recargo 50% si excede).
+                <span class="badge-soft badge-extra ms-2">Fuera de horario</span> = día libre trabajado (recargo 100%).
+            </div>
+            {% for dia in dias %}
+                <div class="dia-row {% if dia.ya_pagado %}ya-pagado{% endif %}">
+                    <div class="dia-fecha">{{ dia.nombre_dia }}<small>{{ dia.fecha|date:"d/m/Y" }}</small></div>
+                    {% if dia.ya_pagado %}
+                        <span class="badge-soft badge-pagado"><i class="bi bi-lock-fill"></i> Ya pagado</span>
+                        <span class="small" style="color: var(--pm-text-muted);">Este día ya pertenece a un pago anterior.</span>
+                    {% else %}
+                        <div class="form-check">
+                            <input class="form-check-input dia-incluir" type="checkbox" name="incluir_{{ dia.fecha_str }}" id="inc{{ dia.fecha_str }}" {% if dia.es_normal %}checked{% endif %}>
+                            <label class="form-check-label small" for="inc{{ dia.fecha_str }}">Incluir</label>
+                        </div>
+                        {% if dia.es_normal %}
+                            <span class="badge-soft badge-normal">Normal ({{ dia.hora_inicio_normal|time:"H:i" }}-{{ dia.hora_fin_normal|time:"H:i" }})</span>
+                        {% else %}
+                            <span class="badge-soft badge-extra">Fuera de horario</span>
+                        {% endif %}
+                        <div class="dia-horas d-flex align-items-center gap-2">
+                            <span class="small" style="color: var(--pm-text-muted);">Entrada</span>
+                            <input type="time" class="form-control form-control-sm" name="entrada_{{ dia.fecha_str }}" value="{% if dia.es_normal %}{{ dia.hora_inicio_normal|time:'H:i' }}{% endif %}">
+                            <span class="small" style="color: var(--pm-text-muted);">Salida</span>
+                            <input type="time" class="form-control form-control-sm" name="salida_{{ dia.fecha_str }}" value="{% if dia.es_normal %}{{ dia.hora_fin_normal|time:'H:i' }}{% endif %}">
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="card-master">
+            <div class="card-header-pm"><i class="bi bi-calendar-month me-2"></i>Bonificación e IESS del Mes</div>
+            <div class="p-3">
+                <select name="periodo_mensual_id" class="form-select">
+                    <option value="">-- Ninguno --</option>
+                    {% for pm in periodos_mensuales %}
+                        <option value="{{ pm.id }}">{{ pm.mes }}/{{ pm.anio }} — Bonif. ${{ pm.bonificacion_quincenal }}/quincena · IESS ${{ pm.aporte_iess_quincenal }}/quincena</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-12 col-md-6">
+                <div class="card-master">
+                    <div class="card-header-pm"><i class="bi bi-hourglass-split me-2"></i>Horas Extra Manuales a Incluir</div>
+                    <div class="p-3" style="max-height: 180px; overflow-y: auto;">
+                        {% for he in horas_extra_disponibles %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="horas_extra_ids" value="{{ he.id }}" id="he{{ he.id }}">
+                                <label class="form-check-label small" for="he{{ he.id }}">{{ he.fecha|date:"d/m/Y" }} - {{ he.get_tipo_display }} ({{ he.cantidad_horas }}h) — {% if he.valor_calculado is None %}pendiente{% else %}${{ he.valor_calculado }}{% endif %}</label>
+                            </div>
+                        {% empty %}
+                            <p class="small mb-0" style="color: var(--pm-text-muted);">No hay horas extra manuales pendientes de incluir.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card-master">
+                    <div class="card-header-pm"><i class="bi bi-dash-circle me-2"></i>Descuentos y Anticipos a Incluir</div>
+                    <div class="p-3" style="max-height: 180px; overflow-y: auto;">
+                        {% for d in descuentos_disponibles %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="descuento_ids" value="{{ d.id }}" id="d{{ d.id }}">
+                                <label class="form-check-label small" for="d{{ d.id }}">{{ d.fecha|date:"d/m/Y" }} - Descuento: {{ d.motivo }} (-${{ d.monto }})</label>
+                            </div>
+                        {% endfor %}
+                        {% for a in anticipos_disponibles %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="descuento_ids" value="{{ a.id }}" id="a{{ a.id }}">
+                                <label class="form-check-label small" for="a{{ a.id }}">{{ a.fecha|date:"d/m/Y" }} - Anticipo: {{ a.motivo }} (-${{ a.monto }})</label>
+                            </div>
+                        {% endfor %}
+                        {% if not descuentos_disponibles and not anticipos_disponibles %}
+                            <p class="small mb-0" style="color: var(--pm-text-muted);">No hay descuentos ni anticipos pendientes de incluir.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-master p-3">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Fecha de Pago</label>
+                    <input type="date" name="fecha_pago" class="form-control" value="{{ hoy|date:'Y-m-d' }}" required>
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label fw-bold">Observaciones</label>
+                    <input type="text" name="observaciones" class="form-control" placeholder="Opcional">
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end">
+            <button type="submit" class="btn-primary-custom px-4"><i class="bi bi-calculator me-2"></i> Calcular y Revisar Pago</button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.querySelectorAll('.dia-row').forEach(row => {
+    const check = row.querySelector('.dia-incluir');
+    if (!check) return;
+    const inputs = row.querySelectorAll('.dia-horas input');
+    function actualizar() { inputs.forEach(i => i.disabled = !check.checked); }
+    check.addEventListener('change', actualizar);
+    actualizar();
+});
+</script>
+{% endblock %}

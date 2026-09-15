@@ -1,0 +1,77 @@
+{% extends 'web/base.html' %}
+
+{% block content %}
+<style>
+    body { background-color: var(--pm-bg); color: var(--pm-text); }
+    .erp-container { max-width: 800px; padding-bottom: 60px; margin-top: 30px; }
+    .card-master { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; box-shadow: var(--pm-shadow); overflow: hidden; padding: 1.5rem 2rem; }
+    .btn-primary-custom { background: #0d6efd; color: #fff; font-weight: bold; border-radius: 8px; padding: 12px 24px; border: none; }
+    .btn-primary-custom:hover { filter: brightness(0.9); color: #fff; }
+    label, .form-label { color: var(--pm-text); }
+    .form-control, .form-select { background-color: var(--pm-bg); border: 1px solid var(--pm-border); color: var(--pm-text); }
+    .form-control:focus { background-color: var(--pm-bg); color: var(--pm-text); border-color: var(--pm-amber); box-shadow: 0 0 0 3px var(--pm-amber-soft); }
+    .btn-outline-secondary { color: var(--pm-text); border-color: var(--pm-border); }
+    .btn-outline-secondary:hover { background: var(--pm-surface-hover); color: var(--pm-text); border-color: var(--pm-border); }
+
+    .dia-row { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--pm-border); flex-wrap: wrap; }
+    .dia-row:last-child { border-bottom: none; }
+    .dia-nombre { width: 110px; font-weight: 700; }
+    .dia-row.libre .dia-nombre { color: var(--pm-text-muted); }
+    .dia-horas { display: flex; align-items: center; gap: 8px; }
+    .dia-horas input { width: 120px; }
+    .invalid-feedback { display: block; }
+</style>
+
+<div class="container erp-container">
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="{% url 'ficha_trabajador' trabajador.id %}" class="btn btn-outline-secondary rounded-pill px-3"><i class="bi bi-arrow-left"></i></a>
+        <div>
+            <h2 class="fw-bold mb-0">Horario Normal de {{ trabajador.nombre_completo }}</h2>
+            <p class="mb-0 small" style="color: var(--pm-text-muted);">Marca los días que trabaja y su hora de entrada/salida. Se usa para calcular automáticamente las horas extra al registrar un pago.</p>
+        </div>
+    </div>
+
+    <form method="POST" class="card-master">
+        {% csrf_token %}
+        {{ formset.management_form }}
+
+        {% for dia_num, form in dias_formularios %}
+            <div class="dia-row {% if not form.instance.trabaja %}libre{% endif %}" data-dia="{{ dia_num }}">
+                {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+                <div class="dia-nombre">{{ form.instance.get_dia_semana_display }}</div>
+                <div class="form-check">
+                    {{ form.trabaja }}
+                    <label class="form-check-label small">Trabaja</label>
+                </div>
+                <div class="dia-horas">
+                    <span class="small" style="color: var(--pm-text-muted);">Desde</span>
+                    {{ form.hora_inicio }}
+                    <span class="small" style="color: var(--pm-text-muted);">Hasta</span>
+                    {{ form.hora_fin }}
+                </div>
+                {% if form.errors %}
+                    <div class="invalid-feedback text-danger small w-100">{{ form.non_field_errors|join:" " }}</div>
+                {% endif %}
+            </div>
+        {% endfor %}
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <a href="{% url 'ficha_trabajador' trabajador.id %}" class="btn btn-secondary fw-bold px-4">Cancelar</a>
+            <button type="submit" class="btn-primary-custom px-4"><i class="bi bi-check-lg me-2"></i> Guardar Horario</button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.querySelectorAll('.dia-row').forEach(row => {
+    const check = row.querySelector('.dia-trabaja-check');
+    const inputs = row.querySelectorAll('.dia-horas input');
+    function actualizar() {
+        row.classList.toggle('libre', !check.checked);
+        inputs.forEach(i => i.disabled = !check.checked);
+    }
+    check.addEventListener('change', actualizar);
+    actualizar();
+});
+</script>
+{% endblock %}

@@ -4,14 +4,14 @@ from django.contrib.auth.models import Group, User
 from django.test import TestCase, Client
 from django.urls import reverse
 
-from datetime import date
+from datetime import date, datetime
 
 from .models import (
     Bodega, Categoria, Material, StockBodega, Proyecto,
     Requerimiento, DetalleRequerimiento, CierreIncompletoRequerimiento,
     PerfilEmpleado, Trabajador, EntregaDirecta, MovimientoInventario,
     PrestamoHerramienta, DevolucionPrestamo, Pago, HoraExtra, Descuento,
-    PeriodoNominaMensual,
+    PeriodoNominaMensual, HorarioTrabajador, HorarioTrabajadorDia,
 )
 from . import servicios_nomina
 
@@ -542,3 +542,235 @@ class PagoQuincenalRealDelExcelTestCase(TestCase):
         self.assertEqual(pago.bonificacion, Decimal('25.00'))
         self.assertEqual(pago.aporte_iess, Decimal('22.77'))
         self.assertEqual(pago.total_pagado, Decimal('345.98'))  # Excel (sin redondeo): 345.9755
+
+
+class DatosBancariosTrabajadorTestCase(TestCase):
+    def test_formulario_exige_email_banco_cuenta_tipo(self):
+        from .forms import TrabajadorForm
+        form = TrabajadorForm(data={
+            'nombres': 'Ana', 'apellidos': 'Torres', 'documento_identidad': '1122334400',
+            'periodicidad_pago': 'QUINCENAL', 'fecha_ingreso': '2026-01-01',
+        })
+        self.assertFalse(form.is_valid())
+        for campo in ('email', 'banco', 'numero_cuenta', 'tipo_cuenta'):
+            self.assertIn(campo, form.errors)
+
+    def test_numero_cuenta_debe_ser_numerico(self):
+        from .forms import TrabajadorForm
+        form = TrabajadorForm(data={
+            'nombres': 'Ana', 'apellidos': 'Torres', 'documento_identidad': '1122334400',
+            'email': 'ana@example.com', 'banco': 'PICHINCHA', 'numero_cuenta': 'ABC123',
+            'tipo_cuenta': 'AHORROS', 'periodicidad_pago': 'QUINCENAL', 'fecha_ingreso': '2026-01-01',
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn('numero_cuenta', form.errors)
+
+
+class HorarioPorDiaTestCase(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user('admin1', password='clave12345', is_superuser=True, is_staff=True)
+        self.trabajador = Trabajador.objects.create(
+            nombres='Luis', apellidos='Perez', documento_identidad='9900011122', estado='ACTIVO'
+        )
+        self.trabajador.asignar_salario(monto=Decimal('600.00'), fecha_inicio_vigencia=date(2026, 1, 1), usuario=self.admin)
+
+    def test_para_trabajador_crea_los_7_dias(self):
+        horario = HorarioTrabajador.para_trabajador(self.trabajador, usuario=self.admin)
+        self.assertEqual(horario.dias.count(), 7)
+        # Lunes-Viernes activos por defecto, Sábado-Domingo libres
+        self.assertTrue(horario.dia(0).trabaja)
+        self.assertTrue(horario.dia(4).trabaja)
+        self.assertFalse(horario.dia(5).trabaja)
+        self.assertFalse(horario.dia(6).trabaja)
+
+    def test_horas_dia_normal_con_excedente_es_ordinaria(self):
+        horario = HorarioTrabajador.para_trabajador(self.trabajador, usuario=self.admin)
+        lunes = horario.dia(0)
+        lunes.trabaja = True
+        lunes.hora_inicio = datetime.strptime('08:00', '%H:%M').time()
+        lunes.hora_fin = datetime.strptime('17:00', '%H:%M').time()
+        lunes.save()
+
+        normales, ordinarias, extraordinarias = servicios_nomina.calcular_horas_dia(
+            lunes, datetime.strptime('08:00', '%H:%M').time(), datetime.strptime('19:00', '%H:%M').time()
+        )
+        self.assertEqual(normales, Decimal('9.00'))
+        self.assertEqual(ordinarias, Decimal('2.00'))  # el ejemplo del enunciado: 08-17 vs 08-19 -> 2h extra
+        self.assertEqual(extraordinarias, Decimal('0.00'))
+
+    def test_horas_dia_libre_son_extraordinarias(self):
+        horario = HorarioTrabajador.para_trabajador(self.trabajador, usuario=self.admin)
+        sabado = horario.dia(5)  # libre por defecto
+        normales, ordinarias, extraordinarias = servicios_nomina.calcular_horas_dia(
+            sabado, datetime.strptime('08:00', '%H:%M').time(), datetime.strptime('12:00', '%H:%M').time()
+        )
+        self.assertEqual(normales, Decimal('0.00'))
+        self.assertEqual(ordinarias, Decimal('0.00'))
+        self.assertEqual(extraordinarias, Decimal('4.00'))
+
+
+class RegistroPagoPorDiasTestCase(TestCase):
+    """Flujo completo: iniciar -> preparar -> revisar -> confirmar, con bloqueo de días ya pagados."""
+
+    def setUp(self):
+        self.admin = User.objects.create_user('admin1', password='clave12345', is_superuser=True, is_staff=True)
+        self.comprador_group = Group.objects.create(name='Compras')
+        self.comprador = User.objects.create_user('comprador1', password='clave12345')
+        self.comprador.groups.add(self.comprador_group)
+
+        self.trabajador = Trabajador.objects.create(
+            nombres='Jonathan', apellidos='Licto', documento_identidad='0550058399', estado='ACTIVO',
+            email='jonathan@example.com', banco='PICHINCHA', numero_cuenta='1234567', tipo_cuenta='AHORROS',
+            periodicidad_pago='QUINCENAL',
+        )
+        self.trabajador.asignar_salario(monto=Decimal('600.00'), fecha_inicio_vigencia=date(2026, 1, 1), usuario=self.admin)
+
+        horario = HorarioTrabajador.para_trabajador(self.trabajador, usuario=self.admin)
+        for dia_num in range(5):  # Lunes-Viernes 08:00-17:00
+            d = horario.dia(dia_num)
+            d.trabaja = True
+            d.hora_inicio = datetime.strptime('08:00', '%H:%M').time()
+            d.hora_fin = datetime.strptime('17:00', '%H:%M').time()
+            d.save()
+
+        self.client = Client()
+        self.client.force_login(self.admin)
+
+    def _post_registrar_pago(self, periodo_inicio, periodo_fin, dias, confirmado=False, **extra):
+        data = {'periodo_inicio': periodo_inicio, 'periodo_fin': periodo_fin, 'fecha_pago': periodo_fin}
+        if confirmado:
+            data['confirmado'] = '1'
+        for fecha_str, (incluir, entrada, salida) in dias.items():
+            if incluir:
+                data[f'incluir_{fecha_str}'] = 'on'
+                data[f'entrada_{fecha_str}'] = entrada
+                data[f'salida_{fecha_str}'] = salida
+        data.update(extra)
+        return self.client.post(reverse('registrar_pago', args=[self.trabajador.id]), data, follow=True)
+
+    def test_preparar_pago_marca_dias_normales_y_ya_pagados(self):
+        resp = self.client.get(
+            reverse('preparar_pago', args=[self.trabajador.id]),
+            {'periodo_inicio': '2026-01-05', 'periodo_fin': '2026-01-09'},  # lunes a viernes
+        )
+        self.assertEqual(resp.status_code, 200)
+        dias = resp.context['dias']
+        self.assertEqual(len(dias), 5)
+        self.assertTrue(all(d['es_normal'] for d in dias))
+        self.assertTrue(all(not d['ya_pagado'] for d in dias))
+
+    def test_registrar_pago_lunes_a_viernes_normal_sin_extra(self):
+        dias = {
+            f'2026-01-{d:02d}': (True, '08:00', '17:00') for d in range(5, 10)
+        }
+        resp = self._post_registrar_pago('2026-01-05', '2026-01-09', dias, confirmado=True)
+        pago = Pago.objects.get(trabajador=self.trabajador)
+        self.assertEqual(pago.dias_laborados, Decimal('5'))
+        self.assertEqual(pago.total_horas_normales, Decimal('45.00'))  # 5 días x 9h
+        self.assertEqual(pago.total_horas_extras, Decimal('0.00'))
+
+    def test_dia_fuera_de_horario_genera_hora_extraordinaria_automatica(self):
+        dias = {'2026-01-10': (True, '08:00', '12:00')}  # sábado, día libre
+        resp = self._post_registrar_pago('2026-01-10', '2026-01-10', dias, confirmado=True)
+        pago = Pago.objects.get(trabajador=self.trabajador)
+        he = HoraExtra.objects.get(trabajador=self.trabajador, generado_automaticamente=True)
+        self.assertEqual(he.tipo, 'EXTRAORDINARIA')
+        self.assertEqual(he.cantidad_horas, Decimal('4.00'))
+        self.assertEqual(he.pago_id, pago.id)
+        self.assertEqual(pago.total_horas_extras, he.valor_calculado)
+
+    def test_no_permite_pagar_un_dia_ya_pagado(self):
+        dias = {'2026-01-05': (True, '08:00', '17:00')}
+        self._post_registrar_pago('2026-01-05', '2026-01-05', dias, confirmado=True)
+        self.assertEqual(Pago.objects.filter(trabajador=self.trabajador).count(), 1)
+
+        # Intento de pagar el mismo día otra vez (rango distinto que lo incluye)
+        dias2 = {'2026-01-05': (True, '08:00', '17:00'), '2026-01-06': (True, '08:00', '17:00')}
+        resp = self._post_registrar_pago('2026-01-05', '2026-01-06', dias2, confirmado=True)
+        self.assertEqual(Pago.objects.filter(trabajador=self.trabajador).count(), 1)  # no se creó un segundo pago
+
+    def test_vista_previa_no_guarda_nada(self):
+        dias = {'2026-01-05': (True, '08:00', '17:00')}
+        self._post_registrar_pago('2026-01-05', '2026-01-05', dias, confirmado=False)
+        self.assertEqual(Pago.objects.filter(trabajador=self.trabajador).count(), 0)
+        self.assertEqual(HoraExtra.objects.filter(trabajador=self.trabajador).count(), 0)
+
+
+class PagosRealizadosPermisosTestCase(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user('admin1', password='clave12345', is_superuser=True, is_staff=True)
+        comprador_group = Group.objects.create(name='Compras')
+        self.comprador = User.objects.create_user('comprador1', password='clave12345')
+        self.comprador.groups.add(comprador_group)
+        self.solicitante = User.objects.create_user('solicitante1', password='clave12345')
+
+        self.trabajador = Trabajador.objects.create(
+            nombres='Maria', apellidos='Gomez', documento_identidad='0011223344', estado='ACTIVO',
+            email='maria@example.com',
+        )
+        self.trabajador.asignar_salario(monto=Decimal('500.00'), fecha_inicio_vigencia=date(2026, 1, 1), usuario=self.admin)
+        self.pago = self.trabajador.registrar_pago(
+            periodo_inicio=date(2026, 1, 1), periodo_fin=date(2026, 1, 31),
+            fecha_pago=date(2026, 1, 31), usuario=self.admin,
+        )
+
+    def test_solicitante_no_accede_a_pagos_realizados(self):
+        client = Client()
+        client.force_login(self.solicitante)
+        resp = client.get(reverse('listar_pagos'))
+        self.assertEqual(resp.status_code, 302)
+
+    def test_comprador_puede_confirmar_pago_pero_no_editar(self):
+        client = Client()
+        client.force_login(self.comprador)
+
+        resp = client.get(reverse('listar_pagos'))
+        self.assertEqual(resp.status_code, 200)
+
+        resp = client.get(reverse('editar_pago', args=[self.pago.id]))
+        self.assertEqual(resp.status_code, 302)  # bloqueado, solo Administrador
+
+        resp = client.post(reverse('confirmar_pago', args=[self.pago.id]), follow=True)
+        self.pago.refresh_from_db()
+        self.assertEqual(self.pago.estado, 'PAGADO')
+        self.assertEqual(self.pago.pagado_por, self.comprador)
+
+    def test_confirmar_pago_dos_veces_no_falla_pero_no_duplica(self):
+        client = Client()
+        client.force_login(self.admin)
+        client.post(reverse('confirmar_pago', args=[self.pago.id]))
+        self.pago.refresh_from_db()
+        primera_fecha = self.pago.fecha_pago_confirmado
+
+        client.post(reverse('confirmar_pago', args=[self.pago.id]))
+        self.pago.refresh_from_db()
+        self.assertEqual(self.pago.fecha_pago_confirmado, primera_fecha)  # no se sobrescribió
+
+    def test_eliminar_hora_extra_bloqueada_si_ya_esta_en_un_pago(self):
+        he = HoraExtra.objects.create(
+            trabajador=self.trabajador, fecha=date(2026, 1, 10), tipo='ORDINARIA',
+            cantidad_horas=Decimal('2'), valor_calculado=Decimal('10.00'),
+            registrado_por=self.admin, pago=self.pago,
+        )
+        client = Client()
+        client.force_login(self.admin)
+        client.post(reverse('eliminar_hora_extra', args=[self.trabajador.id, he.id]))
+        self.assertTrue(HoraExtra.objects.filter(id=he.id).exists())
+
+    def test_eliminar_hora_extra_libre_se_borra(self):
+        he = HoraExtra.objects.create(
+            trabajador=self.trabajador, fecha=date(2026, 1, 10), tipo='ORDINARIA',
+            cantidad_horas=Decimal('2'), valor_calculado=Decimal('10.00'), registrado_por=self.admin,
+        )
+        client = Client()
+        client.force_login(self.admin)
+        client.post(reverse('eliminar_hora_extra', args=[self.trabajador.id, he.id]))
+        self.assertFalse(HoraExtra.objects.filter(id=he.id).exists())
+
+    def test_pdf_pago_accesible_para_admin_y_compras(self):
+        for user in (self.admin, self.comprador):
+            client = Client()
+            client.force_login(user)
+            resp = client.get(reverse('imprimir_pdf_pago', args=[self.pago.id]))
+            self.assertEqual(resp.status_code, 200)
+            self.assertEqual(resp['Content-Type'], 'application/pdf')

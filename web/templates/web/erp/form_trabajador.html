@@ -52,12 +52,34 @@
                 {{ form.cargo }}
             </div>
             <div class="col-md-6">
+                <label class="form-label fw-bold">Correo Electrónico <span class="text-danger">*</span></label>
+                {{ form.email }}
+                {% for error in form.email.errors %}<div class="invalid-feedback text-danger small">{{ error }}</div>{% endfor %}
+                <div class="form-text" style="color: var(--pm-text-muted);">Aquí se le notificará cuando se le realice un pago.</div>
+            </div>
+            <div class="col-md-6">
                 <label class="form-label fw-bold">Periodicidad de Pago</label>
                 {{ form.periodicidad_pago }}
             </div>
             <div class="col-md-6">
                 <label class="form-label fw-bold">Fecha de Ingreso</label>
                 {{ form.fecha_ingreso }}
+            </div>
+            <div class="col-12"><hr style="border-color: var(--pm-border);"><h6 class="fw-bold text-uppercase small" style="color: var(--pm-text-muted); letter-spacing: 0.5px;">Datos Bancarios para Pagos</h6></div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Banco <span class="text-danger">*</span></label>
+                {{ form.banco }}
+                {% for error in form.banco.errors %}<div class="invalid-feedback text-danger small">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">N° de Cuenta <span class="text-danger">*</span></label>
+                {{ form.numero_cuenta }}
+                {% for error in form.numero_cuenta.errors %}<div class="invalid-feedback text-danger small">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">Tipo de Cuenta <span class="text-danger">*</span></label>
+                {{ form.tipo_cuenta }}
+                {% for error in form.tipo_cuenta.errors %}<div class="invalid-feedback text-danger small">{{ error }}</div>{% endfor %}
             </div>
         </div>
 

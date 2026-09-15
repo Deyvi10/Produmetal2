@@ -1,5 +1,6 @@
 {% extends 'web/base.html' %}
 {% load static %}
+{% load pm_tags %}
 
 {% block extra_head %}
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -51,6 +52,11 @@
                     {% else %}
                         <span class="badge-soft badge-soft-danger ms-2"><i class="bi bi-x-circle"></i> Inactivo desde {{ trabajador.fecha_salida|date:"d/m/Y" }}</span>
                     {% endif %}
+                </p>
+                <p class="mb-0 text-muted small mt-1">
+                    <i class="bi bi-envelope me-1"></i>{{ trabajador.email|default:"Sin correo registrado" }}
+                    · <i class="bi bi-bank me-1"></i>{{ trabajador.get_banco_display|default:"Sin banco" }}
+                    {% if trabajador.numero_cuenta %} #{{ trabajador.numero_cuenta }} ({{ trabajador.get_tipo_cuenta_display }}){% endif %}
                 </p>
             </div>
         </div>
@@ -114,6 +120,7 @@
                         </tbody>
                     </table>
                 </div>
+                {% if salarios.paginator.num_pages > 1 %}<div class="px-3 pb-2">{% pm_pagination salarios param_name="page_salarios" %}</div>{% endif %}
             </div>
         </div>
 
@@ -121,12 +128,23 @@
             <div class="card-minimal">
                 <div class="card-header">
                     <h6><i class="bi bi-clock text-info me-2"></i>Horario Normal</h6>
-                    <button class="btn btn-sm btn-amber" data-bs-toggle="modal" data-bs-target="#modalHorario"><i class="bi bi-pencil"></i> {% if horario %}Editar{% else %}Definir{% endif %}</button>
+                    <a href="{% url 'registrar_horario_trabajador' trabajador.id %}" class="btn btn-sm btn-amber"><i class="bi bi-pencil"></i> {% if horario %}Editar{% else %}Definir{% endif %}</a>
                 </div>
-                <div class="p-3">
+                <div class="p-3" style="max-height: 220px; overflow-y: auto;">
                     {% if horario %}
-                        <p class="mb-0 fw-bold fs-5">{{ horario.hora_inicio|time:"H:i" }} — {{ horario.hora_fin|time:"H:i" }}</p>
-                        <p class="small text-muted mb-0">Actualizado por {{ horario.actualizado_por.username|default:"-" }}</p>
+                        <div class="d-flex flex-column gap-1">
+                        {% for dia in horario.dias.all %}
+                            <div class="d-flex justify-content-between small">
+                                <span class="fw-bold" style="min-width: 90px;">{{ dia.get_dia_semana_display }}</span>
+                                {% if dia.trabaja %}
+                                    <span>{{ dia.hora_inicio|time:"H:i" }} - {{ dia.hora_fin|time:"H:i" }}</span>
+                                {% else %}
+                                    <span class="text-muted">Libre</span>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                        </div>
+                        <p class="small text-muted mb-0 mt-2">Actualizado por {{ horario.actualizado_por.username|default:"-" }}</p>
                     {% else %}
                         <p class="text-muted mb-0">Sin horario normal definido todavía.</p>
                     {% endif %}
@@ -145,27 +163,38 @@
                 </div>
                 <div class="table-responsive">
                     <table class="table table-modern mb-0">
-                        <thead><tr><th class="ps-3">Fecha</th><th>Tipo</th><th class="text-center">Horas</th><th class="text-end pe-3">Valor</th></tr></thead>
+                        <thead><tr><th class="ps-3">Fecha</th><th>Tipo</th><th class="text-center">Horas</th><th class="text-end">Valor</th><th class="text-end pe-3"></th></tr></thead>
                         <tbody>
                         {% for he in horas_extras %}
                             <tr>
-                                <td class="ps-3 small">{{ he.fecha|date:"d/m/Y" }}</td>
+                                <td class="ps-3 small">{{ he.fecha|date:"d/m/Y" }}{% if he.generado_automaticamente %} <i class="bi bi-robot small" title="Generado automáticamente de un pago"></i>{% endif %}</td>
                                 <td class="small">{{ he.get_tipo_display }}</td>
                                 <td class="text-center">{{ he.cantidad_horas }}</td>
-                                <td class="text-end pe-3">
+                                <td class="text-end">
                                     {% if he.valor_calculado is None %}
                                         <span class="badge-soft badge-soft-warning">Pendiente fórmula</span>
                                     {% else %}
                                         ${{ he.valor_calculado }}
                                     {% endif %}
                                 </td>
+                                <td class="text-end pe-3">
+                                    {% if not he.pago_id %}
+                                    <form method="POST" action="{% url 'eliminar_hora_extra' trabajador.id he.id %}" onsubmit="return confirm('¿Eliminar este registro de hora extra?');" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger border-0" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                    {% else %}
+                                        <span class="small text-muted" title="Ya incluida en un pago">🔒</span>
+                                    {% endif %}
+                                </td>
                             </tr>
                         {% empty %}
-                            <tr><td colspan="4" class="text-center text-muted py-3">Sin horas extra registradas.</td></tr>
+                            <tr><td colspan="5" class="text-center text-muted py-3">Sin horas extra registradas.</td></tr>
                         {% endfor %}
                         </tbody>
                     </table>
                 </div>
+                {% if horas_extras.paginator.num_pages > 1 %}<div class="px-3 pb-2">{% pm_pagination horas_extras param_name="page_horas" %}</div>{% endif %}
             </div>
         </div>
 
@@ -177,7 +206,7 @@
                 </div>
                 <div class="table-responsive">
                     <table class="table table-modern mb-0">
-                        <thead><tr><th class="ps-3">Fecha</th><th>Tipo</th><th>Motivo</th><th class="text-end pe-3">Monto</th></tr></thead>
+                        <thead><tr><th class="ps-3">Fecha</th><th>Tipo</th><th>Motivo</th><th class="text-end">Monto</th><th class="text-end pe-3"></th></tr></thead>
                         <tbody>
                         {% for d in descuentos %}
                             <tr>
@@ -190,10 +219,77 @@
                                     {% endif %}
                                 </td>
                                 <td class="small">{{ d.motivo }}</td>
-                                <td class="text-end pe-3 text-danger fw-bold">-${{ d.monto }}</td>
+                                <td class="text-end text-danger fw-bold">-${{ d.monto }}</td>
+                                <td class="text-end pe-3">
+                                    {% if not d.pago_id %}
+                                    <form method="POST" action="{% url 'eliminar_descuento' trabajador.id d.id %}" onsubmit="return confirm('¿Eliminar este registro?');" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger border-0" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                    {% else %}
+                                        <span class="small text-muted" title="Ya incluido en un pago">🔒</span>
+                                    {% endif %}
+                                </td>
                             </tr>
                         {% empty %}
-                            <tr><td colspan="4" class="text-center text-muted py-3">Sin descuentos ni anticipos registrados.</td></tr>
+                            <tr><td colspan="5" class="text-center text-muted py-3">Sin descuentos ni anticipos registrados.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if descuentos.paginator.num_pages > 1 %}<div class="px-3 pb-2">{% pm_pagination descuentos param_name="page_descuentos" %}</div>{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= BONIFICACIÓN E IESS (SEPARADOS) ================= -->
+    <div class="row g-3">
+        <div class="col-12 col-lg-6">
+            <div class="card-minimal">
+                <div class="card-header">
+                    <h6><i class="bi bi-gift text-success me-2"></i>A) Bonificaciones</h6>
+                    <button class="btn btn-sm btn-amber" data-bs-toggle="modal" data-bs-target="#modalPeriodoMensual"><i class="bi bi-plus-lg"></i> Registrar Mes</button>
+                </div>
+                <p class="small text-muted px-3 pt-2 mb-0">Valor del mes completo; se aplica la mitad en cada pago quincenal.</p>
+                <div class="table-responsive">
+                    <table class="table table-modern mb-0">
+                        <thead><tr><th class="ps-3">Mes</th><th class="text-end">Total Mes</th><th class="text-end pe-3">Por Quincena</th></tr></thead>
+                        <tbody>
+                        {% for pm in periodos_mensuales %}
+                            <tr>
+                                <td class="ps-3">{{ pm.mes }}/{{ pm.anio }}</td>
+                                <td class="text-end">${{ pm.bonificacion }}</td>
+                                <td class="text-end pe-3 small text-muted">${{ pm.bonificacion_quincenal }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="3" class="text-center text-muted py-3">Sin bonificaciones registradas.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if periodos_mensuales.paginator.num_pages > 1 %}<div class="px-3 pb-2">{% pm_pagination periodos_mensuales param_name="page_periodos" %}</div>{% endif %}
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+            <div class="card-minimal">
+                <div class="card-header">
+                    <h6><i class="bi bi-shield-check text-info me-2"></i>B) IESS del Mes</h6>
+                    <button class="btn btn-sm btn-amber" data-bs-toggle="modal" data-bs-target="#modalPeriodoMensual"><i class="bi bi-plus-lg"></i> Registrar Mes</button>
+                </div>
+                <p class="small text-muted px-3 pt-2 mb-0">Aporte IESS del mes completo; se descuenta la mitad en cada pago quincenal.</p>
+                <div class="table-responsive">
+                    <table class="table table-modern mb-0">
+                        <thead><tr><th class="ps-3">Mes</th><th class="text-end">Total Mes</th><th class="text-end pe-3">Por Quincena</th></tr></thead>
+                        <tbody>
+                        {% for pm in periodos_mensuales %}
+                            <tr>
+                                <td class="ps-3">{{ pm.mes }}/{{ pm.anio }}</td>
+                                <td class="text-end">${{ pm.aporte_iess }}</td>
+                                <td class="text-end pe-3 small text-muted">${{ pm.aporte_iess_quincenal }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="3" class="text-center text-muted py-3">Sin aportes IESS registrados.</td></tr>
                         {% endfor %}
                         </tbody>
                     </table>
@@ -202,61 +298,43 @@
         </div>
     </div>
 
-    <!-- ================= PERIODOS MENSUALES (BONIFICACIÓN / IESS) ================= -->
-    <div class="card-minimal">
-        <div class="card-header">
-            <h6><i class="bi bi-calendar-month text-info me-2"></i>Bonificación e IESS del Mes</h6>
-            <button class="btn btn-sm btn-amber" data-bs-toggle="modal" data-bs-target="#modalPeriodoMensual"><i class="bi bi-plus-lg"></i> Registrar Mes</button>
-        </div>
-        <p class="small text-muted px-3 pt-2 mb-0">Se registran una sola vez al mes; el sistema aplica automáticamente la mitad de cada valor en cada pago quincenal de ese mes.</p>
-        <div class="table-responsive">
-            <table class="table table-modern mb-0">
-                <thead><tr><th class="ps-3">Mes</th><th class="text-end">Bonificación (mes)</th><th class="text-end">Aporte IESS (mes)</th><th class="text-end pe-3">Mitad c/u (por quincena)</th></tr></thead>
-                <tbody>
-                {% for pm in periodos_mensuales %}
-                    <tr>
-                        <td class="ps-3">{{ pm.mes }}/{{ pm.anio }}</td>
-                        <td class="text-end">${{ pm.bonificacion }}</td>
-                        <td class="text-end">${{ pm.aporte_iess }}</td>
-                        <td class="text-end pe-3 small text-muted">${{ pm.bonificacion_quincenal }} / ${{ pm.aporte_iess_quincenal }}</td>
-                    </tr>
-                {% empty %}
-                    <tr><td colspan="4" class="text-center text-muted py-3">Sin periodos mensuales registrados.</td></tr>
-                {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
     <!-- ================= PAGOS ================= -->
     <div class="card-minimal">
         <div class="card-header">
             <h6><i class="bi bi-wallet2 text-success me-2"></i>Pagos Realizados</h6>
-            <button class="btn btn-sm btn-amber" data-bs-toggle="modal" data-bs-target="#modalPago"><i class="bi bi-plus-lg"></i> Registrar Pago</button>
+            <a href="{% url 'iniciar_pago' trabajador.id %}" class="btn btn-sm btn-amber"><i class="bi bi-plus-lg"></i> Registrar Pago</a>
         </div>
         <div class="table-responsive">
             <table class="table table-modern mb-0">
                 <thead>
                     <tr>
-                        <th class="ps-3">Periodo</th><th>Fecha de Pago</th>
-                        <th class="text-end">Salario Base</th><th class="text-end">Horas Extra</th>
-                        <th class="text-end">Bonif.</th><th class="text-end">Descuentos</th>
-                        <th class="text-end">Anticipos</th><th class="text-end">IESS</th>
-                        <th class="text-end pe-3">Total</th>
+                        <th class="ps-3">Periodo</th><th>Estado</th>
+                        <th class="text-end">Salario</th><th class="text-end">H. Extra</th>
+                        <th class="text-end">Bonif.</th><th class="text-end">Desc./Antic.</th>
+                        <th class="text-end">IESS</th><th class="text-end">Total</th>
+                        <th class="text-end pe-3">PDF</th>
                     </tr>
                 </thead>
                 <tbody>
                 {% for pago in pagos %}
                     <tr>
                         <td class="ps-3 small">{{ pago.periodo_inicio|date:"d/m/Y" }} - {{ pago.periodo_fin|date:"d/m/Y" }}</td>
-                        <td class="small">{{ pago.fecha_pago|date:"d/m/Y" }}</td>
+                        <td>
+                            {% if pago.estado == 'PAGADO' %}
+                                <span class="badge-soft badge-soft-success">Pagado</span>
+                            {% else %}
+                                <span class="badge-soft badge-soft-warning">Pendiente</span>
+                            {% endif %}
+                        </td>
                         <td class="text-end">${{ pago.salario_base }}</td>
                         <td class="text-end text-success">+${{ pago.total_horas_extras }}</td>
                         <td class="text-end text-success">+${{ pago.bonificacion }}</td>
-                        <td class="text-end text-danger">-${{ pago.total_descuentos }}</td>
-                        <td class="text-end text-danger">-${{ pago.total_anticipos }}</td>
+                        <td class="text-end text-danger">-${{ pago.total_descuentos|add:pago.total_anticipos }}</td>
                         <td class="text-end text-danger">-${{ pago.aporte_iess }}</td>
-                        <td class="text-end pe-3 fw-bold">${{ pago.total_pagado }}</td>
+                        <td class="text-end fw-bold">${{ pago.total_pagado }}</td>
+                        <td class="text-end pe-3">
+                            <a href="{% url 'imprimir_pdf_pago' pago.id %}" target="_blank" class="btn btn-sm btn-outline-secondary border-0" title="Descargar PDF"><i class="bi bi-file-earmark-pdf"></i></a>
+                        </td>
                     </tr>
                 {% empty %}
                     <tr><td colspan="9" class="text-center text-muted py-3">Sin pagos registrados todavía.</td></tr>
@@ -264,6 +342,7 @@
                 </tbody>
             </table>
         </div>
+        {% if pagos.paginator.num_pages > 1 %}<div class="px-3 pb-2">{% pm_pagination pagos param_name="page_pagos" %}</div>{% endif %}
     </div>
 
     <!-- ================= PRÉSTAMOS ================= -->
@@ -292,6 +371,7 @@
                 </tbody>
             </table>
         </div>
+        {% if prestamos.paginator.num_pages > 1 %}<div class="px-3 pb-2">{% pm_pagination prestamos param_name="page_prestamos" %}</div>{% endif %}
     </div>
 
     <!-- ================= ENTREGAS DIRECTAS ================= -->
@@ -314,6 +394,7 @@
                 </tbody>
             </table>
         </div>
+        {% if entregas_directas.paginator.num_pages > 1 %}<div class="px-3 pb-2">{% pm_pagination entregas_directas param_name="page_entregas" %}</div>{% endif %}
     </div>
 </div>
 
@@ -334,19 +415,6 @@
     </form>
 </div></div></div>
 
-<div class="modal fade" id="modalHorario" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content">
-    <form method="POST" action="{% url 'registrar_horario_trabajador' trabajador.id %}">
-        {% csrf_token %}
-        <div class="modal-header"><h6 class="mb-0 fw-bold">Horario Normal</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-        <div class="modal-body">
-            <label class="form-label fw-bold">Hora de inicio</label>
-            <input type="time" name="hora_inicio" class="form-control mb-3" value="{{ horario.hora_inicio|time:'H:i' }}" required>
-            <label class="form-label fw-bold">Hora de fin</label>
-            <input type="time" name="hora_fin" class="form-control" value="{{ horario.hora_fin|time:'H:i' }}" required>
-        </div>
-        <div class="modal-footer"><button type="submit" class="btn btn-amber">Guardar</button></div>
-    </form>
-</div></div></div>
 
 <div class="modal fade" id="modalHoraExtra" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content">
     <form method="POST" action="{% url 'registrar_hora_extra' trabajador.id %}">
@@ -394,88 +462,6 @@
             <textarea name="observaciones" class="form-control" rows="2"></textarea>
         </div>
         <div class="modal-footer"><button type="submit" class="btn btn-amber">Registrar</button></div>
-    </form>
-</div></div></div>
-
-<div class="modal fade" id="modalPago" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content">
-    <form method="POST" action="{% url 'registrar_pago' trabajador.id %}">
-        {% csrf_token %}
-        <div class="modal-header"><h6 class="mb-0 fw-bold">Registrar Pago</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-        <div class="modal-body">
-            {% if not trabajador.salario_actual %}
-                <div class="alert alert-danger">Este trabajador no tiene un salario asignado. Asigna uno antes de registrar un pago.</div>
-            {% endif %}
-            <div class="row g-3 mb-3">
-                <div class="col-md-3">
-                    <label class="form-label fw-bold">Periodo desde</label>
-                    <input type="date" name="periodo_inicio" class="form-control" required>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-bold">Periodo hasta</label>
-                    <input type="date" name="periodo_fin" class="form-control" required>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-bold">Fecha de pago</label>
-                    <input type="date" name="fecha_pago" class="form-control" value="{{ hoy|date:'Y-m-d' }}" required>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-bold">Días laborados</label>
-                    <input type="number" name="dias_laborados" class="form-control" step="0.5" min="0.5" placeholder="Ej: 15" {% if trabajador.periodicidad_pago == 'MENSUAL' %}disabled{% endif %}>
-                    <div class="form-text small">{% if trabajador.periodicidad_pago == 'MENSUAL' %}No aplica: se paga el sueldo mensual completo.{% else %}Se paga Valor Día × días trabajados (dejar vacío = días del periodo).{% endif %}</div>
-                </div>
-            </div>
-
-            <label class="form-label fw-bold small text-uppercase">Bonificación e IESS del mes a aplicar (mitad automática)</label>
-            <select name="periodo_mensual_id" class="form-select mb-3">
-                <option value="">-- Ninguno --</option>
-                {% for pm in periodos_mensuales %}
-                    <option value="{{ pm.id }}">{{ pm.mes }}/{{ pm.anio }} — Bonif. mes ${{ pm.bonificacion }} (${{ pm.bonificacion_quincenal }}/quincena) · IESS mes ${{ pm.aporte_iess }} (${{ pm.aporte_iess_quincenal }}/quincena)</option>
-                {% endfor %}
-            </select>
-
-            <label class="form-label fw-bold small text-uppercase">Horas extra a incluir</label>
-            <div class="mb-3" style="max-height: 150px; overflow-y: auto;">
-                {% for he in horas_extra_disponibles %}
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="horas_extra_ids" value="{{ he.id }}" id="he{{ he.id }}">
-                        <label class="form-check-label small" for="he{{ he.id }}">
-                            {{ he.fecha|date:"d/m/Y" }} - {{ he.get_tipo_display }} ({{ he.cantidad_horas }}h)
-                            {% if he.valor_calculado is None %}<span class="text-warning">pendiente de fórmula</span>{% else %}${{ he.valor_calculado }}{% endif %}
-                        </label>
-                    </div>
-                {% empty %}
-                    <p class="small text-muted mb-0">No hay horas extra pendientes de incluir en un pago.</p>
-                {% endfor %}
-            </div>
-
-            <label class="form-label fw-bold small text-uppercase">Descuentos a incluir</label>
-            <div class="mb-3" style="max-height: 150px; overflow-y: auto;">
-                {% for d in descuentos_disponibles %}
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="descuento_ids" value="{{ d.id }}" id="d{{ d.id }}">
-                        <label class="form-check-label small" for="d{{ d.id }}">{{ d.fecha|date:"d/m/Y" }} - {{ d.motivo }} (-${{ d.monto }})</label>
-                    </div>
-                {% empty %}
-                    <p class="small text-muted mb-0">No hay descuentos pendientes de incluir en un pago.</p>
-                {% endfor %}
-            </div>
-
-            <label class="form-label fw-bold small text-uppercase">Anticipos a incluir</label>
-            <div class="mb-3" style="max-height: 150px; overflow-y: auto;">
-                {% for a in anticipos_disponibles %}
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="descuento_ids" value="{{ a.id }}" id="a{{ a.id }}">
-                        <label class="form-check-label small" for="a{{ a.id }}">{{ a.fecha|date:"d/m/Y" }} - {{ a.motivo }} (-${{ a.monto }})</label>
-                    </div>
-                {% empty %}
-                    <p class="small text-muted mb-0">No hay anticipos pendientes de incluir en un pago.</p>
-                {% endfor %}
-            </div>
-
-            <label class="form-label fw-bold">Observaciones</label>
-            <textarea name="observaciones" class="form-control" rows="2"></textarea>
-        </div>
-        <div class="modal-footer"><button type="submit" class="btn btn-amber" {% if not trabajador.salario_actual %}disabled{% endif %}>Registrar Pago</button></div>
     </form>
 </div></div></div>
 

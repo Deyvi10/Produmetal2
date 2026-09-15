@@ -3,7 +3,7 @@ from .models import (
     Proyecto, Material, Requerimiento, DetalleRequerimiento,
     MovimientoInventario, OrdenCompra, DetalleOrdenCompra, CierreIncompletoRequerimiento,
     Trabajador, EntregaDirecta, PrestamoHerramienta, DevolucionPrestamo,
-    SalarioTrabajador, HorarioTrabajador, ConfiguracionHorasExtra, Pago, HoraExtra, Descuento,
+    SalarioTrabajador, HorarioTrabajador, HorarioTrabajadorDia, ConfiguracionHorasExtra, Pago, HoraExtra, Descuento,
     PeriodoNominaMensual,
 )
 from django.contrib.auth.admin import UserAdmin
@@ -115,9 +115,14 @@ class SalarioTrabajadorAdmin(admin.ModelAdmin):
     search_fields = ('trabajador__nombres', 'trabajador__apellidos')
     readonly_fields = ('fecha_creacion',)
 
+class HorarioTrabajadorDiaInline(admin.TabularInline):
+    model = HorarioTrabajadorDia
+    extra = 0
+
 @admin.register(HorarioTrabajador)
 class HorarioTrabajadorAdmin(admin.ModelAdmin):
-    list_display = ('trabajador', 'hora_inicio', 'hora_fin')
+    list_display = ('trabajador', 'fecha_actualizacion')
+    inlines = [HorarioTrabajadorDiaInline]
 
 @admin.register(ConfiguracionHorasExtra)
 class ConfiguracionHorasExtraAdmin(admin.ModelAdmin):
@@ -143,8 +148,8 @@ class PeriodoNominaMensualAdmin(admin.ModelAdmin):
 
 @admin.register(Pago)
 class PagoAdmin(admin.ModelAdmin):
-    list_display = ('trabajador', 'periodo_inicio', 'periodo_fin', 'salario_base', 'total_horas_extras', 'bonificacion', 'total_descuentos', 'total_anticipos', 'aporte_iess', 'total_pagado')
-    list_filter = ('periodo_inicio',)
+    list_display = ('trabajador', 'periodo_inicio', 'periodo_fin', 'estado', 'total_pagado', 'pagado_por', 'fecha_pago_confirmado')
+    list_filter = ('estado', 'periodo_inicio')
     search_fields = ('trabajador__nombres', 'trabajador__apellidos')
     readonly_fields = ('fecha_registro',)
 

@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.contrib.auth.models import User, Group
@@ -19,7 +20,7 @@ from .models import (
     OrdenCompra, DetalleOrdenCompra, SolicitudCompra, CotizacionItem, Bodega, StockBodega,
     Categoria, PerfilEmpleado, CierreIncompletoRequerimiento,
     Trabajador, EntregaDirecta, PrestamoHerramienta, DevolucionPrestamo,
-    SalarioTrabajador, HorarioTrabajador, ConfiguracionHorasExtra, Pago, HoraExtra, Descuento,
+    SalarioTrabajador, HorarioTrabajador, HorarioTrabajadorDia, ConfiguracionHorasExtra, Pago, HoraExtra, Descuento,
     PeriodoNominaMensual,
     )
 from . import servicios_nomina
@@ -27,7 +28,7 @@ from .forms import (
     RequerimientoForm, DetalleRequerimientoForm, RegistroEmpleadoForm,
     OrdenCompraForm, DetalleOrdenCompraForm, AjusteInventarioForm,
     VentaMaterialForm, BodegaForm, CategoriaForm,
-    TrabajadorForm, HorarioTrabajadorForm, ConfiguracionHorasExtraForm,
+    TrabajadorForm, HorarioDiaFormSet, ConfiguracionHorasExtraForm,
 )
 
 # IMPORTS PARA GENERACIÓN DE PDF
@@ -2604,20 +2605,19 @@ def ficha_trabajador(request, trabajador_id):
     horas_extras = trabajador.horas_extras.all()
     descuentos = trabajador.descuentos.all()
 
+    def paginar(queryset, param, por_pagina=5):
+        return Paginator(queryset, por_pagina).get_page(request.GET.get(param))
+
     return render(request, 'web/erp/ficha_trabajador.html', {
         'trabajador': trabajador,
-        'salarios': trabajador.salarios.all(),
-        'pagos': trabajador.pagos.all(),
-        'horas_extras': horas_extras,
-        'descuentos': descuentos,
-        'prestamos': trabajador.prestamos.select_related('material', 'devolucion').all(),
-        'entregas_directas': trabajador.entregas_directas.select_related('movimiento__material').all(),
+        'salarios': paginar(trabajador.salarios.all(), 'page_salarios'),
+        'pagos': paginar(trabajador.pagos.all(), 'page_pagos'),
+        'horas_extras': paginar(horas_extras, 'page_horas'),
+        'descuentos': paginar(descuentos, 'page_descuentos'),
+        'prestamos': paginar(trabajador.prestamos.select_related('material', 'devolucion').all(), 'page_prestamos'),
+        'entregas_directas': paginar(trabajador.entregas_directas.select_related('movimiento__material').order_by('-movimiento__fecha_hora'), 'page_entregas'),
+        'periodos_mensuales': paginar(trabajador.periodos_mensuales.all(), 'page_periodos'),
         'horario': horario,
-        'form_horario': HorarioTrabajadorForm(instance=horario),
-        'horas_extra_disponibles': horas_extras.filter(pago__isnull=True),
-        'descuentos_disponibles': descuentos.filter(tipo='DESCUENTO', pago__isnull=True),
-        'anticipos_disponibles': descuentos.filter(tipo='ANTICIPO', pago__isnull=True),
-        'periodos_mensuales': trabajador.periodos_mensuales.all(),
         'hoy': timezone.localdate(),
     })
 
@@ -2646,20 +2646,60 @@ def asignar_salario_trabajador(request, trabajador_id):
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
 def registrar_horario_trabajador(request, trabajador_id):
+    """
+    Horario normal detallado por día de la semana (qué días trabaja y su
+    hora desde/hasta). Es la base para calcular automáticamente horas
+    normales vs. horas extra al registrar un pago.
+    """
     trabajador = get_object_or_404(Trabajador, id=trabajador_id)
-    horario = getattr(trabajador, 'horario', None)
+    horario = HorarioTrabajador.para_trabajador(trabajador, usuario=request.user)
+    queryset = HorarioTrabajadorDia.objects.filter(horario=horario).order_by('dia_semana')
+
     if request.method == 'POST':
-        form = HorarioTrabajadorForm(request.POST, instance=horario)
-        if form.is_valid():
-            horario = form.save(commit=False)
-            horario.trabajador = trabajador
+        formset = HorarioDiaFormSet(request.POST, queryset=queryset)
+        if formset.is_valid():
+            formset.save()
             horario.actualizado_por = request.user
-            horario.save()
-            messages.success(request, "Horario normal actualizado.")
+            horario.save(update_fields=['actualizado_por', 'fecha_actualizacion'])
+            messages.success(request, "Horario normal actualizado. Se usará para calcular horas extra automáticamente.")
+            return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+        messages.error(request, "Revisa el horario: hay días marcados como laborables sin hora de inicio/fin válida.")
+    else:
+        formset = HorarioDiaFormSet(queryset=queryset)
+
+    dias_formularios = list(zip([d for d, _ in HorarioTrabajadorDia.DIAS_SEMANA], formset.forms))
+
+    return render(request, 'web/erp/horario_trabajador.html', {
+        'trabajador': trabajador, 'formset': formset, 'dias_formularios': dias_formularios,
+    })
+
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def eliminar_hora_extra(request, trabajador_id, hora_id):
+    trabajador = get_object_or_404(Trabajador, id=trabajador_id)
+    hora = get_object_or_404(HoraExtra, id=hora_id, trabajador=trabajador)
+    if request.method == 'POST':
+        if hora.pago_id:
+            messages.error(request, "No puedes eliminar una hora extra que ya forma parte de un pago registrado.")
         else:
-            messages.error(request, "Revisa el horario ingresado: " + " ".join(
-                f"{campo}: {', '.join(errores)}" for campo, errores in form.errors.items()
-            ))
+            hora.delete()
+            messages.success(request, "Hora extra eliminada.")
+    return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def eliminar_descuento(request, trabajador_id, descuento_id):
+    trabajador = get_object_or_404(Trabajador, id=trabajador_id)
+    descuento = get_object_or_404(Descuento, id=descuento_id, trabajador=trabajador)
+    if request.method == 'POST':
+        if descuento.pago_id:
+            messages.error(request, "No puedes eliminar un descuento/anticipo que ya forma parte de un pago registrado.")
+        else:
+            tipo_display = descuento.get_tipo_display()
+            descuento.delete()
+            messages.success(request, f"{tipo_display} eliminado.")
     return redirect('ficha_trabajador', trabajador_id=trabajador.id)
 
 
@@ -2742,47 +2782,374 @@ def registrar_descuento(request, trabajador_id):
 
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
-def registrar_pago(request, trabajador_id):
+def iniciar_pago(request, trabajador_id):
+    """Paso 1: elegir el rango de fechas del periodo a pagar."""
     trabajador = get_object_or_404(Trabajador, id=trabajador_id)
-    if request.method == 'POST':
-        observaciones = (request.POST.get('observaciones') or '').strip()
+    if not trabajador.salario_actual:
+        messages.error(request, "Asigna un salario al trabajador antes de registrar un pago.")
+        return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+    return render(request, 'web/erp/iniciar_pago.html', {'trabajador': trabajador, 'hoy': timezone.localdate()})
+
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def preparar_pago(request, trabajador_id):
+    """
+    Paso 2: genera automáticamente todos los días del rango elegido,
+    indicando el día de la semana, si es un día normal según el horario
+    configurado, y si ya fue pagado (bloqueado) o está pendiente.
+    """
+    trabajador = get_object_or_404(Trabajador, id=trabajador_id)
+
+    try:
+        periodo_inicio = datetime.strptime(request.GET.get('periodo_inicio', ''), '%Y-%m-%d').date()
+        periodo_fin = datetime.strptime(request.GET.get('periodo_fin', ''), '%Y-%m-%d').date()
+    except Exception:
+        messages.error(request, "Selecciona un rango de fechas válido.")
+        return redirect('iniciar_pago', trabajador_id=trabajador.id)
+
+    if periodo_fin < periodo_inicio:
+        messages.error(request, "La fecha final no puede ser anterior a la inicial.")
+        return redirect('iniciar_pago', trabajador_id=trabajador.id)
+
+    if (periodo_fin - periodo_inicio).days > 45:
+        messages.error(request, "El rango de un pago no puede superar 45 días.")
+        return redirect('iniciar_pago', trabajador_id=trabajador.id)
+
+    if not trabajador.salario_actual:
+        messages.error(request, "Asigna un salario al trabajador antes de registrar un pago.")
+        return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+    horario = HorarioTrabajador.para_trabajador(trabajador)
+    dias_ya_pagados = trabajador.dias_pagados(periodo_inicio, periodo_fin)
+
+    dias = []
+    d = periodo_inicio
+    while d <= periodo_fin:
+        horario_dia = horario.dia(d.weekday())
+        dias.append({
+            'fecha': d,
+            'fecha_str': d.strftime('%Y-%m-%d'),
+            'nombre_dia': dict(HorarioTrabajadorDia.DIAS_SEMANA)[d.weekday()],
+            'es_normal': bool(horario_dia and horario_dia.trabaja),
+            'hora_inicio_normal': horario_dia.hora_inicio if horario_dia else None,
+            'hora_fin_normal': horario_dia.hora_fin if horario_dia else None,
+            'ya_pagado': d in dias_ya_pagados,
+        })
+        d += timedelta(days=1)
+
+    horas_extras = trabajador.horas_extras.filter(pago__isnull=True)
+    descuentos = trabajador.descuentos.filter(pago__isnull=True)
+
+    return render(request, 'web/erp/preparar_pago.html', {
+        'trabajador': trabajador, 'periodo_inicio': periodo_inicio, 'periodo_fin': periodo_fin,
+        'dias': dias,
+        'horas_extra_disponibles': horas_extras,
+        'descuentos_disponibles': descuentos.filter(tipo='DESCUENTO'),
+        'anticipos_disponibles': descuentos.filter(tipo='ANTICIPO'),
+        'periodos_mensuales': trabajador.periodos_mensuales.all(),
+        'hoy': timezone.localdate(),
+    })
+
+
+def _procesar_dias_pago(request, trabajador, periodo_inicio, periodo_fin):
+    """
+    Lee del POST el detalle día por día (incluir_<fecha>, entrada_<fecha>,
+    salida_<fecha>), calcula horas normales/extra con
+    servicios_nomina.calcular_horas_dia (misma fórmula ya validada contra el
+    Excel real) y re-valida en backend que ningún día ya esté pagado, sin
+    confiar en lo que haya deshabilitado el frontend.
+    """
+    horario = HorarioTrabajador.para_trabajador(trabajador)
+    dias_ya_pagados = trabajador.dias_pagados(periodo_inicio, periodo_fin)
+
+    errores = []
+    dias_detalle = []
+    total_horas_normales = Decimal('0.00')
+    entradas_horas_extra = []
+    dias_laborados = 0
+
+    d = periodo_inicio
+    while d <= periodo_fin:
+        fecha_str = d.strftime('%Y-%m-%d')
+        incluir = request.POST.get(f'incluir_{fecha_str}') == 'on'
+        horario_dia = horario.dia(d.weekday())
+
+        if not incluir:
+            dias_detalle.append({'fecha': d, 'incluido': False})
+            d += timedelta(days=1)
+            continue
+
+        if d in dias_ya_pagados:
+            errores.append(f"El día {d.strftime('%d/%m/%Y')} ya fue pagado antes; no puede incluirse de nuevo.")
+            d += timedelta(days=1)
+            continue
+
         try:
-            periodo_inicio = datetime.strptime(request.POST.get('periodo_inicio'), '%Y-%m-%d').date()
-            periodo_fin = datetime.strptime(request.POST.get('periodo_fin'), '%Y-%m-%d').date()
-            fecha_pago = datetime.strptime(request.POST.get('fecha_pago'), '%Y-%m-%d').date()
+            hora_entrada = datetime.strptime(request.POST.get(f'entrada_{fecha_str}', ''), '%H:%M').time()
+            hora_salida = datetime.strptime(request.POST.get(f'salida_{fecha_str}', ''), '%H:%M').time()
         except Exception:
-            messages.error(request, "Fechas inválidas para el pago.")
-            return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+            errores.append(f"Hora de entrada/salida inválida para el {d.strftime('%d/%m/%Y')}.")
+            d += timedelta(days=1)
+            continue
 
-        dias_laborados_raw = (request.POST.get('dias_laborados') or '').strip()
-        dias_laborados = None
-        if dias_laborados_raw:
-            try:
-                dias_laborados = Decimal(dias_laborados_raw.replace(',', '.'))
-            except Exception:
-                messages.error(request, "Días laborados inválidos.")
-                return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+        normales, ordinarias, extraordinarias = servicios_nomina.calcular_horas_dia(horario_dia, hora_entrada, hora_salida)
 
-        periodo_mensual = None
-        periodo_mensual_id = request.POST.get('periodo_mensual_id')
-        if periodo_mensual_id:
-            periodo_mensual = get_object_or_404(PeriodoNominaMensual, id=periodo_mensual_id, trabajador=trabajador)
+        if horario_dia and horario_dia.trabaja:
+            dias_laborados += 1
+        total_horas_normales += normales
 
-        horas_extra_ids = request.POST.getlist('horas_extra_ids')
-        descuento_ids = request.POST.getlist('descuento_ids')
+        for tipo, horas in (('ORDINARIA', ordinarias), ('EXTRAORDINARIA', extraordinarias)):
+            if horas > 0:
+                try:
+                    valor = servicios_nomina.calcular_valor_hora_extra(trabajador, tipo, horas)
+                except ValueError as e:
+                    errores.append(str(e))
+                    valor = Decimal('0.00')
+                entradas_horas_extra.append({'fecha': d, 'tipo': tipo, 'horas': horas, 'valor': valor})
 
+        dias_detalle.append({
+            'fecha': d, 'incluido': True, 'entrada': hora_entrada, 'salida': hora_salida,
+            'es_normal': bool(horario_dia and horario_dia.trabaja),
+            'horas_normales': normales, 'horas_ordinarias': ordinarias, 'horas_extraordinarias': extraordinarias,
+        })
+        d += timedelta(days=1)
+
+    if dias_laborados == 0 and not entradas_horas_extra and not errores:
+        errores.append("Debes incluir al menos un día trabajado en el periodo.")
+
+    total_ordinaria_horas = sum((e['horas'] for e in entradas_horas_extra if e['tipo'] == 'ORDINARIA'), Decimal('0.00'))
+    total_ordinaria_valor = sum((e['valor'] for e in entradas_horas_extra if e['tipo'] == 'ORDINARIA'), Decimal('0.00'))
+    total_extraordinaria_horas = sum((e['horas'] for e in entradas_horas_extra if e['tipo'] == 'EXTRAORDINARIA'), Decimal('0.00'))
+    total_extraordinaria_valor = sum((e['valor'] for e in entradas_horas_extra if e['tipo'] == 'EXTRAORDINARIA'), Decimal('0.00'))
+
+    return {
+        'errores': errores,
+        'dias_detalle': dias_detalle,
+        'dias_laborados': Decimal(dias_laborados),
+        'total_horas_normales': total_horas_normales,
+        'entradas_horas_extra': entradas_horas_extra,
+        'total_ordinaria_horas': total_ordinaria_horas,
+        'total_ordinaria_valor': total_ordinaria_valor,
+        'total_extraordinaria_horas': total_extraordinaria_horas,
+        'total_extraordinaria_valor': total_extraordinaria_valor,
+        'total_horas_extra_valor': total_ordinaria_valor + total_extraordinaria_valor,
+    }
+
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def registrar_pago(request, trabajador_id):
+    """
+    Paso 3 (vista previa) y 4 (confirmación) del registro de pago.
+
+    - Sin `confirmado=1`: solo calcula y muestra el desglose completo
+      (horas normales, ordinarias, extraordinarias, bonificación, IESS,
+      descuentos, anticipos y total) para revisión, SIN escribir nada en
+      la base de datos.
+    - Con `confirmado=1`: repite exactamente el mismo cálculo y esta vez sí
+      crea las HoraExtra automáticas y el Pago, de forma transaccional.
+    """
+    trabajador = get_object_or_404(Trabajador, id=trabajador_id)
+    if request.method != 'POST':
+        return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+    try:
+        periodo_inicio = datetime.strptime(request.POST.get('periodo_inicio'), '%Y-%m-%d').date()
+        periodo_fin = datetime.strptime(request.POST.get('periodo_fin'), '%Y-%m-%d').date()
+    except Exception:
+        messages.error(request, "Periodo inválido.")
+        return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+    resultado = _procesar_dias_pago(request, trabajador, periodo_inicio, periodo_fin)
+
+    periodo_mensual = None
+    periodo_mensual_id = request.POST.get('periodo_mensual_id')
+    if periodo_mensual_id:
+        periodo_mensual = get_object_or_404(PeriodoNominaMensual, id=periodo_mensual_id, trabajador=trabajador)
+
+    horas_extra_ids_manual = [i for i in request.POST.getlist('horas_extra_ids') if i]
+    descuento_ids_manual = [i for i in request.POST.getlist('descuento_ids') if i]
+    observaciones = (request.POST.get('observaciones') or '').strip()
+
+    try:
+        fecha_pago = datetime.strptime(request.POST.get('fecha_pago', ''), '%Y-%m-%d').date()
+    except Exception:
+        fecha_pago = timezone.localdate()
+
+    if resultado['errores']:
+        for error in resultado['errores']:
+            messages.error(request, error)
+        return redirect(
+            f"{reverse('preparar_pago', args=[trabajador.id])}"
+            f"?periodo_inicio={periodo_inicio}&periodo_fin={periodo_fin}"
+        )
+
+    horas_manuales = HoraExtra.objects.filter(id__in=horas_extra_ids_manual, trabajador=trabajador, pago__isnull=True)
+    descuentos_manuales = Descuento.objects.filter(id__in=descuento_ids_manual, trabajador=trabajador, pago__isnull=True)
+
+    confirmado = request.POST.get('confirmado') == '1'
+
+    if not confirmado:
         try:
-            pago = trabajador.registrar_pago(
-                periodo_inicio=periodo_inicio, periodo_fin=periodo_fin, fecha_pago=fecha_pago,
-                usuario=request.user, dias_laborados=dias_laborados,
-                horas_extra_ids=horas_extra_ids, descuento_ids=descuento_ids,
-                periodo_mensual=periodo_mensual, observaciones=observaciones,
-            )
+            salario_preview = servicios_nomina.calcular_salario_periodo(trabajador, resultado['dias_laborados'])
         except ValueError as e:
             messages.error(request, str(e))
-        else:
-            messages.success(request, f"Pago registrado correctamente. Total: ${pago.total_pagado}.")
+            return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+        total_descuentos_manual = sum((d.monto for d in descuentos_manuales if d.tipo == 'DESCUENTO'), Decimal('0.00'))
+        total_anticipos_manual = sum((d.monto for d in descuentos_manuales if d.tipo == 'ANTICIPO'), Decimal('0.00'))
+        bonificacion = periodo_mensual.bonificacion_quincenal if periodo_mensual else Decimal('0.00')
+        aporte_iess = periodo_mensual.aporte_iess_quincenal if periodo_mensual else Decimal('0.00')
+        total_estimado = (
+            salario_preview + resultado['total_horas_extra_valor'] + bonificacion
+            - total_descuentos_manual - total_anticipos_manual - aporte_iess
+        )
+
+        return render(request, 'web/erp/revisar_pago.html', {
+            'trabajador': trabajador, 'periodo_inicio': periodo_inicio, 'periodo_fin': periodo_fin,
+            'fecha_pago': fecha_pago, 'resultado': resultado, 'salario_preview': salario_preview,
+            'periodo_mensual': periodo_mensual, 'bonificacion': bonificacion, 'aporte_iess': aporte_iess,
+            'horas_manuales': horas_manuales, 'descuentos_manuales': descuentos_manuales,
+            'total_descuentos_manual': total_descuentos_manual, 'total_anticipos_manual': total_anticipos_manual,
+            'total_estimado': total_estimado, 'observaciones': observaciones,
+            'horas_extra_ids_manual': horas_extra_ids_manual, 'descuento_ids_manual': descuento_ids_manual,
+        })
+
+    # confirmado=1: crear de verdad, todo dentro de una sola transacción
+    try:
+        with transaction.atomic():
+            horas_extra_auto_ids = []
+            for entrada in resultado['entradas_horas_extra']:
+                he = HoraExtra.objects.create(
+                    trabajador=trabajador, fecha=entrada['fecha'], tipo=entrada['tipo'],
+                    cantidad_horas=entrada['horas'], valor_calculado=entrada['valor'],
+                    observaciones=f"Generado automáticamente del pago ({entrada['fecha'].strftime('%d/%m/%Y')}).",
+                    generado_automaticamente=True, registrado_por=request.user,
+                )
+                horas_extra_auto_ids.append(he.id)
+
+            pago = trabajador.registrar_pago(
+                periodo_inicio=periodo_inicio, periodo_fin=periodo_fin, fecha_pago=fecha_pago,
+                usuario=request.user, dias_laborados=resultado['dias_laborados'],
+                horas_extra_ids=horas_extra_auto_ids + horas_extra_ids_manual,
+                descuento_ids=descuento_ids_manual,
+                periodo_mensual=periodo_mensual, observaciones=observaciones,
+                total_horas_normales=resultado['total_horas_normales'],
+            )
+    except ValueError as e:
+        messages.error(request, str(e))
+        return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+    messages.success(request, f"Pago registrado correctamente. Total a pagar: ${pago.total_pagado}.")
     return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: es_admin(u) or es_comprador(u), login_url='dashboard_erp')
+def listar_pagos(request):
+    """
+    Pagos Realizados. Administrador y Compras pueden ver y ejecutar
+    "Proceder al Pago"; solo Administrador puede editar un pago ya generado.
+    """
+    pagos = Pago.objects.select_related('trabajador', 'pagado_por', 'registrado_por').all()
+
+    estado_filtro = request.GET.get('estado')
+    if estado_filtro in ('PENDIENTE', 'PAGADO'):
+        pagos = pagos.filter(estado=estado_filtro)
+
+    q = request.GET.get('q', '').strip()
+    if q:
+        pagos = pagos.filter(Q(trabajador__nombres__icontains=q) | Q(trabajador__apellidos__icontains=q))
+
+    paginator = Paginator(pagos, 15)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    return render(request, 'web/erp/listar_pagos.html', {
+        'page_obj': page_obj, 'estado_filtro': estado_filtro, 'q': q,
+        'es_admin_actual': es_admin(request.user),
+        'rol': 'Administrador' if es_admin(request.user) else 'Compras',
+    })
+
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: es_admin(u) or es_comprador(u), login_url='dashboard_erp')
+def confirmar_pago(request, pago_id):
+    """"Proceder al Pago": confirma que la transferencia ya se hizo, marca PAGADO y notifica por correo."""
+    pago = get_object_or_404(Pago, id=pago_id)
+    if request.method == 'POST':
+        try:
+            pago.marcar_como_pagado(usuario=request.user)
+        except ValueError as e:
+            messages.error(request, str(e))
+            return redirect('listar_pagos')
+
+        try:
+            servicios_nomina.enviar_email_pago_confirmado(pago)
+        except Exception as e:
+            pago.email_enviado = False
+            pago.email_error = str(e)
+            pago.save(update_fields=['email_enviado', 'email_error'])
+            messages.warning(request, f"El pago quedó marcado como PAGADO, pero el correo al trabajador NO se pudo enviar: {e}")
+        else:
+            pago.email_enviado = True
+            pago.email_error = ''
+            pago.save(update_fields=['email_enviado', 'email_error'])
+            messages.success(request, f"Pago marcado como PAGADO y correo enviado a {pago.trabajador.email}.")
+    return redirect('listar_pagos')
+
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def editar_pago(request, pago_id):
+    """
+    Solo Administrador. Por trazabilidad, no se editan los montos ya
+    calculados (quedarían desligados de las horas extra/descuentos que los
+    componen); solo la fecha de pago y las observaciones, con confirmación
+    explícita si el pago ya fue marcado como PAGADO.
+    """
+    pago = get_object_or_404(Pago, id=pago_id)
+    if request.method == 'POST':
+        if pago.estado == 'PAGADO' and request.POST.get('confirmar_edicion') != 'on':
+            messages.error(request, "Este pago ya fue realizado. Debes confirmar explícitamente que deseas editarlo.")
+            return redirect('editar_pago', pago_id=pago.id)
+
+        try:
+            fecha_pago = datetime.strptime(request.POST.get('fecha_pago', ''), '%Y-%m-%d').date()
+        except Exception:
+            messages.error(request, "Fecha de pago inválida.")
+            return redirect('editar_pago', pago_id=pago.id)
+
+        pago.fecha_pago = fecha_pago
+        pago.observaciones = (request.POST.get('observaciones') or '').strip()
+        pago.save(update_fields=['fecha_pago', 'observaciones'])
+        messages.success(request, "Pago actualizado.")
+        return redirect('listar_pagos')
+
+    return render(request, 'web/erp/editar_pago.html', {'pago': pago})
+
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: es_admin(u) or es_comprador(u), login_url='dashboard_erp')
+def imprimir_pdf_pago(request, pago_id):
+    pago = get_object_or_404(Pago, id=pago_id)
+    context = {
+        'pago': pago,
+        'trabajador': pago.trabajador,
+        'horas_extras': pago.horas_extras_incluidas.all(),
+        'descuentos': pago.descuentos_incluidos.filter(tipo='DESCUENTO'),
+        'anticipos': pago.descuentos_incluidos.filter(tipo='ANTICIPO'),
+        'logo_path': os.path.join(settings.BASE_DIR, 'web', 'static', 'web', 'img', 'logo.jpg'),
+        'fecha_impresion': timezone.now(),
+    }
+    html = get_template('web/erp/pdf_pago.html').render(context)
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = (
+        f'attachment; filename="RolDePago_{pago.trabajador.documento_identidad}_{pago.periodo_inicio}_{pago.periodo_fin}.pdf"'
+    )
+    if pisa.CreatePDF(html, dest=response).err:
+        return HttpResponse('Hubo un error al generar el PDF del rol de pagos.')
+    return response
 
 
 @login_required(login_url='login')

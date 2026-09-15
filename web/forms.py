@@ -3,7 +3,7 @@ from django.contrib.auth.models import User, Group
 from django.core.exceptions import ValidationError
 from .models import (Requerimiento, DetalleRequerimiento, OrdenCompra, DetalleOrdenCompra,
                      Material, Proyecto, Bodega, Categoria, Trabajador, HorarioTrabajador,
-                     ConfiguracionHorasExtra)
+                     HorarioTrabajadorDia, ConfiguracionHorasExtra)
 
 # =======================================================
 # HELPERS Y VALIDACIONES GLOBALES
@@ -295,9 +295,30 @@ class BodegaForm(forms.ModelForm):
 
 
 class TrabajadorForm(forms.ModelForm):
+    email = forms.EmailField(
+        required=True, error_messages={'required': 'El correo electrónico es obligatorio.'},
+        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'correo@ejemplo.com'})
+    )
+    banco = forms.ChoiceField(
+        choices=Trabajador.BANCOS, required=True,
+        error_messages={'required': 'Selecciona el banco para pagos.'},
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    numero_cuenta = forms.CharField(
+        required=True, max_length=20,
+        error_messages={'required': 'El número de cuenta es obligatorio.'},
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Número de cuenta'})
+    )
+    tipo_cuenta = forms.ChoiceField(
+        choices=Trabajador.TIPOS_CUENTA, required=True,
+        error_messages={'required': 'Selecciona el tipo de cuenta.'},
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+
     class Meta:
         model = Trabajador
-        fields = ['nombres', 'apellidos', 'documento_identidad', 'cargo', 'telefono', 'periodicidad_pago', 'fecha_ingreso']
+        fields = ['nombres', 'apellidos', 'documento_identidad', 'cargo', 'telefono', 'email',
+                  'banco', 'numero_cuenta', 'tipo_cuenta', 'periodicidad_pago', 'fecha_ingreso']
         widgets = {
             'nombres': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombres'}),
             'apellidos': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Apellidos'}),
@@ -307,6 +328,14 @@ class TrabajadorForm(forms.ModelForm):
             'periodicidad_pago': forms.Select(attrs={'class': 'form-select'}),
             'fecha_ingreso': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
         }
+
+    def clean_numero_cuenta(self):
+        numero = (self.cleaned_data.get('numero_cuenta') or '').strip()
+        if not numero.isdigit():
+            raise ValidationError("El número de cuenta solo puede contener dígitos.")
+        if len(numero) < 6 or len(numero) > 20:
+            raise ValidationError("El número de cuenta debe tener entre 6 y 20 dígitos.")
+        return numero
 
     def clean_nombres(self):
         nombres = (self.cleaned_data.get('nombres') or '').strip()
@@ -334,21 +363,30 @@ class TrabajadorForm(forms.ModelForm):
         return documento
 
 
-class HorarioTrabajadorForm(forms.ModelForm):
+class HorarioTrabajadorDiaForm(forms.ModelForm):
     class Meta:
-        model = HorarioTrabajador
-        fields = ['hora_inicio', 'hora_fin']
+        model = HorarioTrabajadorDia
+        fields = ['trabaja', 'hora_inicio', 'hora_fin']
         widgets = {
-            'hora_inicio': forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
-            'hora_fin': forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
+            'trabaja': forms.CheckboxInput(attrs={'class': 'form-check-input dia-trabaja-check'}),
+            'hora_inicio': forms.TimeInput(attrs={'class': 'form-control form-control-sm', 'type': 'time'}),
+            'hora_fin': forms.TimeInput(attrs={'class': 'form-control form-control-sm', 'type': 'time'}),
         }
 
     def clean(self):
         cleaned = super().clean()
-        inicio, fin = cleaned.get('hora_inicio'), cleaned.get('hora_fin')
-        if inicio and fin and inicio == fin:
-            raise ValidationError("La hora de inicio y de fin del horario no pueden ser iguales.")
+        if cleaned.get('trabaja'):
+            inicio, fin = cleaned.get('hora_inicio'), cleaned.get('hora_fin')
+            if not inicio or not fin:
+                raise ValidationError("Indica hora de inicio y fin para un día laborable.")
+            if inicio >= fin:
+                raise ValidationError("La hora de inicio debe ser anterior a la de fin.")
         return cleaned
+
+
+HorarioDiaFormSet = forms.modelformset_factory(
+    HorarioTrabajadorDia, form=HorarioTrabajadorDiaForm, extra=0
+)
 
 
 class ConfiguracionHorasExtraForm(forms.ModelForm):

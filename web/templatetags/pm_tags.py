@@ -4,17 +4,23 @@ register = template.Library()
 
 
 @register.inclusion_tag('web/erp/partials/_pagination.html', takes_context=True)
-def pm_pagination(context, page_obj, window=2):
+def pm_pagination(context, page_obj, window=2, param_name='page'):
     """
     Renderiza un control de paginación consistente (números + prev/next +
     "Mostrando X-Y de Z"), preservando automáticamente cualquier filtro
-    activo en la querystring (todo lo que venga en GET, excepto 'page').
+    activo en la querystring (todo lo que venga en GET, excepto el propio
+    parámetro de página).
+
+    `param_name` permite tener varios paginadores independientes en una
+    misma pantalla (ej. ficha_trabajador: page_salarios, page_pagos, ...)
+    sin que se pisen entre sí; por defecto sigue siendo 'page' para no
+    romper las pantallas que ya usan este componente.
     """
     request = context.get('request')
     base_qs = ''
     if request is not None:
         params = request.GET.copy()
-        params.pop('page', None)
+        params.pop(param_name, None)
         base_qs = params.urlencode()
 
     num_pages = page_obj.paginator.num_pages
@@ -37,4 +43,5 @@ def pm_pagination(context, page_obj, window=2):
         'page_obj': page_obj,
         'pages': pages,
         'base_qs': base_qs,
+        'param_name': param_name,
     }

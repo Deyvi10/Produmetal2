@@ -113,10 +113,23 @@ AUTH_PASSWORD_VALIDATORS = [
 # ==============================================================================
 # 5. REGIONALIZACIÓN (Idioma y Hora ERP)
 # ==============================================================================
-LANGUAGE_CODE = 'es-ec' 
-TIME_ZONE = 'America/Guayaquil' 
+LANGUAGE_CODE = 'es-ec'
+TIME_ZONE = 'America/Guayaquil'
 USE_I18N = True
 USE_TZ = True
+
+# ==============================================================================
+# 5B. CORREO (notificación de pagos a trabajadores)
+# ==============================================================================
+# Sin credenciales configuradas, el envío falla explícitamente (se captura y
+# se muestra al administrador) en vez de fingir que el correo se envió.
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.environ.get('EMAIL_HOST', '')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'ProduMetal CM <no-reply@produmetalcm.com>')
 
 # ==============================================================================
 # 6. ARCHIVOS ESTÁTICOS Y MULTIMEDIA

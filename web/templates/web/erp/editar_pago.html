@@ -1,0 +1,47 @@
+{% extends 'web/base.html' %}
+
+{% block content %}
+<style>
+    body { background-color: var(--pm-bg); color: var(--pm-text); }
+    .erp-container { max-width: 650px; padding-bottom: 60px; margin-top: 30px; }
+    .card-master { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; box-shadow: var(--pm-shadow); padding: 2rem; }
+    label, .form-label { color: var(--pm-text); }
+    .form-control { background-color: var(--pm-bg); border: 1px solid var(--pm-border); color: var(--pm-text); }
+    .form-control:focus { background-color: var(--pm-bg); color: var(--pm-text); border-color: var(--pm-amber); box-shadow: 0 0 0 3px var(--pm-amber-soft); }
+    .btn-primary-custom { background: #0d6efd; color: #fff; font-weight: bold; border-radius: 8px; padding: 12px 24px; border: none; }
+    .btn-primary-custom:hover { filter: brightness(0.9); color: #fff; }
+</style>
+
+<div class="container erp-container">
+    <h2 class="fw-bold mb-1">Editar Pago — {{ pago.trabajador.nombre_completo }}</h2>
+    <p class="small mb-4" style="color: var(--pm-text-muted);">Periodo {{ pago.periodo_inicio|date:"d/m/Y" }} - {{ pago.periodo_fin|date:"d/m/Y" }} · Total ${{ pago.total_pagado }}</p>
+
+    {% if pago.estado == 'PAGADO' %}
+    <div class="alert alert-danger border-0 mb-4">
+        <strong><i class="bi bi-exclamation-triangle-fill me-1"></i> Este pago ya fue realizado</strong> el {{ pago.fecha_pago_confirmado|date:"d/m/Y H:i" }} por {{ pago.pagado_por.username }}.
+        Editarlo no revierte la transferencia ya hecha; solo ajusta el registro interno. Por trazabilidad no se pueden cambiar los montos calculados.
+    </div>
+    {% endif %}
+
+    <form method="POST" class="card-master" {% if pago.estado == 'PAGADO' %}onsubmit="return confirm('¿Confirmas editar un pago que YA fue realizado?');"{% endif %}>
+        {% csrf_token %}
+        {% if pago.estado == 'PAGADO' %}
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="confirmar_edicion" id="confirmar_edicion" required>
+            <label class="form-check-label fw-bold" for="confirmar_edicion">Confirmo que deseo editar este pago ya realizado.</label>
+        </div>
+        {% endif %}
+
+        <label class="form-label fw-bold">Fecha de Pago</label>
+        <input type="date" name="fecha_pago" class="form-control mb-3" value="{{ pago.fecha_pago|date:'Y-m-d' }}" required>
+
+        <label class="form-label fw-bold">Observaciones</label>
+        <textarea name="observaciones" class="form-control" rows="3">{{ pago.observaciones }}</textarea>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <a href="{% url 'listar_pagos' %}" class="btn btn-secondary fw-bold px-4">Cancelar</a>
+            <button type="submit" class="btn-primary-custom px-4">Guardar Cambios</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
