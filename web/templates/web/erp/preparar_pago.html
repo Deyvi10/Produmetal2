@@ -44,8 +44,9 @@
         <div class="card-master">
             <div class="card-header-pm"><i class="bi bi-calendar3 me-2"></i>Días del Periodo</div>
             <div class="p-2 small" style="color: var(--pm-text-muted);">
-                <span class="badge-soft badge-normal">Normal</span> = dentro del horario configurado (recargo 50% si excede).
-                <span class="badge-soft badge-extra ms-2">Fuera de horario</span> = día libre trabajado (recargo 100%).
+                El salario ya cubre TODOS los días del periodo (incluidos sábados/domingos).
+                <span class="badge-soft badge-normal">Normal</span> = si trabajó más de su horario, el excedente es recargo 50%.
+                <span class="badge-soft badge-extra ms-2">Descanso</span> = solo si trabajó ese día libre, todo cuenta como recargo 100% (además del salario).
             </div>
             {% for dia in dias %}
                 <div class="dia-row {% if dia.ya_pagado %}ya-pagado{% endif %}">
@@ -53,36 +54,61 @@
                     {% if dia.ya_pagado %}
                         <span class="badge-soft badge-pagado"><i class="bi bi-lock-fill"></i> Ya pagado</span>
                         <span class="small" style="color: var(--pm-text-muted);">Este día ya pertenece a un pago anterior.</span>
-                    {% else %}
-                        <div class="form-check">
-                            <input class="form-check-input dia-incluir" type="checkbox" name="incluir_{{ dia.fecha_str }}" id="inc{{ dia.fecha_str }}" {% if dia.es_normal %}checked{% endif %}>
-                            <label class="form-check-label small" for="inc{{ dia.fecha_str }}">Incluir</label>
-                        </div>
-                        {% if dia.es_normal %}
-                            <span class="badge-soft badge-normal">Normal ({{ dia.hora_inicio_normal|time:"H:i" }}-{{ dia.hora_fin_normal|time:"H:i" }})</span>
-                        {% else %}
-                            <span class="badge-soft badge-extra">Fuera de horario</span>
-                        {% endif %}
+                    {% elif dia.es_normal %}
+                        <span class="badge-soft badge-normal">Normal ({{ dia.hora_inicio_normal|time:"H:i" }}-{{ dia.hora_fin_normal|time:"H:i" }})</span>
                         <div class="dia-horas d-flex align-items-center gap-2">
                             <span class="small" style="color: var(--pm-text-muted);">Entrada</span>
-                            <input type="time" class="form-control form-control-sm" name="entrada_{{ dia.fecha_str }}" value="{% if dia.es_normal %}{{ dia.hora_inicio_normal|time:'H:i' }}{% endif %}">
+                            <input type="time" class="form-control form-control-sm" name="entrada_{{ dia.fecha_str }}" value="{{ dia.hora_inicio_normal|time:'H:i' }}">
                             <span class="small" style="color: var(--pm-text-muted);">Salida</span>
-                            <input type="time" class="form-control form-control-sm" name="salida_{{ dia.fecha_str }}" value="{% if dia.es_normal %}{{ dia.hora_fin_normal|time:'H:i' }}{% endif %}">
+                            <input type="time" class="form-control form-control-sm" name="salida_{{ dia.fecha_str }}" value="{{ dia.hora_fin_normal|time:'H:i' }}">
+                            <span class="small" style="color: var(--pm-text-muted);">(deja el horario tal cual si no hubo horas extra)</span>
+                        </div>
+                    {% else %}
+                        <div class="form-check">
+                            <input class="form-check-input dia-incluir" type="checkbox" name="incluir_{{ dia.fecha_str }}" id="inc{{ dia.fecha_str }}">
+                            <label class="form-check-label small" for="inc{{ dia.fecha_str }}">¿Trabajó este día de descanso?</label>
+                        </div>
+                        <span class="badge-soft badge-extra">Descanso</span>
+                        <div class="dia-horas d-flex align-items-center gap-2">
+                            <span class="small" style="color: var(--pm-text-muted);">Entrada</span>
+                            <input type="time" class="form-control form-control-sm" name="entrada_{{ dia.fecha_str }}" disabled>
+                            <span class="small" style="color: var(--pm-text-muted);">Salida</span>
+                            <input type="time" class="form-control form-control-sm" name="salida_{{ dia.fecha_str }}" disabled>
                         </div>
                     {% endif %}
                 </div>
             {% endfor %}
         </div>
 
-        <div class="card-master">
-            <div class="card-header-pm"><i class="bi bi-calendar-month me-2"></i>Bonificación e IESS del Mes</div>
-            <div class="p-3">
-                <select name="periodo_mensual_id" class="form-select">
-                    <option value="">-- Ninguno --</option>
-                    {% for pm in periodos_mensuales %}
-                        <option value="{{ pm.id }}">{{ pm.mes }}/{{ pm.anio }} — Bonif. ${{ pm.bonificacion_quincenal }}/quincena · IESS ${{ pm.aporte_iess_quincenal }}/quincena</option>
-                    {% endfor %}
-                </select>
+        <div class="row g-3">
+            <div class="col-12 col-md-6">
+                <div class="card-master">
+                    <div class="card-header-pm"><i class="bi bi-gift me-2"></i>Bonificación del Mes</div>
+                    <div class="p-3">
+                        <select name="periodo_mensual_id" class="form-select">
+                            <option value="">-- Ninguna --</option>
+                            {% for pm in periodos_mensuales %}
+                                <option value="{{ pm.id }}">{{ pm.mes }}/{{ pm.anio }} — ${{ pm.bonificacion_quincenal }}/quincena</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card-master">
+                    <div class="card-header-pm"><i class="bi bi-shield-check me-2"></i>Aporte IESS (Fijo)</div>
+                    <div class="p-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="aplicar_iess" id="aplicar_iess" {% if trabajador.aporte_iess_mensual %}checked{% endif %}>
+                            <label class="form-check-label small" for="aplicar_iess">
+                                Aplicar aporte IESS: ${{ trabajador.aporte_iess_quincenal }}/quincena (fijo ${{ trabajador.aporte_iess_mensual }}/mes)
+                            </label>
+                        </div>
+                        {% if not trabajador.aporte_iess_mensual %}
+                            <p class="small mb-0 mt-2" style="color: var(--pm-text-muted);">Este trabajador no tiene un aporte IESS configurado todavía.</p>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
         </div>
 

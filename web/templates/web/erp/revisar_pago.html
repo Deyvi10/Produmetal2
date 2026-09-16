@@ -69,6 +69,7 @@
         <input type="hidden" name="fecha_pago" value="{{ fecha_pago|date:'Y-m-d' }}">
         <input type="hidden" name="observaciones" value="{{ observaciones }}">
         {% if periodo_mensual %}<input type="hidden" name="periodo_mensual_id" value="{{ periodo_mensual.id }}">{% endif %}
+        {% if aplicar_iess %}<input type="hidden" name="aplicar_iess" value="on">{% endif %}
         {% for id in horas_extra_ids_manual %}<input type="hidden" name="horas_extra_ids" value="{{ id }}">{% endfor %}
         {% for id in descuento_ids_manual %}<input type="hidden" name="descuento_ids" value="{{ id }}">{% endfor %}
         {% for dia in resultado.dias_detalle %}

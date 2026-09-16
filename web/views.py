@@ -2854,10 +2854,27 @@ def preparar_pago(request, trabajador_id):
 
 def _procesar_dias_pago(request, trabajador, periodo_inicio, periodo_fin):
     """
-    Lee del POST el detalle día por día (incluir_<fecha>, entrada_<fecha>,
-    salida_<fecha>), calcula horas normales/extra con
-    servicios_nomina.calcular_horas_dia (misma fórmula ya validada contra el
-    Excel real) y re-valida en backend que ningún día ya esté pagado, sin
+    Calcula el desglose de un pago día por día.
+
+    IMPORTANTE sobre `dias_laborados`: el sueldo es periódico (cubre TODO el
+    rango de fechas del pago, incluidos sábados/domingos), así que
+    dias_laborados es simplemente el número de días de calendario del
+    periodo — nunca depende de qué casillas se marcaron. Por eso una
+    quincena de 15 días (aunque tenga fines de semana) paga Valor Día x 15,
+    no Valor Día x días-hábiles.
+
+    Sobre las horas extra (mismas fórmulas ya validadas contra el Excel):
+    - Día normal según el horario configurado: se usa la entrada/salida
+      indicada (por defecto, la del horario) para detectar excedente sobre
+      la jornada -> hora "ORDINARIA" (recargo 50%). Si no hay excedente,
+      ese día no genera ninguna hora extra (su pago ya está cubierto por el
+      salario base).
+    - Día de descanso (fuera del horario normal): solo se procesa si se
+      marcó explícitamente "trabajó este día"; toda la duración trabajada
+      cuenta como hora "EXTRAORDINARIA" (recargo 100%), ADEMÁS del salario
+      base (que ya incluye ese día de descanso dentro del periodo pagado).
+
+    Re-valida en backend que ningún día del periodo ya esté pagado, sin
     confiar en lo que haya deshabilitado el frontend.
     """
     horario = HorarioTrabajador.para_trabajador(trabajador)
@@ -2867,56 +2884,77 @@ def _procesar_dias_pago(request, trabajador, periodo_inicio, periodo_fin):
     dias_detalle = []
     total_horas_normales = Decimal('0.00')
     entradas_horas_extra = []
-    dias_laborados = 0
+
+    dias_laborados = Decimal((periodo_fin - periodo_inicio).days + 1)
 
     d = periodo_inicio
     while d <= periodo_fin:
         fecha_str = d.strftime('%Y-%m-%d')
-        incluir = request.POST.get(f'incluir_{fecha_str}') == 'on'
         horario_dia = horario.dia(d.weekday())
-
-        if not incluir:
-            dias_detalle.append({'fecha': d, 'incluido': False})
-            d += timedelta(days=1)
-            continue
+        es_normal = bool(horario_dia and horario_dia.trabaja and horario_dia.hora_inicio and horario_dia.hora_fin)
 
         if d in dias_ya_pagados:
             errores.append(f"El día {d.strftime('%d/%m/%Y')} ya fue pagado antes; no puede incluirse de nuevo.")
             d += timedelta(days=1)
             continue
 
-        try:
-            hora_entrada = datetime.strptime(request.POST.get(f'entrada_{fecha_str}', ''), '%H:%M').time()
-            hora_salida = datetime.strptime(request.POST.get(f'salida_{fecha_str}', ''), '%H:%M').time()
-        except Exception:
-            errores.append(f"Hora de entrada/salida inválida para el {d.strftime('%d/%m/%Y')}.")
-            d += timedelta(days=1)
-            continue
+        if es_normal:
+            entrada_raw = request.POST.get(f'entrada_{fecha_str}', '').strip() or horario_dia.hora_inicio.strftime('%H:%M')
+            salida_raw = request.POST.get(f'salida_{fecha_str}', '').strip() or horario_dia.hora_fin.strftime('%H:%M')
+            try:
+                hora_entrada = datetime.strptime(entrada_raw, '%H:%M').time()
+                hora_salida = datetime.strptime(salida_raw, '%H:%M').time()
+            except Exception:
+                errores.append(f"Hora de entrada/salida inválida para el {d.strftime('%d/%m/%Y')}.")
+                d += timedelta(days=1)
+                continue
 
-        normales, ordinarias, extraordinarias = servicios_nomina.calcular_horas_dia(horario_dia, hora_entrada, hora_salida)
+            normales, ordinarias, extraordinarias = servicios_nomina.calcular_horas_dia(horario_dia, hora_entrada, hora_salida)
+            total_horas_normales += normales
 
-        if horario_dia and horario_dia.trabaja:
-            dias_laborados += 1
-        total_horas_normales += normales
+            for tipo, horas in (('ORDINARIA', ordinarias), ('EXTRAORDINARIA', extraordinarias)):
+                if horas > 0:
+                    try:
+                        valor = servicios_nomina.calcular_valor_hora_extra(trabajador, tipo, horas)
+                    except ValueError as e:
+                        errores.append(str(e))
+                        valor = Decimal('0.00')
+                    entradas_horas_extra.append({'fecha': d, 'tipo': tipo, 'horas': horas, 'valor': valor})
 
-        for tipo, horas in (('ORDINARIA', ordinarias), ('EXTRAORDINARIA', extraordinarias)):
-            if horas > 0:
+            dias_detalle.append({
+                'fecha': d, 'incluido': True, 'entrada': hora_entrada, 'salida': hora_salida, 'es_normal': True,
+                'horas_normales': normales, 'horas_ordinarias': ordinarias, 'horas_extraordinarias': extraordinarias,
+            })
+        else:
+            trabajo_descanso = request.POST.get(f'incluir_{fecha_str}') == 'on'
+            if not trabajo_descanso:
+                dias_detalle.append({'fecha': d, 'incluido': False, 'es_normal': False})
+                d += timedelta(days=1)
+                continue
+
+            try:
+                hora_entrada = datetime.strptime(request.POST.get(f'entrada_{fecha_str}', ''), '%H:%M').time()
+                hora_salida = datetime.strptime(request.POST.get(f'salida_{fecha_str}', ''), '%H:%M').time()
+            except Exception:
+                errores.append(f"Indica la hora de entrada y salida del {d.strftime('%d/%m/%Y')} (día de descanso trabajado).")
+                d += timedelta(days=1)
+                continue
+
+            normales, ordinarias, extraordinarias = servicios_nomina.calcular_horas_dia(horario_dia, hora_entrada, hora_salida)
+            if extraordinarias > 0:
                 try:
-                    valor = servicios_nomina.calcular_valor_hora_extra(trabajador, tipo, horas)
+                    valor = servicios_nomina.calcular_valor_hora_extra(trabajador, 'EXTRAORDINARIA', extraordinarias)
                 except ValueError as e:
                     errores.append(str(e))
                     valor = Decimal('0.00')
-                entradas_horas_extra.append({'fecha': d, 'tipo': tipo, 'horas': horas, 'valor': valor})
+                entradas_horas_extra.append({'fecha': d, 'tipo': 'EXTRAORDINARIA', 'horas': extraordinarias, 'valor': valor})
 
-        dias_detalle.append({
-            'fecha': d, 'incluido': True, 'entrada': hora_entrada, 'salida': hora_salida,
-            'es_normal': bool(horario_dia and horario_dia.trabaja),
-            'horas_normales': normales, 'horas_ordinarias': ordinarias, 'horas_extraordinarias': extraordinarias,
-        })
+            dias_detalle.append({
+                'fecha': d, 'incluido': True, 'entrada': hora_entrada, 'salida': hora_salida, 'es_normal': False,
+                'horas_normales': normales, 'horas_ordinarias': ordinarias, 'horas_extraordinarias': extraordinarias,
+            })
+
         d += timedelta(days=1)
-
-    if dias_laborados == 0 and not entradas_horas_extra and not errores:
-        errores.append("Debes incluir al menos un día trabajado en el periodo.")
 
     total_ordinaria_horas = sum((e['horas'] for e in entradas_horas_extra if e['tipo'] == 'ORDINARIA'), Decimal('0.00'))
     total_ordinaria_valor = sum((e['valor'] for e in entradas_horas_extra if e['tipo'] == 'ORDINARIA'), Decimal('0.00'))
@@ -2926,7 +2964,7 @@ def _procesar_dias_pago(request, trabajador, periodo_inicio, periodo_fin):
     return {
         'errores': errores,
         'dias_detalle': dias_detalle,
-        'dias_laborados': Decimal(dias_laborados),
+        'dias_laborados': dias_laborados,
         'total_horas_normales': total_horas_normales,
         'entradas_horas_extra': entradas_horas_extra,
         'total_ordinaria_horas': total_ordinaria_horas,
@@ -2968,6 +3006,7 @@ def registrar_pago(request, trabajador_id):
     if periodo_mensual_id:
         periodo_mensual = get_object_or_404(PeriodoNominaMensual, id=periodo_mensual_id, trabajador=trabajador)
 
+    aplicar_iess = request.POST.get('aplicar_iess') == 'on'
     horas_extra_ids_manual = [i for i in request.POST.getlist('horas_extra_ids') if i]
     descuento_ids_manual = [i for i in request.POST.getlist('descuento_ids') if i]
     observaciones = (request.POST.get('observaciones') or '').strip()
@@ -3000,7 +3039,7 @@ def registrar_pago(request, trabajador_id):
         total_descuentos_manual = sum((d.monto for d in descuentos_manuales if d.tipo == 'DESCUENTO'), Decimal('0.00'))
         total_anticipos_manual = sum((d.monto for d in descuentos_manuales if d.tipo == 'ANTICIPO'), Decimal('0.00'))
         bonificacion = periodo_mensual.bonificacion_quincenal if periodo_mensual else Decimal('0.00')
-        aporte_iess = periodo_mensual.aporte_iess_quincenal if periodo_mensual else Decimal('0.00')
+        aporte_iess = trabajador.aporte_iess_quincenal if aplicar_iess else Decimal('0.00')
         total_estimado = (
             salario_preview + resultado['total_horas_extra_valor'] + bonificacion
             - total_descuentos_manual - total_anticipos_manual - aporte_iess
@@ -3009,7 +3048,8 @@ def registrar_pago(request, trabajador_id):
         return render(request, 'web/erp/revisar_pago.html', {
             'trabajador': trabajador, 'periodo_inicio': periodo_inicio, 'periodo_fin': periodo_fin,
             'fecha_pago': fecha_pago, 'resultado': resultado, 'salario_preview': salario_preview,
-            'periodo_mensual': periodo_mensual, 'bonificacion': bonificacion, 'aporte_iess': aporte_iess,
+            'periodo_mensual': periodo_mensual, 'bonificacion': bonificacion,
+            'aplicar_iess': aplicar_iess, 'aporte_iess': aporte_iess,
             'horas_manuales': horas_manuales, 'descuentos_manuales': descuentos_manuales,
             'total_descuentos_manual': total_descuentos_manual, 'total_anticipos_manual': total_anticipos_manual,
             'total_estimado': total_estimado, 'observaciones': observaciones,
@@ -3034,7 +3074,7 @@ def registrar_pago(request, trabajador_id):
                 usuario=request.user, dias_laborados=resultado['dias_laborados'],
                 horas_extra_ids=horas_extra_auto_ids + horas_extra_ids_manual,
                 descuento_ids=descuento_ids_manual,
-                periodo_mensual=periodo_mensual, observaciones=observaciones,
+                periodo_mensual=periodo_mensual, aplicar_iess=aplicar_iess, observaciones=observaciones,
                 total_horas_normales=resultado['total_horas_normales'],
             )
     except ValueError as e:
@@ -3156,9 +3196,10 @@ def imprimir_pdf_pago(request, pago_id):
 @user_passes_test(es_admin, login_url='dashboard_erp')
 def registrar_periodo_mensual(request, trabajador_id):
     """
-    Registra (o actualiza) la Bonificación y el Aporte IESS del MES para un
-    trabajador. El sistema aplicará automáticamente la mitad de cada valor
-    en cada pago quincenal de ese mes que lo referencie.
+    Registra (o actualiza) la Bonificación del MES para un trabajador. El
+    sistema aplicará automáticamente la mitad en cada pago quincenal de ese
+    mes que la referencie. El Aporte IESS NO va aquí: es un valor fijo del
+    trabajador (ver configurar_iess_trabajador).
     """
     trabajador = get_object_or_404(Trabajador, id=trabajador_id)
     if request.method == 'POST':
@@ -3166,18 +3207,16 @@ def registrar_periodo_mensual(request, trabajador_id):
             anio = int(request.POST.get('anio'))
             mes = int(request.POST.get('mes'))
             bonificacion = Decimal((request.POST.get('bonificacion') or '0').replace(',', '.'))
-            aporte_iess = Decimal((request.POST.get('aporte_iess') or '0').replace(',', '.'))
         except Exception:
-            messages.error(request, "Datos inválidos para el periodo mensual.")
+            messages.error(request, "Datos inválidos para la bonificación del mes.")
             return redirect('ficha_trabajador', trabajador_id=trabajador.id)
 
         periodo, creado = PeriodoNominaMensual.objects.get_or_create(
             trabajador=trabajador, anio=anio, mes=mes,
-            defaults={'bonificacion': bonificacion, 'aporte_iess': aporte_iess, 'registrado_por': request.user},
+            defaults={'bonificacion': bonificacion, 'registrado_por': request.user},
         )
         if not creado:
             periodo.bonificacion = bonificacion
-            periodo.aporte_iess = aporte_iess
             periodo.registrado_por = request.user
 
         try:
@@ -3187,5 +3226,31 @@ def registrar_periodo_mensual(request, trabajador_id):
             return redirect('ficha_trabajador', trabajador_id=trabajador.id)
 
         periodo.save()
-        messages.success(request, f"Bonificación e IESS de {mes}/{anio} registrados. Se aplicará la mitad en cada quincena.")
+        messages.success(request, f"Bonificación de {mes}/{anio} registrada. Se aplicará la mitad en cada quincena.")
+    return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='dashboard_erp')
+def configurar_iess_trabajador(request, trabajador_id):
+    """
+    Define el aporte IESS MENSUAL FIJO del trabajador (no es un valor que se
+    registre mes a mes: se actualiza aquí cuando corresponda, p.ej. tras un
+    cambio de salario, y queda vigente hasta la próxima actualización).
+    """
+    trabajador = get_object_or_404(Trabajador, id=trabajador_id)
+    if request.method == 'POST':
+        try:
+            monto = Decimal((request.POST.get('aporte_iess_mensual') or '0').replace(',', '.'))
+        except Exception:
+            messages.error(request, "Monto de aporte IESS inválido.")
+            return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+        if monto < 0:
+            messages.error(request, "El aporte IESS no puede ser negativo.")
+            return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+        trabajador.aporte_iess_mensual = monto
+        trabajador.save(update_fields=['aporte_iess_mensual'])
+        messages.success(request, f"Aporte IESS fijo actualizado: ${monto}/mes (${trabajador.aporte_iess_quincenal}/quincena).")
     return redirect('ficha_trabajador', trabajador_id=trabajador.id)

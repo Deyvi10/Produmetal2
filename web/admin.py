@@ -142,7 +142,7 @@ class DescuentoAdmin(admin.ModelAdmin):
 
 @admin.register(PeriodoNominaMensual)
 class PeriodoNominaMensualAdmin(admin.ModelAdmin):
-    list_display = ('trabajador', 'mes', 'anio', 'bonificacion', 'aporte_iess')
+    list_display = ('trabajador', 'mes', 'anio', 'bonificacion')
     list_filter = ('anio', 'mes')
     search_fields = ('trabajador__nombres', 'trabajador__apellidos')
 

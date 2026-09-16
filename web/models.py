@@ -712,6 +712,10 @@ class Trabajador(models.Model):
     fecha_salida = models.DateField(null=True, blank=True)
     motivo_salida = models.TextField(blank=True)
     periodicidad_pago = models.CharField(max_length=10, choices=PERIODICIDADES, default='MENSUAL')
+    aporte_iess_mensual = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0,
+        help_text="Valor fijo mensual del aporte IESS de este trabajador (no varía mes a mes salvo que se actualice aquí)."
+    )
     fecha_creacion = models.DateTimeField(auto_now_add=True)
 
     history = HistoricalRecords()
@@ -734,6 +738,10 @@ class Trabajador(models.Model):
     @property
     def salario_actual(self):
         return self.salarios.filter(fecha_fin_vigencia__isnull=True).order_by('-fecha_inicio_vigencia').first()
+
+    @property
+    def aporte_iess_quincenal(self):
+        return (self.aporte_iess_mensual / 2).quantize(Decimal('0.01'))
 
     @property
     def tiene_prestamos_pendientes(self):
@@ -797,21 +805,23 @@ class Trabajador(models.Model):
     @transaction.atomic
     def registrar_pago(self, periodo_inicio, periodo_fin, fecha_pago, usuario,
                         dias_laborados=None, horas_extra_ids=None, descuento_ids=None,
-                        periodo_mensual=None, observaciones='', total_horas_normales=None):
+                        periodo_mensual=None, aplicar_iess=False, observaciones='', total_horas_normales=None):
         """
         Genera un pago con desglose transparente, replicando la lógica real
         del rol de pagos de la empresa:
 
             Salario del periodo + Horas Extra + Bonificación (mitad del mes)
-            - Descuentos - Anticipos - Aporte IESS (mitad del mes)
+            - Descuentos - Anticipos - Aporte IESS (mitad del valor fijo)
 
         Si `periodicidad_pago` es QUINCENAL/SEMANAL, el salario del periodo
         se prorratea por días laborados (Valor Día = Sueldo Mensual / 30).
         Si es MENSUAL, se paga el sueldo completo.
 
-        `periodo_mensual` (un PeriodoNominaMensual) aporta la Bonificación y
-        el Aporte IESS mensuales; el sistema registra automáticamente la
-        MITAD de cada uno en este pago (igual que el Excel de la empresa).
+        `periodo_mensual` (un PeriodoNominaMensual) aporta solo la
+        Bonificación del mes; el sistema registra automáticamente la MITAD
+        en este pago. El Aporte IESS es independiente: es un valor FIJO del
+        trabajador (self.aporte_iess_mensual, no mensual/variable); se aplica
+        su mitad únicamente si `aplicar_iess=True`.
 
         Es transaccional y evita duplicar el pago de un mismo periodo.
         """
@@ -860,12 +870,12 @@ class Trabajador(models.Model):
         )
 
         bonificacion = Decimal('0.00')
-        aporte_iess = Decimal('0.00')
         if periodo_mensual is not None:
             if periodo_mensual.trabajador_id != self.id:
                 raise ValueError("El periodo mensual seleccionado no corresponde a este trabajador.")
             bonificacion = periodo_mensual.bonificacion_quincenal
-            aporte_iess = periodo_mensual.aporte_iess_quincenal
+
+        aporte_iess = self.aporte_iess_quincenal if aplicar_iess else Decimal('0.00')
 
         total_pagado = salario_periodo + total_horas_extras + bonificacion - total_descuentos - total_anticipos - aporte_iess
 
@@ -1098,16 +1108,17 @@ class ConfiguracionHorasExtra(models.Model):
 
 class PeriodoNominaMensual(models.Model):
     """
-    Bonificación y Aporte IESS del MES completo de un trabajador. Replica el
-    Excel de nómina de la empresa: estos valores se registran una sola vez
-    al mes y el sistema aplica automáticamente la MITAD de cada uno en cada
-    Pago quincenal de ese mes (ver Trabajador.registrar_pago).
+    Bonificación del MES completo de un trabajador. Se registra una sola vez
+    al mes y el sistema aplica automáticamente la MITAD en cada Pago
+    quincenal de ese mes (ver Trabajador.registrar_pago).
+
+    El aporte IESS NO vive aquí: es un valor fijo general del trabajador
+    (Trabajador.aporte_iess_mensual), no algo que se registre mes a mes.
     """
     trabajador = models.ForeignKey(Trabajador, on_delete=models.CASCADE, related_name='periodos_mensuales')
     anio = models.PositiveIntegerField()
     mes = models.PositiveSmallIntegerField(help_text="1 = Enero ... 12 = Diciembre")
     bonificacion = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    aporte_iess = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     registrado_por = models.ForeignKey(User, on_delete=models.PROTECT, related_name='periodos_nomina_registrados')
     fecha_registro = models.DateTimeField(auto_now_add=True)
 
@@ -1125,16 +1136,10 @@ class PeriodoNominaMensual(models.Model):
             raise ValidationError("El mes debe estar entre 1 y 12.")
         if self.bonificacion is not None and self.bonificacion < 0:
             raise ValidationError("La bonificación no puede ser negativa.")
-        if self.aporte_iess is not None and self.aporte_iess < 0:
-            raise ValidationError("El aporte IESS no puede ser negativo.")
 
     @property
     def bonificacion_quincenal(self):
         return (self.bonificacion / 2).quantize(Decimal('0.01'))
-
-    @property
-    def aporte_iess_quincenal(self):
-        return (self.aporte_iess / 2).quantize(Decimal('0.01'))
 
 
 class Pago(models.Model):

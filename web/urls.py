@@ -117,6 +117,7 @@ urlpatterns = [
     path('erp/trabajadores/<int:trabajador_id>/descuento/', views.registrar_descuento, name='registrar_descuento'),
     path('erp/trabajadores/<int:trabajador_id>/descuento/<int:descuento_id>/eliminar/', views.eliminar_descuento, name='eliminar_descuento'),
     path('erp/trabajadores/<int:trabajador_id>/periodo-mensual/', views.registrar_periodo_mensual, name='registrar_periodo_mensual'),
+    path('erp/trabajadores/<int:trabajador_id>/iess/', views.configurar_iess_trabajador, name='configurar_iess_trabajador'),
 
     # Registro de pago (flujo por días: iniciar -> preparar -> registrar/revisar)
     path('erp/trabajadores/<int:trabajador_id>/pago/iniciar/', views.iniciar_pago, name='iniciar_pago'),

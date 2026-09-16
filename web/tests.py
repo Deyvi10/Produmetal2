@@ -505,14 +505,16 @@ class PagoQuincenalRealDelExcelTestCase(TestCase):
             estado='ACTIVO', periodicidad_pago='QUINCENAL',
         )
         self.trabajador.asignar_salario(monto=Decimal('600.00'), fecha_inicio_vigencia=date(2026, 8, 1), usuario=self.admin)
+        self.trabajador.aporte_iess_mensual = Decimal('45.549')
+        self.trabajador.save(update_fields=['aporte_iess_mensual'])
 
     def test_pago_primera_quincena_coincide_con_excel(self):
         periodo_mensual = PeriodoNominaMensual.objects.create(
             trabajador=self.trabajador, anio=2026, mes=8,
-            bonificacion=Decimal('50.00'), aporte_iess=Decimal('45.549'), registrado_por=self.admin,
+            bonificacion=Decimal('50.00'), registrado_por=self.admin,
         )
         self.assertEqual(periodo_mensual.bonificacion_quincenal, Decimal('25.00'))
-        self.assertEqual(periodo_mensual.aporte_iess_quincenal, Decimal('22.77'))  # 45.549/2 = 22.7745 -> 22.77
+        self.assertEqual(self.trabajador.aporte_iess_quincenal, Decimal('22.77'))  # 45.549/2 = 22.7745 -> 22.77
 
         he_ordinaria = HoraExtra.objects.create(
             trabajador=self.trabajador, fecha=date(2026, 8, 14), tipo='ORDINARIA',
@@ -534,7 +536,7 @@ class PagoQuincenalRealDelExcelTestCase(TestCase):
             periodo_inicio=date(2026, 8, 1), periodo_fin=date(2026, 8, 15), fecha_pago=date(2026, 8, 15),
             usuario=self.admin, dias_laborados=Decimal('15'),
             horas_extra_ids=[he_ordinaria.id, he_extraordinaria.id],
-            periodo_mensual=periodo_mensual,
+            periodo_mensual=periodo_mensual, aplicar_iess=True,
         )
 
         self.assertEqual(pago.salario_base, Decimal('300.00'))  # Excel: AA5 = 20 (valor día) * 15 = 300
