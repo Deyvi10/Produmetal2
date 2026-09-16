@@ -388,7 +388,10 @@
                             {% if pago.estado == 'BORRADOR' %}
                                 <a href="{% url 'preparar_pago' trabajador.id %}?periodo_inicio={{ pago.periodo_inicio|date:'Y-m-d' }}&periodo_fin={{ pago.periodo_fin|date:'Y-m-d' }}&pago_id={{ pago.id }}" class="btn btn-sm btn-amber" title="Continuar editando"><i class="bi bi-pencil-square"></i> Continuar</a>
                             {% else %}
-                                <a href="{% url 'imprimir_pdf_pago' pago.id %}" target="_blank" class="btn btn-sm btn-outline-secondary border-0" title="Descargar PDF"><i class="bi bi-file-earmark-pdf"></i></a>
+                                <div class="d-inline-flex gap-1">
+                                    <a href="{% url 'editar_pago' pago.id %}" class="btn btn-sm btn-outline-info border-info" title="Editar pago (aunque ya esté pagado)"><i class="bi bi-pencil"></i></a>
+                                    <a href="{% url 'imprimir_pdf_pago' pago.id %}" target="_blank" class="btn btn-sm btn-outline-secondary border-0" title="Descargar PDF"><i class="bi bi-file-earmark-pdf"></i></a>
+                                </div>
                             {% endif %}
                         </td>
                     </tr>
@@ -554,7 +557,7 @@
         <div class="modal-body">
             <p class="small text-muted">Este es un valor GENERAL del trabajador, no mensual: queda vigente hasta que lo actualices de nuevo (por ejemplo, tras un cambio de salario). Se descuenta la mitad en cada pago, solo si lo seleccionas al registrarlo.</p>
             <label class="form-label fw-bold">Aporte IESS mensual ($)</label>
-            <input type="number" name="aporte_iess_mensual" class="form-control" step="0.01" min="0" value="{{ trabajador.aporte_iess_mensual }}">
+            <input type="number" name="aporte_iess_mensual" class="form-control" step="0.01" min="0" value="{{ trabajador.aporte_iess_mensual|stringformat:'s' }}">
         </div>
         <div class="modal-footer"><button type="submit" class="btn btn-amber">Guardar</button></div>
     </form>

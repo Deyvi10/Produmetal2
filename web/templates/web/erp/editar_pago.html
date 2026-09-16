@@ -19,24 +19,52 @@
     {% if pago.estado == 'PAGADO' %}
     <div class="alert alert-danger border-0 mb-4">
         <strong><i class="bi bi-exclamation-triangle-fill me-1"></i> Este pago ya fue realizado</strong> el {{ pago.fecha_pago_confirmado|date:"d/m/Y H:i" }} por {{ pago.pagado_por.username }}.
-        Editarlo no revierte la transferencia ya hecha; solo ajusta el registro interno. Por trazabilidad no se pueden cambiar los montos calculados.
+        Editarlo no revierte la transferencia ya hecha; solo ajusta el registro interno.
     </div>
-    <div class="alert alert-warning border-0 mb-4">
-        <strong><i class="bi bi-arrow-repeat me-1"></i> Al guardar, este pago volverá a estado PENDIENTE</strong> y Compras deberá volver a presionar "Proceder al Pago" para confirmarlo. Asegúrate de que esto sea lo que quieres antes de continuar.
+    <div class="alert alert-warning border-0 mb-4" id="aviso-revertira">
+        <strong><i class="bi bi-arrow-repeat me-1"></i> Si cambias algún monto</strong>, este pago volverá a estado PENDIENTE y Compras deberá volver a presionar "Proceder al Pago" para confirmarlo. Si solo corriges la fecha u observaciones, se mantiene como PAGADO.
     </div>
     {% endif %}
 
-    <form method="POST" class="card-master" {% if pago.estado == 'PAGADO' %}onsubmit="return confirm('¿Confirmas editar un pago que YA fue realizado?') && confirm('Esto marcará el pago como PENDIENTE otra vez y Compras deberá volver a confirmarlo. ¿Continuar?');"{% endif %}>
+    <form method="POST" class="card-master" id="form-editar-pago">
         {% csrf_token %}
         {% if pago.estado == 'PAGADO' %}
         <div class="form-check mb-3">
             <input class="form-check-input" type="checkbox" name="confirmar_edicion" id="confirmar_edicion" required>
-            <label class="form-check-label fw-bold" for="confirmar_edicion">Confirmo que deseo editar este pago ya realizado y que volverá a quedar PENDIENTE.</label>
+            <label class="form-check-label fw-bold" for="confirmar_edicion">Confirmo que deseo editar este pago ya realizado.</label>
         </div>
         {% endif %}
 
         <label class="form-label fw-bold">Fecha de Pago</label>
         <input type="date" name="fecha_pago" class="form-control mb-3" value="{{ pago.fecha_pago|date:'Y-m-d' }}" required>
+
+        <div class="row g-3 mb-1">
+            <div class="col-6 col-md-4">
+                <label class="form-label fw-bold small">Salario Base</label>
+                <input type="number" step="0.01" min="0" name="salario_base" class="form-control monto-editable" data-original="{{ pago.salario_base|stringformat:'s' }}" value="{{ pago.salario_base|stringformat:'s' }}" required>
+            </div>
+            <div class="col-6 col-md-4">
+                <label class="form-label fw-bold small">Horas Extra</label>
+                <input type="number" step="0.01" min="0" name="total_horas_extras" class="form-control monto-editable" data-original="{{ pago.total_horas_extras|stringformat:'s' }}" value="{{ pago.total_horas_extras|stringformat:'s' }}" required>
+            </div>
+            <div class="col-6 col-md-4">
+                <label class="form-label fw-bold small">Bonificación</label>
+                <input type="number" step="0.01" min="0" name="bonificacion" class="form-control monto-editable" data-original="{{ pago.bonificacion|stringformat:'s' }}" value="{{ pago.bonificacion|stringformat:'s' }}" required>
+            </div>
+            <div class="col-6 col-md-4">
+                <label class="form-label fw-bold small">Descuentos</label>
+                <input type="number" step="0.01" min="0" name="total_descuentos" class="form-control monto-editable" data-original="{{ pago.total_descuentos|stringformat:'s' }}" value="{{ pago.total_descuentos|stringformat:'s' }}" required>
+            </div>
+            <div class="col-6 col-md-4">
+                <label class="form-label fw-bold small">Anticipos</label>
+                <input type="number" step="0.01" min="0" name="total_anticipos" class="form-control monto-editable" data-original="{{ pago.total_anticipos|stringformat:'s' }}" value="{{ pago.total_anticipos|stringformat:'s' }}" required>
+            </div>
+            <div class="col-6 col-md-4">
+                <label class="form-label fw-bold small">Aporte IESS</label>
+                <input type="number" step="0.01" min="0" name="aporte_iess" class="form-control monto-editable" data-original="{{ pago.aporte_iess|stringformat:'s' }}" value="{{ pago.aporte_iess|stringformat:'s' }}" required>
+            </div>
+        </div>
+        <p class="small mb-3" style="color: var(--pm-text-muted);">Total a pagar (calculado): <strong id="total-calculado" style="color: var(--pm-text);">${{ pago.total_pagado }}</strong></p>
 
         <label class="form-label fw-bold">Observaciones</label>
         <textarea name="observaciones" class="form-control" rows="3">{{ pago.observaciones }}</textarea>
@@ -47,4 +75,36 @@
         </div>
     </form>
 </div>
+<script>
+(function() {
+    const inputs = document.querySelectorAll('.monto-editable');
+    const totalEl = document.getElementById('total-calculado');
+    function recalcular() {
+        let total = 0;
+        inputs.forEach(i => {
+            const v = parseFloat(i.value.replace(',', '.')) || 0;
+            const esResta = (i.name === 'total_descuentos' || i.name === 'total_anticipos' || i.name === 'aporte_iess');
+            total += esResta ? -v : v;
+        });
+        totalEl.textContent = '$' + total.toFixed(2);
+    }
+    inputs.forEach(i => i.addEventListener('input', recalcular));
+    recalcular();
+
+    const form = document.getElementById('form-editar-pago');
+    const esPagado = document.getElementById('confirmar_edicion') !== null;
+    if (form && esPagado) {
+        form.addEventListener('submit', function(e) {
+            const cambioAlgunMonto = Array.from(inputs).some(i => parseFloat(i.value) !== parseFloat(i.dataset.original));
+            let mensaje = '¿Confirmas editar un pago que YA fue realizado?';
+            if (cambioAlgunMonto) {
+                mensaje += ' Cambiaste al menos un monto, así que volverá a quedar PENDIENTE y Compras deberá confirmarlo de nuevo.';
+            } else {
+                mensaje += ' No cambiaste ningún monto, así que se mantendrá como PAGADO.';
+            }
+            if (!confirm(mensaje)) e.preventDefault();
+        });
+    }
+})();
+</script>
 {% endblock %}

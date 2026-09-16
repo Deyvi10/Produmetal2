@@ -3257,10 +3257,16 @@ def confirmar_pago(request, pago_id):
 @user_passes_test(es_admin, login_url='dashboard_erp')
 def editar_pago(request, pago_id):
     """
-    Solo Administrador. Por trazabilidad, no se editan los montos ya
-    calculados (quedarían desligados de las horas extra/descuentos que los
-    componen); solo la fecha de pago y las observaciones, con confirmación
-    explícita si el pago ya fue marcado como PAGADO.
+    Solo Administrador. Permite corregir tanto la fecha/observaciones como
+    los montos calculados de un pago ya generado (incluso ya PAGADO), para
+    arreglar un error puntual sin tener que rehacer todo el registro desde
+    el día-a-día. El total se recalcula siempre en el servidor a partir de
+    los componentes editados (nunca se confía en un total enviado directo).
+
+    Si el pago ya estaba PAGADO Y algún monto realmente cambia, se anula esa
+    aprobación (vuelve a PENDIENTE) para que Compras deba pagar de nuevo con
+    el valor correcto. Si no cambia ningún monto (p. ej. solo se corrigió la
+    fecha u observaciones), el estado PAGADO se conserva tal cual.
     """
     pago = get_object_or_404(Pago, id=pago_id)
     if request.method == 'POST':
@@ -3274,18 +3280,45 @@ def editar_pago(request, pago_id):
             messages.error(request, "Fecha de pago inválida.")
             return redirect('editar_pago', pago_id=pago.id)
 
-        campos = ['fecha_pago', 'observaciones']
+        campos_monto = ['salario_base', 'total_horas_extras', 'bonificacion', 'total_descuentos', 'total_anticipos', 'aporte_iess']
+        try:
+            nuevos_montos = {
+                campo: Decimal((request.POST.get(campo) or '0').replace(',', '.'))
+                for campo in campos_monto
+            }
+        except Exception:
+            messages.error(request, "Alguno de los montos ingresados no es válido.")
+            return redirect('editar_pago', pago_id=pago.id)
+
+        if any(v < 0 for v in nuevos_montos.values()):
+            messages.error(request, "Ningún monto puede ser negativo.")
+            return redirect('editar_pago', pago_id=pago.id)
+
+        nuevo_total = (
+            nuevos_montos['salario_base'] + nuevos_montos['total_horas_extras'] + nuevos_montos['bonificacion']
+            - nuevos_montos['total_descuentos'] - nuevos_montos['total_anticipos'] - nuevos_montos['aporte_iess']
+        )
+        if nuevo_total < 0:
+            messages.error(request, "El total a pagar no puede quedar negativo con esos montos.")
+            return redirect('editar_pago', pago_id=pago.id)
+
+        cambio_algun_monto = any(getattr(pago, campo) != valor for campo, valor in nuevos_montos.items())
+
+        campos = ['fecha_pago', 'observaciones', 'total_pagado'] + campos_monto
         pago.fecha_pago = fecha_pago
         pago.observaciones = (request.POST.get('observaciones') or '').strip()
+        for campo, valor in nuevos_montos.items():
+            setattr(pago, campo, valor)
+        pago.total_pagado = nuevo_total
 
-        if pago.estado == 'PAGADO':
+        if pago.estado == 'PAGADO' and cambio_algun_monto:
             pago.estado = 'PENDIENTE'
             pago.pagado_por = None
             pago.fecha_pago_confirmado = None
             pago.email_enviado = False
             pago.email_error = ''
             campos += ['estado', 'pagado_por', 'fecha_pago_confirmado', 'email_enviado', 'email_error']
-            messages.warning(request, "El pago volvió a quedar PENDIENTE: Compras deberá confirmar de nuevo la transferencia.")
+            messages.warning(request, "Cambiaste un monto de un pago ya realizado: volvió a quedar PENDIENTE y Compras deberá confirmar de nuevo la transferencia.")
 
         pago.save(update_fields=campos)
         messages.success(request, "Pago actualizado.")
