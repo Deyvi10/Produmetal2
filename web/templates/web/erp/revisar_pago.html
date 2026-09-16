@@ -61,9 +61,9 @@
         <div class="resumen-row total"><span>TOTAL A PAGAR</span><span>${{ total_estimado }}</span></div>
     </div>
 
-    <form method="POST" action="{% url 'registrar_pago' trabajador.id %}" onsubmit="return confirm('¿Confirmas el registro de este pago por ${{ total_estimado }}?');">
+    <form method="POST" action="{% url 'registrar_pago' trabajador.id %}" id="form-revisar">
         {% csrf_token %}
-        <input type="hidden" name="confirmado" value="1">
+        {% if pago_id %}<input type="hidden" name="pago_id" value="{{ pago_id }}">{% endif %}
         <input type="hidden" name="periodo_inicio" value="{{ periodo_inicio|date:'Y-m-d' }}">
         <input type="hidden" name="periodo_fin" value="{{ periodo_fin|date:'Y-m-d' }}">
         <input type="hidden" name="fecha_pago" value="{{ fecha_pago|date:'Y-m-d' }}">
@@ -80,10 +80,23 @@
             {% endif %}
         {% endfor %}
 
-        <div class="d-flex justify-content-end gap-2">
-            <a href="{% url 'preparar_pago' trabajador.id %}?periodo_inicio={{ periodo_inicio|date:'Y-m-d' }}&periodo_fin={{ periodo_fin|date:'Y-m-d' }}" class="btn btn-outline-secondary fw-bold px-4">Volver a Editar</a>
-            <button type="submit" class="btn-success-custom px-4"><i class="bi bi-check-lg me-2"></i> Confirmar y Registrar Pago</button>
+        <div class="d-flex justify-content-end gap-2 flex-wrap">
+            <a href="{% url 'preparar_pago' trabajador.id %}?periodo_inicio={{ periodo_inicio|date:'Y-m-d' }}&periodo_fin={{ periodo_fin|date:'Y-m-d' }}{% if pago_id %}&pago_id={{ pago_id }}{% endif %}" class="btn btn-outline-secondary fw-bold px-4">Volver a Editar</a>
+            <button type="submit" name="accion" value="borrador" class="btn btn-outline-warning fw-bold px-4"><i class="bi bi-file-earmark-text me-2"></i> Guardar como Borrador</button>
+            <button type="submit" name="accion" value="confirmar" class="btn-success-custom px-4"><i class="bi bi-check-lg me-2"></i> Confirmar y Registrar Pago</button>
         </div>
     </form>
 </div>
+<script>
+document.getElementById('form-revisar').addEventListener('submit', function(e) {
+    const accion = e.submitter ? e.submitter.value : 'confirmar';
+    let ok = true;
+    if (accion === 'confirmar') {
+        ok = confirm('¿Confirmas el registro de este pago por ${{ total_estimado }}? Esta acción ya no es un borrador.');
+    } else if (accion === 'borrador') {
+        ok = confirm('¿Guardar este pago como borrador? Podrás continuar editándolo después desde la ficha del trabajador; todavía no quedará confirmado.');
+    }
+    if (!ok) e.preventDefault();
+});
+</script>
 {% endblock %}

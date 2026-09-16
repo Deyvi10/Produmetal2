@@ -747,15 +747,21 @@ class Trabajador(models.Model):
     def tiene_prestamos_pendientes(self):
         return self.prestamos.filter(estado='PRESTADO').exists()
 
-    def dias_pagados(self, periodo_inicio=None, periodo_fin=None):
+    def dias_pagados(self, periodo_inicio=None, periodo_fin=None, excluir_pago_id=None):
         """
         Conjunto de fechas (date) que ya quedaron cubiertas por un Pago
         existente de este trabajador, opcionalmente acotado a un rango.
         Se usa para bloquear la selección de días ya pagados al generar un
         pago nuevo (tanto en la UI como en la validación de backend).
+
+        `excluir_pago_id` libera los días de un pago puntual (usado al
+        reanudar la edición de un BORRADOR, para no chocar contra sí mismo).
         """
         dias = set()
-        for pago in self.pagos.only('periodo_inicio', 'periodo_fin'):
+        pagos = self.pagos.only('periodo_inicio', 'periodo_fin')
+        if excluir_pago_id:
+            pagos = pagos.exclude(id=excluir_pago_id)
+        for pago in pagos:
             d = pago.periodo_inicio
             while d <= pago.periodo_fin:
                 if (periodo_inicio is None or d >= periodo_inicio) and (periodo_fin is None or d <= periodo_fin):
@@ -1153,6 +1159,7 @@ class Pago(models.Model):
             - total_descuentos - total_anticipos - aporte_iess
     """
     ESTADOS = [
+        ('BORRADOR', 'Borrador'),
         ('PENDIENTE', 'Pendiente de Pago'),
         ('PAGADO', 'Pagado'),
     ]
@@ -1182,6 +1189,10 @@ class Pago(models.Model):
     fecha_pago_confirmado = models.DateTimeField(null=True, blank=True)
     email_enviado = models.BooleanField(default=False)
     email_error = models.TextField(blank=True)
+    datos_formulario = models.JSONField(
+        default=dict, blank=True,
+        help_text="Snapshot de los datos del formulario mientras el pago está en BORRADOR, para poder reanudar la edición.",
+    )
 
     history = HistoricalRecords()
 
@@ -1197,6 +1208,8 @@ class Pago(models.Model):
     def marcar_como_pagado(self, usuario):
         if self.estado == 'PAGADO':
             raise ValueError("Este pago ya fue marcado como realizado anteriormente.")
+        if self.estado == 'BORRADOR':
+            raise ValueError("Este pago sigue como borrador; complétalo y confírmalo antes de poder pagarlo.")
         self.estado = 'PAGADO'
         self.pagado_por = usuario
         self.fecha_pago_confirmado = timezone.now()

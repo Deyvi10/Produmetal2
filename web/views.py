@@ -2603,8 +2603,10 @@ def ficha_trabajador(request, trabajador_id):
     trabajador = get_object_or_404(Trabajador, id=trabajador_id)
 
     horario = getattr(trabajador, 'horario', None)
-    horas_extras = trabajador.horas_extras.all()
-    descuentos = trabajador.descuentos.all()
+    horas_extras = trabajador.horas_extras.filter(pago__isnull=True).order_by('-fecha')
+    horas_extras_historial = trabajador.horas_extras.filter(pago__isnull=False).order_by('-fecha')
+    descuentos = trabajador.descuentos.filter(pago__isnull=True).order_by('-fecha')
+    descuentos_historial = trabajador.descuentos.filter(pago__isnull=False).order_by('-fecha')
 
     def paginar(queryset, param, por_pagina=5):
         return Paginator(queryset, por_pagina).get_page(request.GET.get(param))
@@ -2614,7 +2616,9 @@ def ficha_trabajador(request, trabajador_id):
         'salarios': paginar(trabajador.salarios.all(), 'page_salarios'),
         'pagos': paginar(trabajador.pagos.all(), 'page_pagos'),
         'horas_extras': paginar(horas_extras, 'page_horas'),
+        'horas_extras_historial': paginar(horas_extras_historial, 'page_horas_hist'),
         'descuentos': paginar(descuentos, 'page_descuentos'),
+        'descuentos_historial': paginar(descuentos_historial, 'page_descuentos_hist'),
         'prestamos': paginar(trabajador.prestamos.select_related('material', 'devolucion').all(), 'page_prestamos'),
         'entregas_directas': paginar(trabajador.entregas_directas.select_related('movimiento__material').order_by('-movimiento__fecha_hora'), 'page_entregas'),
         'periodos_mensuales': paginar(trabajador.periodos_mensuales.all(), 'page_periodos'),
@@ -2681,11 +2685,8 @@ def eliminar_hora_extra(request, trabajador_id, hora_id):
     trabajador = get_object_or_404(Trabajador, id=trabajador_id)
     hora = get_object_or_404(HoraExtra, id=hora_id, trabajador=trabajador)
     if request.method == 'POST':
-        if hora.pago_id:
-            messages.error(request, "No puedes eliminar una hora extra que ya forma parte de un pago registrado.")
-        else:
-            hora.delete()
-            messages.success(request, "Hora extra eliminada.")
+        hora.delete()
+        messages.success(request, "Hora extra eliminada.")
     return redirect('ficha_trabajador', trabajador_id=trabajador.id)
 
 
@@ -2695,12 +2696,9 @@ def eliminar_descuento(request, trabajador_id, descuento_id):
     trabajador = get_object_or_404(Trabajador, id=trabajador_id)
     descuento = get_object_or_404(Descuento, id=descuento_id, trabajador=trabajador)
     if request.method == 'POST':
-        if descuento.pago_id:
-            messages.error(request, "No puedes eliminar un descuento/anticipo que ya forma parte de un pago registrado.")
-        else:
-            tipo_display = descuento.get_tipo_display()
-            descuento.delete()
-            messages.success(request, f"{tipo_display} eliminado.")
+        tipo_display = descuento.get_tipo_display()
+        descuento.delete()
+        messages.success(request, f"{tipo_display} eliminado.")
     return redirect('ficha_trabajador', trabajador_id=trabajador.id)
 
 
@@ -2830,26 +2828,48 @@ def preparar_pago(request, trabajador_id):
         messages.error(request, "Asigna un salario al trabajador antes de registrar un pago.")
         return redirect('ficha_trabajador', trabajador_id=trabajador.id)
 
+    pago_borrador = None
+    pago_id = request.GET.get('pago_id')
+    if pago_id:
+        pago_borrador = get_object_or_404(Pago, id=pago_id, trabajador=trabajador, estado='BORRADOR')
+
+    datos_previos = (pago_borrador.datos_formulario if pago_borrador else {}) or {}
+    dias_previos = datos_previos.get('dias', {})
+
     horario = HorarioTrabajador.para_trabajador(trabajador)
-    dias_ya_pagados = trabajador.dias_pagados(periodo_inicio, periodo_fin)
+    dias_ya_pagados = trabajador.dias_pagados(
+        periodo_inicio, periodo_fin, excluir_pago_id=pago_borrador.id if pago_borrador else None
+    )
 
     dias = []
     d = periodo_inicio
     while d <= periodo_fin:
+        fecha_str = d.strftime('%Y-%m-%d')
         horario_dia = horario.dia(d.weekday())
+        previo = dias_previos.get(fecha_str, {})
+        entrada_default = previo.get('entrada') or (horario_dia.hora_inicio.strftime('%H:%M') if horario_dia and horario_dia.hora_inicio else '')
+        salida_default = previo.get('salida') or (horario_dia.hora_fin.strftime('%H:%M') if horario_dia and horario_dia.hora_fin else '')
         dias.append({
             'fecha': d,
-            'fecha_str': d.strftime('%Y-%m-%d'),
+            'fecha_str': fecha_str,
             'nombre_dia': dict(HorarioTrabajadorDia.DIAS_SEMANA)[d.weekday()],
             'es_normal': bool(horario_dia and horario_dia.trabaja),
             'hora_inicio_normal': horario_dia.hora_inicio if horario_dia else None,
             'hora_fin_normal': horario_dia.hora_fin if horario_dia else None,
             'ya_pagado': d in dias_ya_pagados,
+            'previo_incluir': previo.get('incluir') == 'on',
+            'entrada_valor': entrada_default,
+            'salida_valor': salida_default,
         })
         d += timedelta(days=1)
 
-    horas_extras = trabajador.horas_extras.filter(pago__isnull=True)
-    descuentos = trabajador.descuentos.filter(pago__isnull=True)
+    filtro_disponible = Q(pago__isnull=True)
+    if pago_borrador:
+        filtro_disponible |= Q(pago=pago_borrador)
+    horas_extras = trabajador.horas_extras.filter(filtro_disponible, generado_automaticamente=False)
+    descuentos = trabajador.descuentos.filter(filtro_disponible)
+    ids_horas_previas = set(datos_previos.get('horas_extra_ids', []))
+    ids_descuentos_previos = set(datos_previos.get('descuento_ids', []))
 
     return render(request, 'web/erp/preparar_pago.html', {
         'trabajador': trabajador, 'periodo_inicio': periodo_inicio, 'periodo_fin': periodo_fin,
@@ -2859,10 +2879,14 @@ def preparar_pago(request, trabajador_id):
         'anticipos_disponibles': descuentos.filter(tipo='ANTICIPO'),
         'periodos_mensuales': trabajador.periodos_mensuales.all(),
         'hoy': timezone.localdate(),
+        'pago_borrador': pago_borrador,
+        'datos_previos': datos_previos,
+        'ids_horas_previas': ids_horas_previas,
+        'ids_descuentos_previos': ids_descuentos_previos,
     })
 
 
-def _procesar_dias_pago(request, trabajador, periodo_inicio, periodo_fin):
+def _procesar_dias_pago(request, trabajador, periodo_inicio, periodo_fin, pago_id_excluir=None):
     """
     Calcula el desglose de un pago día por día.
 
@@ -2888,7 +2912,7 @@ def _procesar_dias_pago(request, trabajador, periodo_inicio, periodo_fin):
     confiar en lo que haya deshabilitado el frontend.
     """
     horario = HorarioTrabajador.para_trabajador(trabajador)
-    dias_ya_pagados = trabajador.dias_pagados(periodo_inicio, periodo_fin)
+    dias_ya_pagados = trabajador.dias_pagados(periodo_inicio, periodo_fin, excluir_pago_id=pago_id_excluir)
 
     errores = []
     dias_detalle = []
@@ -3009,7 +3033,8 @@ def registrar_pago(request, trabajador_id):
         messages.error(request, "Periodo inválido.")
         return redirect('ficha_trabajador', trabajador_id=trabajador.id)
 
-    resultado = _procesar_dias_pago(request, trabajador, periodo_inicio, periodo_fin)
+    pago_id = request.POST.get('pago_id') or None
+    resultado = _procesar_dias_pago(request, trabajador, periodo_inicio, periodo_fin, pago_id_excluir=pago_id)
 
     periodo_mensual = None
     periodo_mensual_id = request.POST.get('periodo_mensual_id')
@@ -3029,17 +3054,18 @@ def registrar_pago(request, trabajador_id):
     if resultado['errores']:
         for error in resultado['errores']:
             messages.error(request, error)
+        sufijo_pago = f"&pago_id={pago_id}" if pago_id else ""
         return redirect(
             f"{reverse('preparar_pago', args=[trabajador.id])}"
-            f"?periodo_inicio={periodo_inicio}&periodo_fin={periodo_fin}"
+            f"?periodo_inicio={periodo_inicio}&periodo_fin={periodo_fin}{sufijo_pago}"
         )
 
     horas_manuales = HoraExtra.objects.filter(id__in=horas_extra_ids_manual, trabajador=trabajador, pago__isnull=True)
     descuentos_manuales = Descuento.objects.filter(id__in=descuento_ids_manual, trabajador=trabajador, pago__isnull=True)
 
-    confirmado = request.POST.get('confirmado') == '1'
+    accion = request.POST.get('accion')  # None en la vista previa; 'confirmar' o 'borrador' al finalizar
 
-    if not confirmado:
+    if accion not in ('confirmar', 'borrador'):
         try:
             salario_preview = servicios_nomina.calcular_salario_periodo(trabajador, resultado['dias_laborados'])
         except ValueError as e:
@@ -3064,11 +3090,19 @@ def registrar_pago(request, trabajador_id):
             'total_descuentos_manual': total_descuentos_manual, 'total_anticipos_manual': total_anticipos_manual,
             'total_estimado': total_estimado, 'observaciones': observaciones,
             'horas_extra_ids_manual': horas_extra_ids_manual, 'descuento_ids_manual': descuento_ids_manual,
+            'pago_id': pago_id,
         })
 
-    # confirmado=1: crear de verdad, todo dentro de una sola transacción
+    # accion == 'confirmar' o 'borrador': crear (o reemplazar el borrador anterior) de verdad, en una sola transacción
     try:
         with transaction.atomic():
+            if pago_id:
+                pago_anterior = get_object_or_404(Pago, id=pago_id, trabajador=trabajador, estado='BORRADOR')
+                pago_anterior.horas_extras_incluidas.filter(generado_automaticamente=True).delete()
+                pago_anterior.horas_extras_incluidas.update(pago=None)
+                pago_anterior.descuentos_incluidos.update(pago=None)
+                pago_anterior.delete()
+
             horas_extra_auto_ids = []
             for entrada in resultado['entradas_horas_extra']:
                 he = HoraExtra.objects.create(
@@ -3087,11 +3121,35 @@ def registrar_pago(request, trabajador_id):
                 periodo_mensual=periodo_mensual, aplicar_iess=aplicar_iess, observaciones=observaciones,
                 total_horas_normales=resultado['total_horas_normales'],
             )
+
+            if accion == 'borrador':
+                datos_formulario = {
+                    'periodo_mensual_id': periodo_mensual_id or '',
+                    'aplicar_iess': 'on' if aplicar_iess else '',
+                    'horas_extra_ids': horas_extra_ids_manual,
+                    'descuento_ids': descuento_ids_manual,
+                    'observaciones': observaciones,
+                    'fecha_pago': fecha_pago.isoformat(),
+                    'dias': {
+                        dia['fecha'].strftime('%Y-%m-%d'): {
+                            'incluir': 'on' if dia['incluido'] else '',
+                            'entrada': dia['entrada'].strftime('%H:%M') if dia.get('entrada') else '',
+                            'salida': dia['salida'].strftime('%H:%M') if dia.get('salida') else '',
+                        }
+                        for dia in resultado['dias_detalle'] if dia['incluido']
+                    },
+                }
+                pago.estado = 'BORRADOR'
+                pago.datos_formulario = datos_formulario
+                pago.save(update_fields=['estado', 'datos_formulario'])
     except ValueError as e:
         messages.error(request, str(e))
         return redirect('ficha_trabajador', trabajador_id=trabajador.id)
 
-    messages.success(request, f"Pago registrado correctamente. Total a pagar: ${pago.total_pagado}.")
+    if accion == 'borrador':
+        messages.success(request, "Pago guardado como borrador. Puedes continuar editándolo desde la ficha del trabajador antes de confirmarlo.")
+    else:
+        messages.success(request, f"Pago registrado correctamente. Total a pagar: ${pago.total_pagado}.")
     return redirect('ficha_trabajador', trabajador_id=trabajador.id)
 
 
@@ -3102,7 +3160,7 @@ def listar_pagos(request):
     Pagos Realizados. Administrador y Compras pueden ver y ejecutar
     "Proceder al Pago"; solo Administrador puede editar un pago ya generado.
     """
-    pagos = Pago.objects.select_related('trabajador', 'pagado_por', 'registrado_por').all()
+    pagos = Pago.objects.select_related('trabajador', 'pagado_por', 'registrado_por').exclude(estado='BORRADOR')
 
     estado_filtro = request.GET.get('estado')
     if estado_filtro in ('PENDIENTE', 'PAGADO'):

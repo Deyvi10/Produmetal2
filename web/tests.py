@@ -641,7 +641,7 @@ class RegistroPagoPorDiasTestCase(TestCase):
     def _post_registrar_pago(self, periodo_inicio, periodo_fin, dias, confirmado=False, **extra):
         data = {'periodo_inicio': periodo_inicio, 'periodo_fin': periodo_fin, 'fecha_pago': periodo_fin}
         if confirmado:
-            data['confirmado'] = '1'
+            data['accion'] = 'confirmar'
         for fecha_str, (incluir, entrada, salida) in dias.items():
             if incluir:
                 data[f'incluir_{fecha_str}'] = 'on'
@@ -748,7 +748,7 @@ class PagosRealizadosPermisosTestCase(TestCase):
         self.pago.refresh_from_db()
         self.assertEqual(self.pago.fecha_pago_confirmado, primera_fecha)  # no se sobrescribió
 
-    def test_eliminar_hora_extra_bloqueada_si_ya_esta_en_un_pago(self):
+    def test_eliminar_hora_extra_permitida_aunque_ya_este_en_un_pago(self):
         he = HoraExtra.objects.create(
             trabajador=self.trabajador, fecha=date(2026, 1, 10), tipo='ORDINARIA',
             cantidad_horas=Decimal('2'), valor_calculado=Decimal('10.00'),
@@ -757,7 +757,7 @@ class PagosRealizadosPermisosTestCase(TestCase):
         client = Client()
         client.force_login(self.admin)
         client.post(reverse('eliminar_hora_extra', args=[self.trabajador.id, he.id]))
-        self.assertTrue(HoraExtra.objects.filter(id=he.id).exists())
+        self.assertFalse(HoraExtra.objects.filter(id=he.id).exists())
 
     def test_eliminar_hora_extra_libre_se_borra(self):
         he = HoraExtra.objects.create(

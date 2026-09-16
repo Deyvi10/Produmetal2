@@ -178,23 +178,50 @@
                                     {% endif %}
                                 </td>
                                 <td class="text-end pe-3">
-                                    {% if not he.pago_id %}
                                     <form method="POST" action="{% url 'eliminar_hora_extra' trabajador.id he.id %}" onsubmit="return confirm('¿Eliminar este registro de hora extra?');" class="d-inline">
                                         {% csrf_token %}
                                         <button type="submit" class="btn btn-sm btn-outline-danger border-0" title="Eliminar"><i class="bi bi-trash"></i></button>
                                     </form>
-                                    {% else %}
-                                        <span class="small text-muted" title="Ya incluida en un pago">🔒</span>
-                                    {% endif %}
                                 </td>
                             </tr>
                         {% empty %}
-                            <tr><td colspan="5" class="text-center text-muted py-3">Sin horas extra registradas.</td></tr>
+                            <tr><td colspan="5" class="text-center text-muted py-3">Sin horas extra pendientes.</td></tr>
                         {% endfor %}
                         </tbody>
                     </table>
                 </div>
                 {% if horas_extras.paginator.num_pages > 1 %}<div class="px-3 pb-2">{% pm_pagination horas_extras param_name="page_horas" %}</div>{% endif %}
+
+                <button class="btn btn-sm btn-outline-secondary w-100 rounded-0 border-start-0 border-end-0" type="button" data-bs-toggle="collapse" data-bs-target="#histHorasExtra">
+                    <i class="bi bi-clock-history me-1"></i> Historial (ya pagadas) — {{ horas_extras_historial.paginator.count }}
+                </button>
+                <div class="collapse" id="histHorasExtra">
+                    <div class="table-responsive">
+                        <table class="table table-modern mb-0">
+                            <thead><tr><th class="ps-3">Fecha</th><th>Tipo</th><th class="text-center">Horas</th><th class="text-end">Valor</th><th class="text-end pe-3"></th></tr></thead>
+                            <tbody>
+                            {% for he in horas_extras_historial %}
+                                <tr class="opacity-75">
+                                    <td class="ps-3 small">{{ he.fecha|date:"d/m/Y" }}</td>
+                                    <td class="small">{{ he.get_tipo_display }}</td>
+                                    <td class="text-center">{{ he.cantidad_horas }}</td>
+                                    <td class="text-end">${{ he.valor_calculado|default:"0.00" }}</td>
+                                    <td class="text-end pe-3">
+                                        <span class="badge-soft badge-soft-success me-1">Hora ya pagada</span>
+                                        <form method="POST" action="{% url 'eliminar_hora_extra' trabajador.id he.id %}" onsubmit="return confirm('Esta hora extra ya está incluida en un pago realizado. El total de ese pago NO se recalculará automáticamente. ¿Eliminar de todas formas?');" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger border-0" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr><td colspan="5" class="text-center text-muted py-3">Sin historial.</td></tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% if horas_extras_historial.paginator.num_pages > 1 %}<div class="px-3 pb-2">{% pm_pagination horas_extras_historial param_name="page_horas_hist" %}</div>{% endif %}
+                </div>
             </div>
         </div>
 
@@ -221,23 +248,52 @@
                                 <td class="small">{{ d.motivo }}</td>
                                 <td class="text-end text-danger fw-bold">-${{ d.monto }}</td>
                                 <td class="text-end pe-3">
-                                    {% if not d.pago_id %}
                                     <form method="POST" action="{% url 'eliminar_descuento' trabajador.id d.id %}" onsubmit="return confirm('¿Eliminar este registro?');" class="d-inline">
                                         {% csrf_token %}
                                         <button type="submit" class="btn btn-sm btn-outline-danger border-0" title="Eliminar"><i class="bi bi-trash"></i></button>
                                     </form>
-                                    {% else %}
-                                        <span class="small text-muted" title="Ya incluido en un pago">🔒</span>
-                                    {% endif %}
                                 </td>
                             </tr>
                         {% empty %}
-                            <tr><td colspan="5" class="text-center text-muted py-3">Sin descuentos ni anticipos registrados.</td></tr>
+                            <tr><td colspan="5" class="text-center text-muted py-3">Sin descuentos ni anticipos pendientes.</td></tr>
                         {% endfor %}
                         </tbody>
                     </table>
                 </div>
                 {% if descuentos.paginator.num_pages > 1 %}<div class="px-3 pb-2">{% pm_pagination descuentos param_name="page_descuentos" %}</div>{% endif %}
+
+                <button class="btn btn-sm btn-outline-secondary w-100 rounded-0 border-start-0 border-end-0" type="button" data-bs-toggle="collapse" data-bs-target="#histDescuentos">
+                    <i class="bi bi-clock-history me-1"></i> Historial (ya usados) — {{ descuentos_historial.paginator.count }}
+                </button>
+                <div class="collapse" id="histDescuentos">
+                    <div class="table-responsive">
+                        <table class="table table-modern mb-0">
+                            <thead><tr><th class="ps-3">Fecha</th><th>Tipo</th><th>Motivo</th><th class="text-end">Monto</th><th class="text-end pe-3"></th></tr></thead>
+                            <tbody>
+                            {% for d in descuentos_historial %}
+                                <tr class="opacity-75">
+                                    <td class="ps-3 small">{{ d.fecha|date:"d/m/Y" }}</td>
+                                    <td class="small">
+                                        {% if d.tipo == 'ANTICIPO' %}<span class="badge-soft badge-soft-warning">Anticipo</span>{% else %}<span class="badge-soft badge-soft-danger">Descuento</span>{% endif %}
+                                    </td>
+                                    <td class="small">{{ d.motivo }}</td>
+                                    <td class="text-end text-danger fw-bold">-${{ d.monto }}</td>
+                                    <td class="text-end pe-3">
+                                        <span class="badge-soft badge-soft-success me-1">Ya usado</span>
+                                        <form method="POST" action="{% url 'eliminar_descuento' trabajador.id d.id %}" onsubmit="return confirm('Este registro ya está incluido en un pago realizado. El total de ese pago NO se recalculará automáticamente. ¿Eliminar de todas formas?');" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger border-0" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr><td colspan="5" class="text-center text-muted py-3">Sin historial.</td></tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% if descuentos_historial.paginator.num_pages > 1 %}<div class="px-3 pb-2">{% pm_pagination descuentos_historial param_name="page_descuentos_hist" %}</div>{% endif %}
+                </div>
             </div>
         </div>
     </div>
@@ -316,6 +372,8 @@
                         <td>
                             {% if pago.estado == 'PAGADO' %}
                                 <span class="badge-soft badge-soft-success">Pagado</span>
+                            {% elif pago.estado == 'BORRADOR' %}
+                                <span class="badge-soft badge-soft-warning"><i class="bi bi-file-earmark-text"></i> Borrador</span>
                             {% else %}
                                 <span class="badge-soft badge-soft-warning">Pendiente</span>
                             {% endif %}
@@ -327,7 +385,11 @@
                         <td class="text-end text-danger">-${{ pago.aporte_iess }}</td>
                         <td class="text-end fw-bold">${{ pago.total_pagado }}</td>
                         <td class="text-end pe-3">
-                            <a href="{% url 'imprimir_pdf_pago' pago.id %}" target="_blank" class="btn btn-sm btn-outline-secondary border-0" title="Descargar PDF"><i class="bi bi-file-earmark-pdf"></i></a>
+                            {% if pago.estado == 'BORRADOR' %}
+                                <a href="{% url 'preparar_pago' trabajador.id %}?periodo_inicio={{ pago.periodo_inicio|date:'Y-m-d' }}&periodo_fin={{ pago.periodo_fin|date:'Y-m-d' }}&pago_id={{ pago.id }}" class="btn btn-sm btn-amber" title="Continuar editando"><i class="bi bi-pencil-square"></i> Continuar</a>
+                            {% else %}
+                                <a href="{% url 'imprimir_pdf_pago' pago.id %}" target="_blank" class="btn btn-sm btn-outline-secondary border-0" title="Descargar PDF"><i class="bi bi-file-earmark-pdf"></i></a>
+                            {% endif %}
                         </td>
                     </tr>
                 {% empty %}

@@ -36,10 +36,15 @@
         </div>
     </div>
 
+    {% if pago_borrador %}
+    <div class="alert alert-warning border-0 mb-4"><i class="bi bi-file-earmark-text me-1"></i> Estás continuando un <strong>borrador guardado</strong>. Los datos se rellenaron tal como los dejaste; revisa y confirma cuando esté listo.</div>
+    {% endif %}
+
     <form method="POST" action="{% url 'registrar_pago' trabajador.id %}">
         {% csrf_token %}
         <input type="hidden" name="periodo_inicio" value="{{ periodo_inicio|date:'Y-m-d' }}">
         <input type="hidden" name="periodo_fin" value="{{ periodo_fin|date:'Y-m-d' }}">
+        {% if pago_borrador %}<input type="hidden" name="pago_id" value="{{ pago_borrador.id }}">{% endif %}
 
         <div class="card-master">
             <div class="card-header-pm"><i class="bi bi-calendar3 me-2"></i>Días del Periodo</div>
@@ -58,22 +63,22 @@
                         <span class="badge-soft badge-normal">Normal ({{ dia.hora_inicio_normal|time:"H:i" }}-{{ dia.hora_fin_normal|time:"H:i" }})</span>
                         <div class="dia-horas d-flex align-items-center gap-2">
                             <span class="small" style="color: var(--pm-text-muted);">Entrada</span>
-                            <input type="time" class="form-control form-control-sm" name="entrada_{{ dia.fecha_str }}" value="{{ dia.hora_inicio_normal|time:'H:i' }}">
+                            <input type="time" class="form-control form-control-sm" name="entrada_{{ dia.fecha_str }}" value="{{ dia.entrada_valor }}">
                             <span class="small" style="color: var(--pm-text-muted);">Salida</span>
-                            <input type="time" class="form-control form-control-sm" name="salida_{{ dia.fecha_str }}" value="{{ dia.hora_fin_normal|time:'H:i' }}">
+                            <input type="time" class="form-control form-control-sm" name="salida_{{ dia.fecha_str }}" value="{{ dia.salida_valor }}">
                             <span class="small" style="color: var(--pm-text-muted);">(deja el horario tal cual si no hubo horas extra)</span>
                         </div>
                     {% else %}
                         <div class="form-check">
-                            <input class="form-check-input dia-incluir" type="checkbox" name="incluir_{{ dia.fecha_str }}" id="inc{{ dia.fecha_str }}">
+                            <input class="form-check-input dia-incluir" type="checkbox" name="incluir_{{ dia.fecha_str }}" id="inc{{ dia.fecha_str }}" {% if dia.previo_incluir %}checked{% endif %}>
                             <label class="form-check-label small" for="inc{{ dia.fecha_str }}">¿Trabajó este día de descanso?</label>
                         </div>
                         <span class="badge-soft badge-extra">Descanso</span>
                         <div class="dia-horas d-flex align-items-center gap-2">
                             <span class="small" style="color: var(--pm-text-muted);">Entrada</span>
-                            <input type="time" class="form-control form-control-sm" name="entrada_{{ dia.fecha_str }}" disabled>
+                            <input type="time" class="form-control form-control-sm" name="entrada_{{ dia.fecha_str }}" value="{{ dia.entrada_valor }}" {% if not dia.previo_incluir %}disabled{% endif %}>
                             <span class="small" style="color: var(--pm-text-muted);">Salida</span>
-                            <input type="time" class="form-control form-control-sm" name="salida_{{ dia.fecha_str }}" disabled>
+                            <input type="time" class="form-control form-control-sm" name="salida_{{ dia.fecha_str }}" value="{{ dia.salida_valor }}" {% if not dia.previo_incluir %}disabled{% endif %}>
                         </div>
                     {% endif %}
                 </div>
@@ -88,7 +93,7 @@
                         <select name="periodo_mensual_id" class="form-select">
                             <option value="">-- Ninguna --</option>
                             {% for pm in periodos_mensuales %}
-                                <option value="{{ pm.id }}">{{ pm.mes }}/{{ pm.anio }} — ${{ pm.bonificacion_quincenal }}/quincena</option>
+                                <option value="{{ pm.id }}" {% if datos_previos.periodo_mensual_id|stringformat:"s" == pm.id|stringformat:"s" %}selected{% endif %}>{{ pm.mes }}/{{ pm.anio }} — ${{ pm.bonificacion_quincenal }}/quincena</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -99,7 +104,7 @@
                     <div class="card-header-pm"><i class="bi bi-shield-check me-2"></i>Aporte IESS (Fijo)</div>
                     <div class="p-3">
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="aplicar_iess" id="aplicar_iess" {% if trabajador.aporte_iess_mensual %}checked{% endif %}>
+                            <input class="form-check-input" type="checkbox" name="aplicar_iess" id="aplicar_iess" {% if pago_borrador %}{% if datos_previos.aplicar_iess == 'on' %}checked{% endif %}{% elif trabajador.aporte_iess_mensual %}checked{% endif %}>
                             <label class="form-check-label small" for="aplicar_iess">
                                 Aplicar aporte IESS: ${{ trabajador.aporte_iess_quincenal }}/quincena (fijo ${{ trabajador.aporte_iess_mensual }}/mes)
                             </label>
@@ -119,7 +124,7 @@
                     <div class="p-3" style="max-height: 180px; overflow-y: auto;">
                         {% for he in horas_extra_disponibles %}
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="horas_extra_ids" value="{{ he.id }}" id="he{{ he.id }}">
+                                <input class="form-check-input" type="checkbox" name="horas_extra_ids" value="{{ he.id }}" id="he{{ he.id }}" {% if he.id|stringformat:"s" in ids_horas_previas %}checked{% endif %}>
                                 <label class="form-check-label small" for="he{{ he.id }}">{{ he.fecha|date:"d/m/Y" }} - {{ he.get_tipo_display }} ({{ he.cantidad_horas }}h) — {% if he.valor_calculado is None %}pendiente{% else %}${{ he.valor_calculado }}{% endif %}</label>
                             </div>
                         {% empty %}
@@ -134,13 +139,13 @@
                     <div class="p-3" style="max-height: 180px; overflow-y: auto;">
                         {% for d in descuentos_disponibles %}
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="descuento_ids" value="{{ d.id }}" id="d{{ d.id }}">
+                                <input class="form-check-input" type="checkbox" name="descuento_ids" value="{{ d.id }}" id="d{{ d.id }}" {% if d.id|stringformat:"s" in ids_descuentos_previos %}checked{% endif %}>
                                 <label class="form-check-label small" for="d{{ d.id }}">{{ d.fecha|date:"d/m/Y" }} - Descuento: {{ d.motivo }} (-${{ d.monto }})</label>
                             </div>
                         {% endfor %}
                         {% for a in anticipos_disponibles %}
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="descuento_ids" value="{{ a.id }}" id="a{{ a.id }}">
+                                <input class="form-check-input" type="checkbox" name="descuento_ids" value="{{ a.id }}" id="a{{ a.id }}" {% if a.id|stringformat:"s" in ids_descuentos_previos %}checked{% endif %}>
                                 <label class="form-check-label small" for="a{{ a.id }}">{{ a.fecha|date:"d/m/Y" }} - Anticipo: {{ a.motivo }} (-${{ a.monto }})</label>
                             </div>
                         {% endfor %}
@@ -156,11 +161,11 @@
             <div class="row g-3">
                 <div class="col-md-4">
                     <label class="form-label fw-bold">Fecha de Pago</label>
-                    <input type="date" name="fecha_pago" class="form-control" value="{{ hoy|date:'Y-m-d' }}" required>
+                    <input type="date" name="fecha_pago" class="form-control" value="{% if datos_previos.fecha_pago %}{{ datos_previos.fecha_pago }}{% else %}{{ hoy|date:'Y-m-d' }}{% endif %}" required>
                 </div>
                 <div class="col-md-8">
                     <label class="form-label fw-bold">Observaciones</label>
-                    <input type="text" name="observaciones" class="form-control" placeholder="Opcional">
+                    <input type="text" name="observaciones" class="form-control" value="{{ datos_previos.observaciones|default:'' }}" placeholder="Opcional">
                 </div>
             </div>
         </div>
