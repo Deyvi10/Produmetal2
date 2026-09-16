@@ -2828,12 +2828,28 @@ def preparar_pago(request, trabajador_id):
         messages.error(request, "Asigna un salario al trabajador antes de registrar un pago.")
         return redirect('ficha_trabajador', trabajador_id=trabajador.id)
 
-    pago_borrador = None
     pago_id = request.GET.get('pago_id')
-    if pago_id:
-        pago_borrador = get_object_or_404(Pago, id=pago_id, trabajador=trabajador, estado='BORRADOR')
 
-    datos_previos = (pago_borrador.datos_formulario if pago_borrador else {}) or {}
+    # Autoguardado de sesión: lo último que se calculó/revisó para este trabajador
+    # y este mismo periodo, aunque todavía no se haya guardado como borrador.
+    # Así "Volver a Editar" nunca borra lo que ya se había corregido.
+    sesion_datos = request.session.get(f'pago_form_datos_{trabajador.id}')
+    if sesion_datos and sesion_datos.get('periodo_inicio') != periodo_inicio.isoformat():
+        sesion_datos = None
+    if sesion_datos and sesion_datos.get('periodo_fin') != periodo_fin.isoformat():
+        sesion_datos = None
+
+    pid_efectivo = pago_id or (sesion_datos.get('pago_id') if sesion_datos else None)
+    pago_borrador = None
+    if pid_efectivo:
+        pago_borrador = Pago.objects.filter(id=pid_efectivo, trabajador=trabajador, estado='BORRADOR').first()
+
+    if sesion_datos:
+        datos_previos = sesion_datos
+    elif pago_borrador:
+        datos_previos = pago_borrador.datos_formulario or {}
+    else:
+        datos_previos = {}
     dias_previos = datos_previos.get('dias', {})
 
     horario = HorarioTrabajador.para_trabajador(trabajador)
@@ -3009,6 +3025,27 @@ def _procesar_dias_pago(request, trabajador, periodo_inicio, periodo_fin, pago_i
     }
 
 
+def _construir_datos_formulario(periodo_mensual_id, aplicar_iess, horas_extra_ids_manual, descuento_ids_manual, observaciones, fecha_pago, resultado):
+    """Snapshot de un envío del formulario de pago (día por día), reutilizado tanto
+    para el autoguardado en sesión (cada vista previa) como para el borrador en BD."""
+    return {
+        'periodo_mensual_id': periodo_mensual_id or '',
+        'aplicar_iess': 'on' if aplicar_iess else '',
+        'horas_extra_ids': horas_extra_ids_manual,
+        'descuento_ids': descuento_ids_manual,
+        'observaciones': observaciones,
+        'fecha_pago': fecha_pago.isoformat(),
+        'dias': {
+            dia['fecha'].strftime('%Y-%m-%d'): {
+                'incluir': 'on' if dia['incluido'] else '',
+                'entrada': dia['entrada'].strftime('%H:%M') if dia.get('entrada') else '',
+                'salida': dia['salida'].strftime('%H:%M') if dia.get('salida') else '',
+            }
+            for dia in resultado['dias_detalle'] if dia['incluido']
+        },
+    }
+
+
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
 def registrar_pago(request, trabajador_id):
@@ -3060,8 +3097,14 @@ def registrar_pago(request, trabajador_id):
             f"?periodo_inicio={periodo_inicio}&periodo_fin={periodo_fin}{sufijo_pago}"
         )
 
-    horas_manuales = HoraExtra.objects.filter(id__in=horas_extra_ids_manual, trabajador=trabajador, pago__isnull=True)
-    descuentos_manuales = Descuento.objects.filter(id__in=descuento_ids_manual, trabajador=trabajador, pago__isnull=True)
+    # "Disponible para incluir" = libre, o ya vinculado al borrador que se está editando/reemplazando
+    # (si no se incluye esta segunda condición, al recalcular la vista previa de un borrador ya
+    # guardado los descuentos/horas manuales que quedaron enlazados a él parecen "desaparecer").
+    filtro_incluible = Q(pago__isnull=True)
+    if pago_id:
+        filtro_incluible |= Q(pago_id=pago_id)
+    horas_manuales = HoraExtra.objects.filter(filtro_incluible, id__in=horas_extra_ids_manual, trabajador=trabajador)
+    descuentos_manuales = Descuento.objects.filter(filtro_incluible, id__in=descuento_ids_manual, trabajador=trabajador)
 
     accion = request.POST.get('accion')  # None en la vista previa; 'confirmar' o 'borrador' al finalizar
 
@@ -3074,12 +3117,25 @@ def registrar_pago(request, trabajador_id):
 
         total_descuentos_manual = sum((d.monto for d in descuentos_manuales if d.tipo == 'DESCUENTO'), Decimal('0.00'))
         total_anticipos_manual = sum((d.monto for d in descuentos_manuales if d.tipo == 'ANTICIPO'), Decimal('0.00'))
+        total_horas_manuales_valor = sum((h.valor_calculado or Decimal('0.00') for h in horas_manuales), Decimal('0.00'))
         bonificacion = periodo_mensual.bonificacion_quincenal if periodo_mensual else Decimal('0.00')
         aporte_iess = trabajador.aporte_iess_quincenal if aplicar_iess else Decimal('0.00')
         total_estimado = (
-            salario_preview + resultado['total_horas_extra_valor'] + bonificacion
+            salario_preview + resultado['total_horas_extra_valor'] + total_horas_manuales_valor + bonificacion
             - total_descuentos_manual - total_anticipos_manual - aporte_iess
         )
+
+        # Autoguardado en sesión: si el admin vuelve a "Volver a Editar" no debe
+        # perder lo que ya había corregido, aunque todavía no confirme ni guarde borrador.
+        request.session[f'pago_form_datos_{trabajador.id}'] = {
+            **_construir_datos_formulario(
+                periodo_mensual_id, aplicar_iess, horas_extra_ids_manual, descuento_ids_manual,
+                observaciones, fecha_pago, resultado,
+            ),
+            'periodo_inicio': periodo_inicio.isoformat(),
+            'periodo_fin': periodo_fin.isoformat(),
+            'pago_id': pago_id,
+        }
 
         return render(request, 'web/erp/revisar_pago.html', {
             'trabajador': trabajador, 'periodo_inicio': periodo_inicio, 'periodo_fin': periodo_fin,
@@ -3087,6 +3143,7 @@ def registrar_pago(request, trabajador_id):
             'periodo_mensual': periodo_mensual, 'bonificacion': bonificacion,
             'aplicar_iess': aplicar_iess, 'aporte_iess': aporte_iess,
             'horas_manuales': horas_manuales, 'descuentos_manuales': descuentos_manuales,
+            'total_horas_manuales_valor': total_horas_manuales_valor,
             'total_descuentos_manual': total_descuentos_manual, 'total_anticipos_manual': total_anticipos_manual,
             'total_estimado': total_estimado, 'observaciones': observaciones,
             'horas_extra_ids_manual': horas_extra_ids_manual, 'descuento_ids_manual': descuento_ids_manual,
@@ -3123,28 +3180,17 @@ def registrar_pago(request, trabajador_id):
             )
 
             if accion == 'borrador':
-                datos_formulario = {
-                    'periodo_mensual_id': periodo_mensual_id or '',
-                    'aplicar_iess': 'on' if aplicar_iess else '',
-                    'horas_extra_ids': horas_extra_ids_manual,
-                    'descuento_ids': descuento_ids_manual,
-                    'observaciones': observaciones,
-                    'fecha_pago': fecha_pago.isoformat(),
-                    'dias': {
-                        dia['fecha'].strftime('%Y-%m-%d'): {
-                            'incluir': 'on' if dia['incluido'] else '',
-                            'entrada': dia['entrada'].strftime('%H:%M') if dia.get('entrada') else '',
-                            'salida': dia['salida'].strftime('%H:%M') if dia.get('salida') else '',
-                        }
-                        for dia in resultado['dias_detalle'] if dia['incluido']
-                    },
-                }
                 pago.estado = 'BORRADOR'
-                pago.datos_formulario = datos_formulario
+                pago.datos_formulario = _construir_datos_formulario(
+                    periodo_mensual_id, aplicar_iess, horas_extra_ids_manual, descuento_ids_manual,
+                    observaciones, fecha_pago, resultado,
+                )
                 pago.save(update_fields=['estado', 'datos_formulario'])
     except ValueError as e:
         messages.error(request, str(e))
         return redirect('ficha_trabajador', trabajador_id=trabajador.id)
+
+    request.session.pop(f'pago_form_datos_{trabajador.id}', None)
 
     if accion == 'borrador':
         messages.success(request, "Pago guardado como borrador. Puedes continuar editándolo desde la ficha del trabajador antes de confirmarlo.")

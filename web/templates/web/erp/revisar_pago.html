@@ -52,7 +52,7 @@
         <div class="resumen-row"><span>Horas Ordinarias ({{ resultado.total_ordinaria_horas }}h · recargo 50%)</span><span class="text-success">+${{ resultado.total_ordinaria_valor }}</span></div>
         <div class="resumen-row"><span>Horas Extraordinarias ({{ resultado.total_extraordinaria_horas }}h · recargo 100%)</span><span class="text-success">+${{ resultado.total_extraordinaria_valor }}</span></div>
         {% if horas_manuales %}
-        <div class="resumen-row"><span>Horas extra manuales incluidas ({{ horas_manuales|length }})</span><span class="text-success">incluidas arriba si aplican</span></div>
+        <div class="resumen-row"><span>Horas extra manuales incluidas ({{ horas_manuales|length }})</span><span class="text-success">+${{ total_horas_manuales_valor }}</span></div>
         {% endif %}
         <div class="resumen-row"><span>Bonificación (mitad del mes)</span><span class="text-success">+${{ bonificacion }}</span></div>
         <div class="resumen-row"><span>Descuentos</span><span class="text-danger">-${{ total_descuentos_manual }}</span></div>
