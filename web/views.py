@@ -12,6 +12,7 @@ from .forms import MaterialForm
 from decimal import Decimal
 from axes.utils import reset
 from datetime import datetime, timedelta
+import json
 # =======================================================
 # IMPORTACIONES DE MODELOS Y FORMULARIOS
 # =======================================================
@@ -2711,7 +2712,8 @@ def registrar_hora_extra(request, trabajador_id):
         tipo = request.POST.get('tipo')
         observaciones = (request.POST.get('observaciones') or '').strip()
         try:
-            fecha = datetime.strptime(request.POST.get('fecha'), '%Y-%m-%d').date()
+            fecha_raw = (request.POST.get('fecha') or '').strip()
+            fecha = datetime.strptime(fecha_raw, '%Y-%m-%d').date() if fecha_raw else timezone.localdate()
             cantidad_horas = Decimal((request.POST.get('cantidad_horas') or '0').replace(',', '.'))
         except Exception:
             messages.error(request, "Datos inválidos para la hora extra.")
@@ -2783,12 +2785,20 @@ def registrar_descuento(request, trabajador_id):
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='dashboard_erp')
 def iniciar_pago(request, trabajador_id):
-    """Paso 1: elegir el rango de fechas del periodo a pagar."""
+    """Paso 1: elegir el rango de fechas del periodo a pagar mediante un calendario visual."""
     trabajador = get_object_or_404(Trabajador, id=trabajador_id)
     if not trabajador.salario_actual:
         messages.error(request, "Asigna un salario al trabajador antes de registrar un pago.")
         return redirect('ficha_trabajador', trabajador_id=trabajador.id)
-    return render(request, 'web/erp/iniciar_pago.html', {'trabajador': trabajador, 'hoy': timezone.localdate()})
+
+    dias_pagados = sorted(trabajador.dias_pagados())
+    pagos_previos = trabajador.pagos.order_by('-periodo_inicio')[:8]
+
+    return render(request, 'web/erp/iniciar_pago.html', {
+        'trabajador': trabajador, 'hoy': timezone.localdate(),
+        'dias_pagados_json': json.dumps([d.strftime('%Y-%m-%d') for d in dias_pagados]),
+        'pagos_previos': pagos_previos,
+    })
 
 
 @login_required(login_url='login')

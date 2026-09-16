@@ -83,6 +83,7 @@
                         </td>
                         <td class="text-end pe-4">
                             <div class="d-flex justify-content-end gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-warning btn-minimal px-2 py-1 border-warning" title="Datos bancarios" data-bs-toggle="modal" data-bs-target="#modalDatos{{ pago.id }}"><i class="bi bi-bank"></i> Datos</button>
                                 <a href="{% url 'imprimir_pdf_pago' pago.id %}" target="_blank" class="btn btn-sm btn-outline-secondary btn-minimal px-2 py-1 border-secondary" title="PDF"><i class="bi bi-file-earmark-pdf"></i></a>
                                 {% if pago.estado == 'PENDIENTE' %}
                                     <form method="POST" action="{% url 'confirmar_pago' pago.id %}" class="d-inline" onsubmit="return confirm('¿Está seguro de que ya realizó la transferencia a {{ pago.trabajador.nombre_completo }} por ${{ pago.total_pagado }}?');">
@@ -105,4 +106,41 @@
         <div class="px-3 pb-3">{% pm_pagination page_obj %}</div>
     </div>
 </div>
+
+{% for pago in page_obj %}
+<div class="modal fade" id="modalDatos{{ pago.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background: var(--pm-surface); color: var(--pm-text); border: 1px solid var(--pm-border);">
+            <div class="modal-header" style="border-bottom: 1px solid var(--pm-border);">
+                <h5 class="modal-title"><i class="bi bi-bank me-2 text-warning"></i>Datos Bancarios — {{ pago.trabajador.nombre_completo }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                {% if pago.trabajador.numero_cuenta %}
+                <div class="d-flex flex-column gap-3">
+                    <div class="d-flex justify-content-between border-bottom pb-2" style="border-color: var(--pm-border) !important;">
+                        <span class="text-muted small text-uppercase fw-bold">Correo</span>
+                        <span class="fw-bold">{{ pago.trabajador.email|default:"-" }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between border-bottom pb-2" style="border-color: var(--pm-border) !important;">
+                        <span class="text-muted small text-uppercase fw-bold">Banco</span>
+                        <span class="fw-bold">{{ pago.trabajador.get_banco_display }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between border-bottom pb-2" style="border-color: var(--pm-border) !important;">
+                        <span class="text-muted small text-uppercase fw-bold">Tipo de Cuenta</span>
+                        <span class="fw-bold">{{ pago.trabajador.get_tipo_cuenta_display }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted small text-uppercase fw-bold">Número de Cuenta</span>
+                        <span class="fw-bold fs-5" style="letter-spacing: 1px;">{{ pago.trabajador.numero_cuenta }}</span>
+                    </div>
+                </div>
+                {% else %}
+                    <p class="text-muted small mb-0">Este trabajador no tiene datos bancarios registrados todavía.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
 {% endblock %}

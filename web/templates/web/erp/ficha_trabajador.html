@@ -420,8 +420,6 @@
             {% else %}
                 <p class="small text-muted"><i class="bi bi-info-circle"></i> El valor se calcula automáticamente: Ordinaria = horas × valor/hora × 1.5. Extraordinaria = horas × valor/hora × 2.0.</p>
             {% endif %}
-            <label class="form-label fw-bold">Fecha</label>
-            <input type="date" name="fecha" class="form-control mb-3" value="{{ hoy|date:'Y-m-d' }}" required>
             <label class="form-label fw-bold">Tipo</label>
             <select name="tipo" class="form-select mb-3" required>
                 <option value="ORDINARIA">Ordinaria (recargo 50% — día laborable)</option>

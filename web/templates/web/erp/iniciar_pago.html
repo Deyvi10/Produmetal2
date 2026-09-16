@@ -3,37 +3,290 @@
 {% block content %}
 <style>
     body { background-color: var(--pm-bg); color: var(--pm-text); }
-    .erp-container { max-width: 600px; padding-bottom: 60px; margin-top: 60px; }
-    .card-master { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; box-shadow: var(--pm-shadow); padding: 2rem; }
+    .erp-container { max-width: 1100px; padding-bottom: 60px; margin-top: 30px; }
+    .card-master { background: var(--pm-surface); border: 1px solid var(--pm-border); border-radius: 12px; box-shadow: var(--pm-shadow); overflow: hidden; }
+    .card-header-pm { padding: 1rem 1.25rem; border-bottom: 1px solid var(--pm-border); font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; }
     .btn-primary-custom { background: #0d6efd; color: #fff; font-weight: bold; border-radius: 8px; padding: 12px 24px; border: none; }
-    .btn-primary-custom:hover { filter: brightness(0.9); color: #fff; }
-    label, .form-label { color: var(--pm-text); }
-    .form-control { background-color: var(--pm-bg); border: 1px solid var(--pm-border); color: var(--pm-text); }
-    .form-control:focus { background-color: var(--pm-bg); color: var(--pm-text); border-color: var(--pm-amber); box-shadow: 0 0 0 3px var(--pm-amber-soft); }
+    .btn-primary-custom:hover:not(:disabled) { filter: brightness(0.9); color: #fff; }
+    .btn-primary-custom:disabled { opacity: 0.4; cursor: not-allowed; }
     .btn-outline-secondary { color: var(--pm-text); border-color: var(--pm-border); }
+    .btn-amber-soft { background: var(--pm-amber-soft); color: var(--pm-amber); border: 1px solid var(--pm-amber-soft); font-weight: 700; font-size: 0.8rem; padding: 6px 12px; border-radius: 6px; }
+    .btn-amber-soft:hover { background: var(--pm-amber); color: #000; }
+
+    /* Calendario */
+    .cal-nav { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; }
+    .cal-nav button { background: transparent; border: 1px solid var(--pm-border); color: var(--pm-text); border-radius: 8px; width: 36px; height: 36px; }
+    .cal-nav button:hover { background: var(--pm-surface-hover); }
+    .cal-titulo { font-family: var(--font-display); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; font-size: 1.1rem; }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 0 1rem 1rem; }
+    .cal-dow { text-align: center; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--pm-text-muted); padding-bottom: 6px; }
+    .cal-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; border: 1px solid transparent; background: var(--pm-bg); color: var(--pm-text); position: relative; }
+    .cal-day:hover:not(.paid):not(.empty) { border-color: var(--pm-amber); }
+    .cal-day.empty { background: transparent; cursor: default; }
+    .cal-day.paid { background: var(--pm-red-soft); color: var(--pm-red); cursor: not-allowed; text-decoration: line-through; opacity: 0.65; }
+    .cal-day.today { box-shadow: inset 0 0 0 2px var(--pm-blue); }
+    .cal-day.in-range { background: var(--pm-amber-soft); color: var(--pm-amber); }
+    .cal-day.range-end { background: var(--pm-amber); color: #000; }
+    .leyenda { display: flex; flex-wrap: wrap; gap: 14px; padding: 0 1.25rem 1rem; font-size: 0.78rem; color: var(--pm-text-muted); }
+    .leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+    .leyenda i.dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+    .resumen-box { padding: 1.25rem; }
+    .resumen-fecha { font-family: var(--font-display); font-weight: 800; font-size: 1.3rem; }
+    .aviso-conflicto { background: var(--pm-red-soft); border: 1px solid var(--pm-red-soft); color: var(--pm-red); border-radius: 8px; padding: 10px 14px; font-size: 0.85rem; margin-top: 10px; }
+    .historial-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--pm-border); font-size: 0.82rem; }
+    .historial-item:last-child { border-bottom: none; }
 </style>
 
 <div class="container erp-container">
     <div class="d-flex align-items-center gap-3 mb-4">
         <a href="{% url 'ficha_trabajador' trabajador.id %}" class="btn btn-outline-secondary rounded-pill px-3"><i class="bi bi-arrow-left"></i></a>
-        <h2 class="fw-bold mb-0">Registrar Pago — {{ trabajador.nombre_completo }}</h2>
+        <div>
+            <h2 class="fw-bold mb-0">Registrar Pago — {{ trabajador.nombre_completo }}</h2>
+            <p class="mb-0 small" style="color: var(--pm-text-muted);">Selecciona en el calendario el rango del periodo. Los días ya pagados aparecen bloqueados y no pueden elegirse de nuevo.</p>
+        </div>
     </div>
 
-    <form method="GET" action="{% url 'preparar_pago' trabajador.id %}" class="card-master">
-        <p class="small" style="color: var(--pm-text-muted);">Elige el rango de fechas del periodo. El sistema generará automáticamente cada día del rango, indicando si es normal según el horario del trabajador o si ya fue pagado.</p>
+    <form method="GET" action="{% url 'preparar_pago' trabajador.id %}" id="form-periodo">
+        <input type="hidden" name="periodo_inicio" id="input-inicio">
+        <input type="hidden" name="periodo_fin" id="input-fin">
+
         <div class="row g-3">
-            <div class="col-md-6">
-                <label class="form-label fw-bold">Periodo desde</label>
-                <input type="date" name="periodo_inicio" class="form-control" value="{{ hoy|date:'Y-m-d' }}" required>
+            <div class="col-12 col-lg-7">
+                <div class="card-master">
+                    <div class="cal-nav">
+                        <button type="button" id="btn-prev"><i class="bi bi-chevron-left"></i></button>
+                        <div class="cal-titulo" id="cal-titulo"></div>
+                        <button type="button" id="btn-next"><i class="bi bi-chevron-right"></i></button>
+                    </div>
+                    <div class="cal-grid" id="cal-dow"></div>
+                    <div class="cal-grid" id="cal-grid"></div>
+                    <div class="leyenda">
+                        <span><i class="dot" style="background: var(--pm-amber);"></i> Seleccionado</span>
+                        <span><i class="dot" style="background: var(--pm-red-soft); box-shadow: inset 0 0 0 1px var(--pm-red);"></i> Ya pagado</span>
+                        <span><i class="dot" style="background: var(--pm-bg); box-shadow: inset 0 0 0 2px var(--pm-blue);"></i> Hoy</span>
+                    </div>
+                </div>
             </div>
-            <div class="col-md-6">
-                <label class="form-label fw-bold">Periodo hasta</label>
-                <input type="date" name="periodo_fin" class="form-control" value="{{ hoy|date:'Y-m-d' }}" required>
+
+            <div class="col-12 col-lg-5">
+                <div class="card-master mb-3">
+                    <div class="card-header-pm"><i class="bi bi-calendar-range me-2"></i>Periodo Seleccionado</div>
+                    <div class="resumen-box">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="small" style="color: var(--pm-text-muted);">Desde</span>
+                            <span class="resumen-fecha" id="resumen-inicio">--/--/----</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="small" style="color: var(--pm-text-muted);">Hasta</span>
+                            <span class="resumen-fecha" id="resumen-fin">--/--/----</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="small" style="color: var(--pm-text-muted);">Total de días</span>
+                            <span class="fw-bold" id="resumen-dias">-</span>
+                        </div>
+                        <div id="aviso-conflicto" class="aviso-conflicto" style="display:none;"></div>
+
+                        <div class="d-flex flex-wrap gap-2 mt-3">
+                            <button type="button" class="btn-amber-soft" id="btn-quincena1">1ra Quincena</button>
+                            <button type="button" class="btn-amber-soft" id="btn-quincena2">2da Quincena</button>
+                            <button type="button" class="btn-amber-soft" id="btn-mes">Mes Completo</button>
+                            <button type="button" class="btn-amber-soft" id="btn-limpiar">Limpiar</button>
+                        </div>
+
+                        <button type="submit" class="btn-primary-custom w-100 mt-3" id="btn-generar" disabled>
+                            <i class="bi bi-calendar-check me-2"></i> Generar Días del Periodo
+                        </button>
+                    </div>
+                </div>
+
+                {% if pagos_previos %}
+                <div class="card-master">
+                    <div class="card-header-pm"><i class="bi bi-clock-history me-2"></i>Pagos Recientes</div>
+                    <div class="px-3 py-2">
+                        {% for p in pagos_previos %}
+                            <div class="historial-item">
+                                <span>{{ p.periodo_inicio|date:"d/m/Y" }} - {{ p.periodo_fin|date:"d/m/Y" }}</span>
+                                <span class="fw-bold {% if p.estado == 'PAGADO' %}text-success{% else %}text-warning{% endif %}">${{ p.total_pagado }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
             </div>
-        </div>
-        <div class="d-flex justify-content-end mt-4">
-            <button type="submit" class="btn-primary-custom px-4"><i class="bi bi-calendar-check me-2"></i> Generar Días del Periodo</button>
         </div>
     </form>
 </div>
+
+<script>
+(function() {
+    const paidDays = new Set({{ dias_pagados_json|safe }});
+    const hoy = new Date();
+    const hoyStr = fmt(hoy);
+    let vista = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    let selInicio = null, selFin = null;
+
+    const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const DOW = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+
+    function fmt(d) {
+        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
+    function fmtDisplay(str) {
+        const [y,m,d] = str.split('-');
+        return `${d}/${m}/${y}`;
+    }
+    function parseISO(str) {
+        const [y,m,d] = str.split('-').map(Number);
+        return new Date(y, m-1, d);
+    }
+
+    const dowRow = document.getElementById('cal-dow');
+    DOW.forEach(dow => {
+        const el = document.createElement('div');
+        el.className = 'cal-dow';
+        el.textContent = dow;
+        dowRow.appendChild(el);
+    });
+
+    function renderCalendario() {
+        document.getElementById('cal-titulo').textContent = `${MESES[vista.getMonth()]} ${vista.getFullYear()}`;
+        const grid = document.getElementById('cal-grid');
+        grid.innerHTML = '';
+
+        const primerDia = new Date(vista.getFullYear(), vista.getMonth(), 1);
+        let offset = primerDia.getDay() - 1; // Lunes = 0
+        if (offset < 0) offset = 6;
+        const diasEnMes = new Date(vista.getFullYear(), vista.getMonth()+1, 0).getDate();
+
+        for (let i = 0; i < offset; i++) {
+            const empty = document.createElement('div');
+            empty.className = 'cal-day empty';
+            grid.appendChild(empty);
+        }
+
+        for (let dia = 1; dia <= diasEnMes; dia++) {
+            const fecha = new Date(vista.getFullYear(), vista.getMonth(), dia);
+            const fechaStr = fmt(fecha);
+            const btn = document.createElement('div');
+            btn.className = 'cal-day';
+            btn.textContent = dia;
+
+            if (paidDays.has(fechaStr)) {
+                btn.classList.add('paid');
+                btn.title = 'Ya pagado';
+            } else {
+                btn.addEventListener('click', () => seleccionarDia(fechaStr));
+            }
+            if (fechaStr === hoyStr) btn.classList.add('today');
+
+            if (selInicio && selFin && fechaStr >= selInicio && fechaStr <= selFin) {
+                btn.classList.add(fechaStr === selInicio || fechaStr === selFin ? 'range-end' : 'in-range');
+            } else if (selInicio && !selFin && fechaStr === selInicio) {
+                btn.classList.add('range-end');
+            }
+
+            grid.appendChild(btn);
+        }
+    }
+
+    function rangoTieneDiaPagado(inicio, fin) {
+        let d = parseISO(inicio);
+        const finD = parseISO(fin);
+        while (d <= finD) {
+            if (paidDays.has(fmt(d))) return true;
+            d.setDate(d.getDate() + 1);
+        }
+        return false;
+    }
+
+    function mostrarConflicto(msg) {
+        const aviso = document.getElementById('aviso-conflicto');
+        aviso.style.display = 'block';
+        aviso.innerHTML = `<i class="bi bi-exclamation-triangle me-1"></i> ${msg}`;
+    }
+    function ocultarConflicto() {
+        document.getElementById('aviso-conflicto').style.display = 'none';
+    }
+
+    function seleccionarDia(fechaStr) {
+        if (!selInicio || (selInicio && selFin)) {
+            selInicio = fechaStr;
+            selFin = null;
+            ocultarConflicto();
+        } else {
+            let ini = selInicio, fin = fechaStr;
+            if (fin < ini) { [ini, fin] = [fin, ini]; }
+            if (rangoTieneDiaPagado(ini, fin)) {
+                mostrarConflicto('El rango elegido incluye uno o más días que ya fueron pagados. Elige un rango que no los contenga.');
+                selInicio = fechaStr;
+                selFin = null;
+            } else {
+                selInicio = ini;
+                selFin = fin;
+                ocultarConflicto();
+            }
+        }
+        actualizarResumen();
+        renderCalendario();
+    }
+
+    function establecerRango(ini, fin) {
+        if (rangoTieneDiaPagado(fmt(ini), fmt(fin))) {
+            mostrarConflicto('Ese rango incluye días ya pagados; ajusta la selección manualmente en el calendario.');
+            return;
+        }
+        selInicio = fmt(ini);
+        selFin = fmt(fin);
+        vista = new Date(ini.getFullYear(), ini.getMonth(), 1);
+        ocultarConflicto();
+        actualizarResumen();
+        renderCalendario();
+    }
+
+    function actualizarResumen() {
+        const btnGenerar = document.getElementById('btn-generar');
+        if (selInicio && selFin) {
+            document.getElementById('resumen-inicio').textContent = fmtDisplay(selInicio);
+            document.getElementById('resumen-fin').textContent = fmtDisplay(selFin);
+            const dias = Math.round((parseISO(selFin) - parseISO(selInicio)) / 86400000) + 1;
+            document.getElementById('resumen-dias').textContent = dias + (dias === 1 ? ' día' : ' días');
+            document.getElementById('input-inicio').value = selInicio;
+            document.getElementById('input-fin').value = selFin;
+            btnGenerar.disabled = false;
+        } else {
+            document.getElementById('resumen-inicio').textContent = selInicio ? fmtDisplay(selInicio) : '--/--/----';
+            document.getElementById('resumen-fin').textContent = '--/--/----';
+            document.getElementById('resumen-dias').textContent = '-';
+            btnGenerar.disabled = true;
+        }
+    }
+
+    document.getElementById('btn-prev').addEventListener('click', () => { vista.setMonth(vista.getMonth()-1); renderCalendario(); });
+    document.getElementById('btn-next').addEventListener('click', () => { vista.setMonth(vista.getMonth()+1); renderCalendario(); });
+    document.getElementById('btn-limpiar').addEventListener('click', () => { selInicio = null; selFin = null; ocultarConflicto(); actualizarResumen(); renderCalendario(); });
+    document.getElementById('btn-quincena1').addEventListener('click', () => {
+        establecerRango(new Date(vista.getFullYear(), vista.getMonth(), 1), new Date(vista.getFullYear(), vista.getMonth(), 15));
+    });
+    document.getElementById('btn-quincena2').addEventListener('click', () => {
+        const ultimoDia = new Date(vista.getFullYear(), vista.getMonth()+1, 0).getDate();
+        establecerRango(new Date(vista.getFullYear(), vista.getMonth(), 16), new Date(vista.getFullYear(), vista.getMonth(), ultimoDia));
+    });
+    document.getElementById('btn-mes').addEventListener('click', () => {
+        const ultimoDia = new Date(vista.getFullYear(), vista.getMonth()+1, 0).getDate();
+        establecerRango(new Date(vista.getFullYear(), vista.getMonth(), 1), new Date(vista.getFullYear(), vista.getMonth(), ultimoDia));
+    });
+
+    document.getElementById('form-periodo').addEventListener('submit', function(e) {
+        if (!selInicio || !selFin) { e.preventDefault(); return; }
+        if (rangoTieneDiaPagado(selInicio, selFin)) {
+            e.preventDefault();
+            mostrarConflicto('El rango incluye días ya pagados. No se puede generar el periodo.');
+        }
+    });
+
+    renderCalendario();
+    actualizarResumen();
+})();
+</script>
 {% endblock %}
