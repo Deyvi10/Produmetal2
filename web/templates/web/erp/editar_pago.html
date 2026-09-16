@@ -21,14 +21,17 @@
         <strong><i class="bi bi-exclamation-triangle-fill me-1"></i> Este pago ya fue realizado</strong> el {{ pago.fecha_pago_confirmado|date:"d/m/Y H:i" }} por {{ pago.pagado_por.username }}.
         Editarlo no revierte la transferencia ya hecha; solo ajusta el registro interno. Por trazabilidad no se pueden cambiar los montos calculados.
     </div>
+    <div class="alert alert-warning border-0 mb-4">
+        <strong><i class="bi bi-arrow-repeat me-1"></i> Al guardar, este pago volverá a estado PENDIENTE</strong> y Compras deberá volver a presionar "Proceder al Pago" para confirmarlo. Asegúrate de que esto sea lo que quieres antes de continuar.
+    </div>
     {% endif %}
 
-    <form method="POST" class="card-master" {% if pago.estado == 'PAGADO' %}onsubmit="return confirm('¿Confirmas editar un pago que YA fue realizado?');"{% endif %}>
+    <form method="POST" class="card-master" {% if pago.estado == 'PAGADO' %}onsubmit="return confirm('¿Confirmas editar un pago que YA fue realizado?') && confirm('Esto marcará el pago como PENDIENTE otra vez y Compras deberá volver a confirmarlo. ¿Continuar?');"{% endif %}>
         {% csrf_token %}
         {% if pago.estado == 'PAGADO' %}
         <div class="form-check mb-3">
             <input class="form-check-input" type="checkbox" name="confirmar_edicion" id="confirmar_edicion" required>
-            <label class="form-check-label fw-bold" for="confirmar_edicion">Confirmo que deseo editar este pago ya realizado.</label>
+            <label class="form-check-label fw-bold" for="confirmar_edicion">Confirmo que deseo editar este pago ya realizado y que volverá a quedar PENDIENTE.</label>
         </div>
         {% endif %}
 

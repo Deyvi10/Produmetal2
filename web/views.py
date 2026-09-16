@@ -3170,9 +3170,20 @@ def editar_pago(request, pago_id):
             messages.error(request, "Fecha de pago inválida.")
             return redirect('editar_pago', pago_id=pago.id)
 
+        campos = ['fecha_pago', 'observaciones']
         pago.fecha_pago = fecha_pago
         pago.observaciones = (request.POST.get('observaciones') or '').strip()
-        pago.save(update_fields=['fecha_pago', 'observaciones'])
+
+        if pago.estado == 'PAGADO':
+            pago.estado = 'PENDIENTE'
+            pago.pagado_por = None
+            pago.fecha_pago_confirmado = None
+            pago.email_enviado = False
+            pago.email_error = ''
+            campos += ['estado', 'pagado_por', 'fecha_pago_confirmado', 'email_enviado', 'email_error']
+            messages.warning(request, "El pago volvió a quedar PENDIENTE: Compras deberá confirmar de nuevo la transferencia.")
+
+        pago.save(update_fields=campos)
         messages.success(request, "Pago actualizado.")
         return redirect('listar_pagos')
 

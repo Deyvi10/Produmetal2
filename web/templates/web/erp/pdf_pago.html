@@ -6,40 +6,40 @@
     <style>
         @page {
             size: a4 portrait;
-            margin: 1.5cm;
-            margin-bottom: 2.8cm;
+            margin: 1cm;
+            margin-bottom: 2cm;
             @frame footer_frame {
                 -pdf-frame-content: footer_content;
-                left: 1.5cm; right: 1.5cm; bottom: 0.5cm; height: 1.8cm;
+                left: 1cm; right: 1cm; bottom: 0.4cm; height: 1.3cm;
             }
         }
-        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 10px; color: #1e293b; line-height: 1.4; }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 9px; color: #1e293b; line-height: 1.25; }
 
-        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; border: 1px solid #cbd5e1; }
-        .header-table td { padding: 12px; vertical-align: middle; border: 1px solid #cbd5e1; }
-        .logo { width: 75px; height: 75px; object-fit: cover; }
-        .company-name { font-size: 18px; font-weight: bold; color: #0f172a; margin: 0 0 2px 0; letter-spacing: -0.5px; }
-        .company-details { font-size: 9px; color: #64748b; line-height: 1.3; }
+        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; border: 1px solid #cbd5e1; }
+        .header-table td { padding: 6px 8px; vertical-align: middle; border: 1px solid #cbd5e1; }
+        .logo { width: 50px; height: 50px; object-fit: cover; }
+        .company-name { font-size: 15px; font-weight: bold; color: #0f172a; margin: 0 0 2px 0; letter-spacing: -0.5px; }
+        .company-details { font-size: 8px; color: #64748b; line-height: 1.25; }
         .box-folio { text-align: center; background-color: #f8fafc; width: 30%; }
-        .title-document { font-size: 9px; color: #64748b; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; }
-        .number-folio { font-size: 16px; font-weight: bold; color: #0f172a; margin-top: 4px; }
+        .title-document { font-size: 8px; color: #64748b; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; }
+        .number-folio { font-size: 13px; font-weight: bold; color: #0f172a; margin-top: 2px; }
 
-        .section-header { font-size: 9px; font-weight: bold; color: #1e293b; text-transform: uppercase; letter-spacing: 0.5px; background-color: #f1f5f9; padding: 6px 10px; border: 1px solid #cbd5e1; border-bottom: none; }
-        .metadata-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; border: 1px solid #cbd5e1; }
-        .metadata-table td { padding: 7px 10px; border: 1px solid #cbd5e1; font-size: 10px; }
+        .section-header { font-size: 8px; font-weight: bold; color: #1e293b; text-transform: uppercase; letter-spacing: 0.5px; background-color: #f1f5f9; padding: 3px 8px; border: 1px solid #cbd5e1; border-bottom: none; }
+        .metadata-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; border: 1px solid #cbd5e1; }
+        .metadata-table td { padding: 4px 8px; border: 1px solid #cbd5e1; font-size: 9px; }
         .meta-label { font-weight: bold; color: #475569; background-color: #f8fafc; width: 18%; }
         .meta-value { color: #0f172a; width: 32%; }
 
-        .data-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        .data-table th { background-color: #1e293b; color: #ffffff; font-size: 9px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; padding: 8px 10px; border: 1px solid #1e293b; }
-        .data-table td { padding: 8px 10px; border: 1px solid #cbd5e1; font-size: 10px; color: #334155; }
+        .data-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+        .data-table th { background-color: #1e293b; color: #ffffff; font-size: 8px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; padding: 4px 8px; border: 1px solid #1e293b; }
+        .data-table td { padding: 4px 8px; border: 1px solid #cbd5e1; font-size: 9px; color: #334155; }
         .data-table tr:nth-child(even) { background-color: #f8fafc; }
 
-        .totales-table { width: 60%; margin-left: auto; border-collapse: collapse; margin-bottom: 25px; }
-        .totales-table td { padding: 6px 10px; border: 1px solid #cbd5e1; font-size: 10.5px; }
+        .totales-table { width: 60%; margin-left: auto; border-collapse: collapse; margin-bottom: 10px; }
+        .totales-table td { padding: 3px 8px; border: 1px solid #cbd5e1; font-size: 9.5px; }
         .totales-table .label { color: #475569; }
         .totales-table .valor { text-align: right; font-weight: bold; color: #0f172a; }
-        .totales-table .total-row td { background-color: #1e293b; color: #ffffff; font-size: 13px; font-weight: bold; }
+        .totales-table .total-row td { background-color: #1e293b; color: #ffffff; font-size: 11px; font-weight: bold; }
 
         .text-center { text-align: center; }
         .text-right { text-align: right; }
@@ -47,15 +47,15 @@
         .positivo { color: #16a34a; }
         .negativo { color: #dc2626; }
 
-        .signatures-container { margin-top: 45px; width: 100%; page-break-inside: avoid; }
+        .signatures-container { margin-top: 18px; width: 100%; page-break-inside: avoid; }
         .signature-table { width: 100%; border-collapse: collapse; }
         .signature-table td { width: 50%; text-align: center; padding: 0 20px; vertical-align: top; }
-        .signature-space { height: 60px; }
-        .signature-line { border-top: 1px solid #334155; width: 85%; margin: 0 auto 6px auto; }
-        .signature-name { font-size: 10px; font-weight: bold; color: #0f172a; text-transform: uppercase; }
-        .signature-role { font-size: 8.5px; color: #64748b; margin-top: 2px; letter-spacing: 0.3px; }
+        .signature-space { height: 30px; }
+        .signature-line { border-top: 1px solid #334155; width: 85%; margin: 0 auto 4px auto; }
+        .signature-name { font-size: 9px; font-weight: bold; color: #0f172a; text-transform: uppercase; }
+        .signature-role { font-size: 8px; color: #64748b; margin-top: 1px; letter-spacing: 0.3px; }
 
-        #footer_content { border-top: 1px solid #cbd5e1; padding-top: 8px; font-size: 8px; color: #64748b; text-align: center; }
+        #footer_content { border-top: 1px solid #cbd5e1; padding-top: 5px; font-size: 7px; color: #64748b; text-align: center; }
     </style>
 </head>
 <body>
